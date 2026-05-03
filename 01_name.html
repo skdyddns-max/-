@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>이름 쓰기 - 박태오</title>
+  <link rel="stylesheet" href="style_shared.css">
+  <style>
+    .name-big {
+      text-align: center;
+      font-size: 5rem;
+      color: #ff6b35;
+      letter-spacing: 20px;
+      padding: 20px 0;
+      font-weight: bold;
+    }
+    .stroke-order {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin: 16px 0 24px;
+    }
+    .stroke-card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+      text-align: center;
+      min-width: 160px;
+    }
+    .stroke-card .char { font-size: 5rem; color: #ff6b35; line-height: 1; }
+    .stroke-card .name { font-size: 1rem; color: #888; margin-top: 8px; }
+    .name-trace {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0 24px;
+    }
+    .name-cell {
+      width: 90px; height: 90px;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      background: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+      position: relative;
+    }
+    .name-cell.guide { color: #ffb38a; font-weight: bold; }
+    .name-cell.practice {
+      background-image:
+        linear-gradient(rgba(200,200,200,0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,200,200,0.4) 1px, transparent 1px);
+      background-size: 30px 30px;
+      color: transparent;
+    }
+    .name-cell.practice::before {
+      content: attr(data-char);
+      position: absolute;
+      font-size: 3rem;
+      color: #f0d0c0;
+    }
+    .tip-box {
+      background: #fff3eb;
+      border-left: 4px solid #ff6b35;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>🏷️ 이름 쓰기</h1>
+  <p>내 이름을 예쁘게 써봐요</p>
+</header>
+
+<a class="back-link" href="index.html">← 목록으로</a>
+
+<div class="section">
+  <div class="name-big">박 태 오</div>
+
+  <div class="tip-box">
+    💡 <strong>이름을 바르게 쓰는 법</strong><br>
+    ① 글자의 크기를 같게 써요.<br>
+    ② 자음과 모음의 위치를 맞춰요.<br>
+    ③ 선을 천천히, 힘을 주어 써요.
+  </div>
+</div>
+
+<div class="section">
+  <h2>1. 글자 살펴보기</h2>
+  <div class="stroke-order">
+    <div class="stroke-card">
+      <div class="char">박</div>
+      <div class="name">박 (朴)</div>
+    </div>
+    <div class="stroke-card">
+      <div class="char">태</div>
+      <div class="name">태 (太)</div>
+    </div>
+    <div class="stroke-card">
+      <div class="char">오</div>
+      <div class="name">오 (午)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>2. 따라 쓰기 (연한 글자 위에 써봐요)</h2>
+  <div class="name-trace">
+    <!-- Guide -->
+    <div class="name-cell guide">박</div>
+    <div class="name-cell guide">태</div>
+    <div class="name-cell guide">오</div>
+    <!-- Practice row 1 -->
+    <div class="name-cell practice" data-char="박"></div>
+    <div class="name-cell practice" data-char="태"></div>
+    <div class="name-cell practice" data-char="오"></div>
+    <!-- Practice row 2 -->
+    <div class="name-cell practice" data-char="박"></div>
+    <div class="name-cell practice" data-char="태"></div>
+    <div class="name-cell practice" data-char="오"></div>
+    <!-- Free write -->
+    <div class="name-cell"></div>
+    <div class="name-cell"></div>
+    <div class="name-cell"></div>
+    <div class="name-cell"></div>
+    <div class="name-cell"></div>
+    <div class="name-cell"></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>3. 줄에 이름 쓰기</h2>
+  <div class="write-lines">
+    <div class="write-line"><span class="hint">박태오</span></div>
+    <div class="write-line"></div>
+    <div class="write-line"></div>
+    <div class="write-line"></div>
+    <div class="write-line"></div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h2>4. 혼자 써보기</h2>
+  <div style="background:white;border-radius:14px;padding:24px;box-shadow:0 3px 12px rgba(0,0,0,0.08);">
+    <p style="color:#aaa;font-size:0.9rem;margin-bottom:16px;">이름을 예쁘게 크게 써봐요!</p>
+    <div style="height:140px;border:2px dashed #ffd0b0;border-radius:10px;"></div>
+  </div>
+</div>
+
+</body>
+</html>

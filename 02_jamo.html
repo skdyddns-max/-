@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자모 연습 - 박태오</title>
+  <link rel="stylesheet" href="style_shared.css">
+  <style>
+    .jamo-section { margin-bottom: 32px; }
+    .jamo-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .jamo-item {
+      text-align: center;
+    }
+    .jamo-item .lbl { font-size: 0.75rem; color: #aaa; margin-bottom: 4px; }
+    .jamo-cell {
+      width: 64px; height: 64px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.9rem;
+      position: relative;
+    }
+    .jamo-cell.g { color: #ff6b35; font-weight: bold; border-color: #ffb38a; }
+    .jamo-cell.p {
+      background-image:
+        linear-gradient(rgba(200,200,200,0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,200,200,0.35) 1px, transparent 1px);
+      background-size: 21px 21px;
+    }
+    .jamo-cell.p::before {
+      content: attr(data-c);
+      position: absolute;
+      font-size: 1.9rem;
+      color: #f5d5c5;
+    }
+    .tag {
+      display: inline-block;
+      background: #ff6b35;
+      color: white;
+      font-size: 0.82rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+    .info-box {
+      background: #fff3eb;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>🔤 자모 연습</h1>
+  <p>자음과 모음을 써봐요</p>
+</header>
+
+<a class="back-link" href="index.html">← 목록으로</a>
+
+<!-- 자음 -->
+<div class="section">
+  <h2>1. 자음 (닿소리)</h2>
+  <div class="info-box">
+    ✏️ 자음은 14개예요. 연한 글자 위에 덧써보고, 빈 칸에 혼자 써봐요!
+  </div>
+
+  <div class="jamo-section">
+    <span class="tag">ㄱ~ㄷ</span>
+    <div class="jamo-grid">
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㄱ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㄱ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㄴ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㄴ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㄷ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㄷ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    </div>
+  </div>
+
+  <div class="jamo-section">
+    <span class="tag">ㄹ~ㅂ</span>
+    <div class="jamo-grid">
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㄹ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㄹ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅁ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅁ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅂ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅂ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    </div>
+  </div>
+
+  <div class="jamo-section">
+    <span class="tag">ㅅ~ㅎ</span>
+    <div class="jamo-grid">
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅅ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅅ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅇ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅇ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅈ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅈ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅊ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅊ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅋ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅋ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅌ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅌ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅍ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅍ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+      <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅎ</div></div>
+      <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅎ"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+      <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 모음 -->
+<div class="section">
+  <h2>2. 모음 (홀소리)</h2>
+  <div class="info-box">
+    ✏️ 모음은 10개예요. 바른 방향으로 천천히 써봐요!
+  </div>
+
+  <div class="jamo-grid">
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅏ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅏ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅑ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅑ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅓ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅓ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅕ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅕ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅗ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅗ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅛ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅛ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅜ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅜ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅠ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅠ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅡ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅡ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+
+    <div class="jamo-item"><div class="lbl">보기</div><div class="jamo-cell g">ㅣ</div></div>
+    <div class="jamo-item"><div class="lbl">따라</div><div class="jamo-cell p" data-c="ㅣ"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+    <div class="jamo-item"><div class="lbl">혼자</div><div class="jamo-cell p"></div></div>
+  </div>
+</div>
+
+</body>
+</html>

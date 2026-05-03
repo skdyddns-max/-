@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>박태오 쓰기 자료</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #fff9f0; color: #333; }
+    header {
+      background: linear-gradient(135deg, #ff9a56, #ff6b35);
+      color: white;
+      text-align: center;
+      padding: 30px 20px;
+    }
+    header h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    header p { font-size: 1.1rem; opacity: 0.9; }
+    .nav {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 24px 20px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .nav a {
+      display: block;
+      padding: 12px 22px;
+      background: #ff6b35;
+      color: white;
+      text-decoration: none;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .nav a:hover { background: #e55a28; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .card:hover { transform: translateY(-4px); }
+    .card .icon { font-size: 3rem; margin-bottom: 14px; }
+    .card h2 { font-size: 1.3rem; margin-bottom: 8px; color: #ff6b35; }
+    .card p { font-size: 0.95rem; color: #666; margin-bottom: 18px; }
+    .card a {
+      display: inline-block;
+      padding: 10px 24px;
+      background: #ff6b35;
+      color: white;
+      text-decoration: none;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+    .card a:hover { background: #e55a28; }
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: #999;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>✏️ 박태오의 쓰기 공부방 ✏️</h1>
+    <p>재미있게 글씨를 써봐요!</p>
+  </header>
+
+  <nav class="nav">
+    <a href="01_name.html">이름 쓰기</a>
+    <a href="02_jamo.html">자모 연습</a>
+    <a href="03_syllable.html">낱자 쓰기</a>
+    <a href="04_words.html">낱말 쓰기</a>
+    <a href="05_sentences.html">문장 쓰기</a>
+    <a href="06_story.html">일기 쓰기</a>
+  </nav>
+
+  <div class="cards">
+    <div class="card">
+      <div class="icon">🏷️</div>
+      <h2>이름 쓰기</h2>
+      <p>내 이름 <strong>박태오</strong>를 예쁘게 써봐요.</p>
+      <a href="01_name.html">시작하기</a>
+    </div>
+    <div class="card">
+      <div class="icon">🔤</div>
+      <h2>자모 연습</h2>
+      <p>자음과 모음을 순서에 맞게 써봐요.</p>
+      <a href="02_jamo.html">시작하기</a>
+    </div>
+    <div class="card">
+      <div class="icon">📝</div>
+      <h2>낱자 쓰기</h2>
+      <p>가나다라… 기본 음절을 써봐요.</p>
+      <a href="03_syllable.html">시작하기</a>
+    </div>
+    <div class="card">
+      <div class="icon">📖</div>
+      <h2>낱말 쓰기</h2>
+      <p>동물, 과일, 색깔 낱말을 써봐요.</p>
+      <a href="04_words.html">시작하기</a>
+    </div>
+    <div class="card">
+      <div class="icon">💬</div>
+      <h2>문장 쓰기</h2>
+      <p>짧고 재미있는 문장을 따라 써봐요.</p>
+      <a href="05_sentences.html">시작하기</a>
+    </div>
+    <div class="card">
+      <div class="icon">📔</div>
+      <h2>일기 쓰기</h2>
+      <p>오늘 있었던 일을 일기로 써봐요.</p>
+      <a href="06_story.html">시작하기</a>
+    </div>
+  </div>
+
+  <footer>박태오를 위한 맞춤 쓰기 자료 | 열심히 써봐요! 🌟</footer>
+</body>
+</html>

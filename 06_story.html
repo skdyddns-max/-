@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>일기 쓰기 - 박태오</title>
+  <link rel="stylesheet" href="style_shared.css">
+  <style>
+    .diary-wrap {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.09);
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+    .diary-top {
+      background: linear-gradient(135deg, #ffb38a, #ff9a56);
+      padding: 20px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+    .diary-top .field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+      color: white;
+      font-weight: bold;
+    }
+    .diary-top .field input, .diary-top .field select {
+      background: rgba(255,255,255,0.3);
+      border: none;
+      border-bottom: 2px solid rgba(255,255,255,0.8);
+      color: white;
+      font-size: 1rem;
+      outline: none;
+      padding: 2px 4px;
+      min-width: 80px;
+    }
+    .diary-top .field input::placeholder { color: rgba(255,255,255,0.7); }
+    .diary-title-field {
+      padding: 16px 24px;
+      border-bottom: 1px dashed #ffe0cc;
+    }
+    .diary-title-field label {
+      font-size: 0.85rem;
+      color: #aaa;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .diary-title-field input {
+      width: 100%;
+      border: none;
+      border-bottom: 2px solid #ffb38a;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #555;
+      outline: none;
+      padding: 4px 0;
+    }
+    .diary-body {
+      padding: 20px 24px;
+    }
+    .diary-body .dline {
+      height: 52px;
+      border-bottom: 2px solid #f0f0f0;
+      margin-bottom: 4px;
+    }
+    .weather-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .weather-btn {
+      font-size: 1.6rem;
+      background: none;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .weather-btn:hover, .weather-btn.active {
+      border-color: #ff9a56;
+      background: #fff3eb;
+    }
+    .tip-box {
+      background: #fff3eb;
+      border-left: 4px solid #ff9a56;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 0.92rem;
+      color: #666;
+      line-height: 1.8;
+    }
+    .prompt-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .prompt-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      border-left: 4px solid #ff9a56;
+    }
+    .prompt-card .q { font-size: 0.95rem; color: #555; margin-bottom: 8px; }
+    .prompt-card .aline {
+      height: 36px;
+      border-bottom: 1.5px solid #ddd;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>📔 일기 쓰기</h1>
+  <p>오늘 있었던 일을 써봐요</p>
+</header>
+
+<a class="back-link" href="index.html">← 목록으로</a>
+
+<div class="section">
+  <h2>일기 쓰기 도움말</h2>
+  <div class="tip-box">
+    📝 <strong>일기를 잘 쓰는 방법</strong><br>
+    ① 날짜와 날씨를 먼저 써요.<br>
+    ② 오늘 있었던 일을 떠올려요.<br>
+    ③ 내가 느낀 점을 솔직하게 써요.<br>
+    ④ 글씨를 바르게, 크기를 같게 써요.<br>
+    ⑤ 문장이 끝나면 마침표(.)를 써요.
+  </div>
+</div>
+
+<div class="section">
+  <h2>일기 먼저 생각해보기</h2>
+  <div class="prompt-cards">
+    <div class="prompt-card">
+      <div class="q">오늘 무엇을 했나요?</div>
+      <div class="aline"></div>
+      <div class="aline"></div>
+    </div>
+    <div class="prompt-card">
+      <div class="q">가장 재미있었던 일은?</div>
+      <div class="aline"></div>
+      <div class="aline"></div>
+    </div>
+    <div class="prompt-card">
+      <div class="q">누구와 함께 했나요?</div>
+      <div class="aline"></div>
+      <div class="aline"></div>
+    </div>
+    <div class="prompt-card">
+      <div class="q">어떤 기분이었나요?</div>
+      <div class="aline"></div>
+      <div class="aline"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>일기 1</h2>
+  <div class="diary-wrap">
+    <div class="diary-top">
+      <div class="field">📅 <span>년</span> <input type="text" placeholder="2026" maxlength="4"> 월 <input type="text" placeholder="5" maxlength="2"> 일 <input type="text" placeholder="3" maxlength="2"></div>
+      <div class="field">요일: <input type="text" placeholder="토" maxlength="1"></div>
+      <div class="field">날씨:
+        <button class="weather-btn" type="button">☀️</button>
+        <button class="weather-btn" type="button">🌤️</button>
+        <button class="weather-btn" type="button">☁️</button>
+        <button class="weather-btn" type="button">🌧️</button>
+        <button class="weather-btn" type="button">❄️</button>
+      </div>
+    </div>
+    <div class="diary-title-field">
+      <label>제목</label>
+      <input type="text" placeholder="오늘 일기의 제목을 써봐요">
+    </div>
+    <div class="diary-body">
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>일기 2</h2>
+  <div class="diary-wrap">
+    <div class="diary-top">
+      <div class="field">📅 <span>년</span> <input type="text" placeholder="2026" maxlength="4"> 월 <input type="text" placeholder="" maxlength="2"> 일 <input type="text" placeholder="" maxlength="2"></div>
+      <div class="field">요일: <input type="text" placeholder="" maxlength="1"></div>
+      <div class="field">날씨:
+        <button class="weather-btn" type="button">☀️</button>
+        <button class="weather-btn" type="button">🌤️</button>
+        <button class="weather-btn" type="button">☁️</button>
+        <button class="weather-btn" type="button">🌧️</button>
+        <button class="weather-btn" type="button">❄️</button>
+      </div>
+    </div>
+    <div class="diary-title-field">
+      <label>제목</label>
+      <input type="text" placeholder="오늘 일기의 제목을 써봐요">
+    </div>
+    <div class="diary-body">
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+      <div class="dline"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.weather-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const group = this.closest('.field');
+      group.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>낱말 쓰기 - 박태오</title>
+  <link rel="stylesheet" href="style_shared.css">
+  <style>
+    .category-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .category-title .icon { font-size: 1.6rem; }
+    .category-title h3 { font-size: 1.1rem; color: #555; }
+    .word-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .wcard {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+      text-align: center;
+    }
+    .wcard .em { font-size: 2.6rem; margin-bottom: 6px; }
+    .wcard .wd { font-size: 1.4rem; font-weight: bold; color: #ff6b35; margin-bottom: 10px; }
+    .wline {
+      height: 42px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 6px;
+      background-image:
+        linear-gradient(rgba(200,200,200,0.2) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,200,200,0.2) 1px, transparent 1px);
+      background-size: 21px 21px;
+      margin-bottom: 6px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wline.hint { color: #ffb38a; font-size: 1.3rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>📖 낱말 쓰기</h1>
+  <p>여러 가지 낱말을 써봐요</p>
+</header>
+
+<a class="back-link" href="index.html">← 목록으로</a>
+
+<!-- 동물 -->
+<div class="section">
+  <h2>1. 동물 이름</h2>
+  <div class="word-grid">
+    <div class="wcard">
+      <div class="em">🐶</div>
+      <div class="wd">강아지</div>
+      <div class="wline hint">강아지</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🐱</div>
+      <div class="wd">고양이</div>
+      <div class="wline hint">고양이</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🐰</div>
+      <div class="wd">토끼</div>
+      <div class="wline hint">토끼</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🐻</div>
+      <div class="wd">곰</div>
+      <div class="wline hint">곰</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🦁</div>
+      <div class="wd">사자</div>
+      <div class="wline hint">사자</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🐘</div>
+      <div class="wd">코끼리</div>
+      <div class="wline hint">코끼리</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🐧</div>
+      <div class="wd">펭귄</div>
+      <div class="wline hint">펭귄</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🦊</div>
+      <div class="wd">여우</div>
+      <div class="wline hint">여우</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 과일 -->
+<div class="section">
+  <h2>2. 과일 이름</h2>
+  <div class="word-grid">
+    <div class="wcard">
+      <div class="em">🍎</div>
+      <div class="wd">사과</div>
+      <div class="wline hint">사과</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍌</div>
+      <div class="wd">바나나</div>
+      <div class="wline hint">바나나</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍓</div>
+      <div class="wd">딸기</div>
+      <div class="wline hint">딸기</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍇</div>
+      <div class="wd">포도</div>
+      <div class="wline hint">포도</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍊</div>
+      <div class="wd">귤</div>
+      <div class="wline hint">귤</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍑</div>
+      <div class="wd">복숭아</div>
+      <div class="wline hint">복숭아</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍉</div>
+      <div class="wd">수박</div>
+      <div class="wline hint">수박</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🍋</div>
+      <div class="wd">레몬</div>
+      <div class="wline hint">레몬</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 색깔 -->
+<div class="section">
+  <h2>3. 색깔 이름</h2>
+  <div class="word-grid">
+    <div class="wcard">
+      <div class="em">🔴</div>
+      <div class="wd">빨간색</div>
+      <div class="wline hint">빨간색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🔵</div>
+      <div class="wd">파란색</div>
+      <div class="wline hint">파란색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🟡</div>
+      <div class="wd">노란색</div>
+      <div class="wline hint">노란색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🟢</div>
+      <div class="wd">초록색</div>
+      <div class="wline hint">초록색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🟠</div>
+      <div class="wd">주황색</div>
+      <div class="wline hint">주황색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🟣</div>
+      <div class="wd">보라색</div>
+      <div class="wline hint">보라색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">⚫</div>
+      <div class="wd">검은색</div>
+      <div class="wline hint">검은색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">⚪</div>
+      <div class="wd">흰색</div>
+      <div class="wline hint">흰색</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 몸 -->
+<div class="section">
+  <h2>4. 몸의 이름</h2>
+  <div class="word-grid">
+    <div class="wcard">
+      <div class="em">👁️</div>
+      <div class="wd">눈</div>
+      <div class="wline hint">눈</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">👃</div>
+      <div class="wd">코</div>
+      <div class="wline hint">코</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">👄</div>
+      <div class="wd">입</div>
+      <div class="wline hint">입</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">👂</div>
+      <div class="wd">귀</div>
+      <div class="wline hint">귀</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">✋</div>
+      <div class="wd">손</div>
+      <div class="wline hint">손</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+    <div class="wcard">
+      <div class="em">🦶</div>
+      <div class="wd">발</div>
+      <div class="wline hint">발</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
