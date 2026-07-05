@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#8aa891" />
+  <title>마음터칭 · 마음지수 진단</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --card: #ffffff;
+      --ink: #33372f;
+      --ink-soft: #6b7267;
+      --accent: #7f9c86;
+      --accent-deep: #5f7d67;
+      --accent-soft: #e7efe8;
+      --line: #e6e1d6;
+      --shadow: 0 10px 30px rgba(60, 70, 55, .10);
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+        "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app {
+      max-width: 460px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    }
+
+    /* Header */
+    header {
+      padding: 20px 22px 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      font-weight: 800;
+      letter-spacing: -.02em;
+      font-size: 19px;
+      color: var(--accent-deep);
+    }
+    .logo span { color: var(--ink); }
+    .tag {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--ink-soft);
+      background: var(--accent-soft);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    /* Progress */
+    .progress-wrap { padding: 6px 22px 0; }
+    .progress {
+      height: 6px;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+      border-radius: 999px;
+      transition: width .35s ease;
+    }
+    .progress-label {
+      font-size: 12px;
+      color: var(--ink-soft);
+      margin-top: 8px;
+    }
+
+    main { flex: 1; padding: 8px 22px 22px; }
+
+    .screen { display: none; animation: fade .35s ease; }
+    .screen.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* Intro */
+    .hero {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+      margin-top: 14px;
+      text-align: center;
+    }
+    .hero .mark {
+      width: 64px; height: 64px; margin: 0 auto 16px;
+      border-radius: 20px;
+      background: linear-gradient(140deg, var(--accent), var(--accent-deep));
+      display: grid; place-items: center;
+      font-size: 30px;
+      box-shadow: 0 8px 18px rgba(95,125,103,.35);
+    }
+    h1 { font-size: 24px; margin: 4px 0 10px; letter-spacing: -.02em; }
+    .lead { color: var(--ink-soft); font-size: 15px; margin: 0 0 4px; }
+    .intro-list {
+      text-align: left;
+      margin: 20px 0 4px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+    .intro-list li {
+      display: flex; gap: 10px; align-items: flex-start;
+      font-size: 14px; color: var(--ink);
+    }
+    .intro-list li b { color: var(--accent-deep); }
+    .note {
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      margin-top: 16px;
+    }
+
+    /* Question */
+    .q-num { font-size: 13px; color: var(--accent-deep); font-weight: 700; margin: 14px 0 6px; }
+    .q-title { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 4px; }
+    .q-sub { font-size: 13.5px; color: var(--ink-soft); margin: 0 0 18px; }
+    .options { display: grid; gap: 10px; }
+    .opt {
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 16px;
+      padding: 15px 16px;
+      font-size: 15px;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, transform .05s;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .opt:active { transform: scale(.99); }
+    .opt .dot {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--line);
+      flex: none; transition: .15s;
+    }
+    .opt.selected { border-color: var(--accent); background: var(--accent-soft); }
+    .opt.selected .dot { border-color: var(--accent-deep); background: var(--accent-deep); box-shadow: inset 0 0 0 3px #fff; }
+
+    /* Buttons */
+    .btn {
+      display: block; width: 100%;
+      border: none; border-radius: 16px;
+      padding: 16px; font-size: 16px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+      color: #fff; cursor: pointer;
+      box-shadow: 0 8px 18px rgba(95,125,103,.30);
+      transition: transform .05s, opacity .2s;
+      font-family: inherit;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .45; box-shadow: none; cursor: default; }
+    .btn.ghost {
+      background: transparent; color: var(--accent-deep);
+      box-shadow: none; border: 1.5px solid var(--line);
+    }
+    .actions { margin-top: 20px; display: grid; gap: 10px; }
+    .back {
+      background: none; border: none; color: var(--ink-soft);
+      font-size: 13px; padding: 6px; cursor: pointer; font-family: inherit;
+    }
+
+    /* Result */
+    .gauge-wrap { text-align: center; padding: 8px 0 4px; }
+    .gauge { position: relative; width: 190px; height: 190px; margin: 0 auto; }
+    .gauge svg { transform: rotate(-90deg); }
+    .gauge-center {
+      position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    }
+    .gauge-score { font-size: 46px; font-weight: 800; line-height: 1; color: var(--accent-deep); }
+    .gauge-unit { font-size: 15px; color: var(--ink-soft); }
+    .gauge-label { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+    .state-badge {
+      display: inline-block; margin: 6px 0 2px;
+      font-size: 14px; font-weight: 700;
+      padding: 6px 14px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent-deep);
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .card h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: .04em; color: var(--ink-soft); text-transform: uppercase; }
+    .rec-name { font-size: 21px; font-weight: 800; margin: 2px 0 8px; color: var(--ink); }
+    .rec-desc { font-size: 14px; color: var(--ink-soft); margin: 0 0 14px; }
+    .rec-price {
+      display: flex; align-items: baseline; gap: 8px;
+      padding-top: 12px; border-top: 1px dashed var(--line);
+    }
+    .rec-price b { font-size: 20px; color: var(--accent-deep); }
+    .rec-price small { font-size: 12.5px; color: var(--ink-soft); }
+
+    .price-tiers { display: grid; gap: 10px; margin-top: 4px; }
+    .tier {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 14px;
+      font-size: 14px;
+    }
+    .tier.pick { border-color: var(--accent); background: var(--accent-soft); }
+    .tier .t-name { font-weight: 700; }
+    .tier .t-desc { font-size: 12px; color: var(--ink-soft); }
+    .tier .t-price { font-weight: 700; color: var(--accent-deep); white-space: nowrap; }
+
+    .capture-tip {
+      display: flex; gap: 10px; align-items: flex-start;
+      background: #fff7e6; border: 1px solid #f0e2bf; color: #7a6a3e;
+      border-radius: 14px; padding: 13px 14px; font-size: 13px; margin-top: 16px;
+    }
+    .refund {
+      font-size: 12.5px; color: var(--ink-soft);
+      margin-top: 16px; padding: 14px; background: var(--card);
+      border-radius: 14px; border: 1px solid var(--line);
+    }
+    .refund b { color: var(--ink); }
+    .refund ul { margin: 8px 0 0; padding-left: 18px; }
+    .refund li { margin: 3px 0; }
+
+    footer { text-align: center; font-size: 11.5px; color: var(--ink-soft); padding: 10px 22px 24px; }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c201b; --card: #262b24; --ink: #e9ede4; --ink-soft: #9aa393;
+        --accent: #8fb197; --accent-deep: #a9c7b0; --accent-soft: #313a30;
+        --line: #384135; --shadow: 0 10px 30px rgba(0,0,0,.35);
+      }
+      .capture-tip { background: #322c1a; border-color: #4a4227; color: #d8c690; }
+      .gauge-score { color: var(--accent-deep); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">마음<span>터칭</span></div>
+      <div class="tag">마음지수 진단</div>
+    </header>
+
+    <div class="progress-wrap" id="progressWrap" style="display:none">
+      <div class="progress"><i id="bar"></i></div>
+      <div class="progress-label" id="progressLabel"></div>
+    </div>
+
+    <main>
+      <!-- INTRO -->
+      <section class="screen active" id="intro">
+        <div class="hero">
+          <div class="mark">🌿</div>
+          <h1>마음, 톡 건드려 볼까요?</h1>
+          <p class="lead">2주간의 마음 상태를 짧게 살펴보고<br>지금 나에게 맞는 케어를 추천해 드려요.</p>
+          <ul class="intro-list">
+            <li>🕐 <span><b>2분</b>이면 충분한 간단한 질문</span></li>
+            <li>💚 나의 <b>마음지수</b>를 점수로 확인</li>
+            <li>🎯 상태에 맞는 <b>맞춤 프로그램</b> 추천</li>
+          </ul>
+          <p class="note">본 진단은 정신과적 진단이 아닌, 셀프 체크와 프로그램 안내를 위한 참고용이에요.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="start()">시작하기</button>
+        </div>
+      </section>
+
+      <!-- QUESTION -->
+      <section class="screen" id="question">
+        <div class="q-num" id="qNum"></div>
+        <h2 class="q-title" id="qTitle"></h2>
+        <p class="q-sub" id="qSub"></p>
+        <div class="options" id="options"></div>
+        <div class="actions">
+          <button class="back" id="backBtn" onclick="prev()">← 이전</button>
+        </div>
+      </section>
+
+      <!-- RESULT -->
+      <section class="screen" id="result">
+        <div class="gauge-wrap">
+          <div class="gauge">
+            <svg width="190" height="190" viewBox="0 0 190 190">
+              <circle cx="95" cy="95" r="82" fill="none" stroke="var(--line)" stroke-width="14"/>
+              <circle id="gaugeArc" cx="95" cy="95" r="82" fill="none"
+                stroke="url(#g)" stroke-width="14" stroke-linecap="round"
+                stroke-dasharray="515" stroke-dashoffset="515"/>
+              <defs>
+                <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="var(--accent)"/>
+                  <stop offset="1" stop-color="var(--accent-deep)"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="gauge-center">
+              <div>
+                <div class="gauge-score"><span id="scoreVal">0</span><span class="gauge-unit">점</span></div>
+                <div class="gauge-label">나의 마음지수</div>
+              </div>
+            </div>
+          </div>
+          <div class="state-badge" id="stateBadge"></div>
+          <p class="q-sub" id="stateMsg" style="margin-top:8px"></p>
+        </div>
+
+        <div class="card">
+          <h3>추천 프로그램</h3>
+          <div class="rec-name" id="recName"></div>
+          <p class="rec-desc" id="recDesc"></p>
+          <div class="rec-price">
+            <b id="recPrice"></b><small id="recPriceNote"></small>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>가격 안내</h3>
+          <div class="price-tiers" id="tiers"></div>
+        </div>
+
+        <div class="capture-tip">
+          <span>📸</span>
+          <div><b>예약 방법</b><br>이 결과 화면을 <b>캡처</b>해서 예약 문의 시 함께 보내주시면,
+          담당 큐레이터가 딱 맞는 세션으로 안내해 드려요.</div>
+        </div>
+
+        <div class="refund">
+          <b>환불 규정 안내</b>
+          <ul>
+            <li>예약일 기준 <b>1개월 이전</b> 취소: <b>100% 환불</b></li>
+            <li>1개월 이내 ~ 2주 이전: 70% 환불</li>
+            <li>2주 이내 ~ 1주 이전: 50% 환불</li>
+            <li>1주 이내 · 당일: 환불 불가</li>
+          </ul>
+        </div>
+
+        <div class="actions">
+          <button class="btn" onclick="reserve()">예약 문의하기</button>
+          <button class="btn ghost" onclick="restart()">다시 진단하기</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>ⓒ 마음터칭 · 이 진단은 참고용이며 의학적 진단을 대체하지 않습니다.</footer>
+  </div>
+
+  <script>
+    // ---- 설문 정의 ----
+    // scored: 우울감 측정 문항(0~3점). pref: 추천용 선호 문항.
+    const QUESTIONS = [
+      { type: 'scored', title: '최근 2주간, 하루 중 우울하거나 가라앉는 기분이 드시나요?',
+        sub: '가장 가까운 것을 골라주세요.',
+        options: [ ['거의 없어요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
+      { type: 'scored', title: '평소 즐기던 일에 흥미나 즐거움을 느끼기 어려우신가요?',
+        options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
+      { type: 'scored', title: '잠자리에 누워 실제로 잠들기까지 얼마나 걸리세요?',
+        sub: '입면 시간을 골라주세요.',
+        options: [ ['15분 이내', 0], ['30분쯤', 1], ['1시간쯤', 2], ['1시간 이상 / 자주 깨요', 3] ] },
+      { type: 'scored', title: '아침에 일어나거나 하루 종일, 기운 없이 피곤하다고 느끼시나요?',
+        options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
+      { type: 'scored', title: '사소한 일에도 예민해지거나 마음이 불안하신가요?',
+        options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
+      { type: 'pref', key: 'body', title: '몸을 움직이는 활동, 어떤 쪽이 끌리세요?',
+        sub: '추천에 활용돼요.',
+        options: [
+          ['몸을 많이 쓰고 땀 흘리고 싶어요', 'active'],
+          ['가볍게 몸을 풀고 싶어요', 'light'],
+          ['몸보다 마음을 가라앉히고 싶어요', 'calm'],
+          ['자연의 소리를 들으며 쉬고 싶어요', 'nature'] ] },
+      { type: 'pref', key: 'goal', title: '지금 마음 상태에 가장 가까운 건요?',
+        options: [
+          ['특정 프로그램을 체험해보고 싶어요', 'program'],
+          ['뭘 할진 모르겠지만 마음이 풀렸으면 해요', 'relief'],
+          ['나 자신에 대해 더 알고 싶어요', 'selfknow'] ] },
+      { type: 'pref', key: 'who', title: '누구와 함께하고 싶으세요?',
+        options: [
+          ['혼자서 (개인 체험)', 'solo'],
+          ['소중한 사람과 (커플 체험)', 'couple'],
+          ['가족과 함께 (가족 워크숍)', 'family'] ] },
+      { type: 'pref', key: 'price', title: '가격대는 어느 정도 생각하세요?',
+        options: [
+          ['부담 없이 가볍게', 'low'],
+          ['나에게 집중된 프리미엄 케어', 'high'],
+          ['상관없어요, 가장 좋은 걸로', 'any'] ] },
+    ];
+
+    const PROGRAMS = {
+      singingbowl: { name: '싱잉볼 명상', desc: '싱잉볼의 깊은 진동과 울림에 몸을 맡기고, 애써 움직이지 않아도 마음이 서서히 가라앉는 회복의 시간이에요.', price: '69,000원', note: '~ / 그룹 세션' },
+      aroma: { name: '아로마테라피 스트레칭 명상', desc: '은은한 아로마 향과 함께 굳은 몸을 풀어내는 스트레칭 명상으로, 몸을 쓰며 개운하게 마음까지 정돈해요.', price: '89,000원', note: '~ / 그룹 세션' },
+      sound: { name: '자연의 소리 사운드 테라피', desc: '숲·물·바람 등 자연의 소리에 둘러싸여, 아무것도 하지 않아도 되는 온전한 쉼을 경험해요.', price: '79,000원', note: '~ / 그룹 세션' },
+      oneonone: { name: '1:1 맞춤 케어 세션', desc: '전문 큐레이터가 나의 마음 상태를 함께 들여다보고, 나에게 꼭 맞는 방향을 찾아가는 프리미엄 개인 세션이에요.', price: '250,000 ~ 350,000원', note: '/ 1:1 맞춤' },
+    };
+
+    const TIERS = [
+      { id: 'group',  name: '그룹 세션',     desc: '싱잉볼 · 사운드 · 스트레칭', price: '69,000원~' },
+      { id: 'couple', name: '커플 · 가족',   desc: '함께하는 체험 · 워크숍',   price: '129,000원~' },
+      { id: 'one',    name: '1:1 맞춤 세션', desc: '개인 집중 프리미엄 케어',  price: '250,000원~' },
+    ];
+
+    // ---- 상태 ----
+    let idx = 0;
+    const answers = {};        // 문항 index -> 값
+    const pref = {};           // key -> 값
+
+    const $ = id => document.getElementById(id);
+
+    function start() { idx = 0; showQuestion(); }
+
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      $(name).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    function showQuestion() {
+      showScreen('question');
+      $('progressWrap').style.display = 'block';
+      const q = QUESTIONS[idx];
+      const pct = Math.round((idx) / QUESTIONS.length * 100);
+      $('bar').style.width = pct + '%';
+      $('progressLabel').textContent = `${idx + 1} / ${QUESTIONS.length}`;
+      $('qNum').textContent = `Q${idx + 1}.`;
+      $('qTitle').textContent = q.title;
+      $('qSub').textContent = q.sub || '';
+      $('qSub').style.display = q.sub ? 'block' : 'none';
+      $('backBtn').style.visibility = idx === 0 ? 'hidden' : 'visible';
+
+      const wrap = $('options');
+      wrap.innerHTML = '';
+      const prevVal = q.type === 'scored' ? answers[idx] : pref[q.key];
+      q.options.forEach(([label, val]) => {
+        const btn = document.createElement('button');
+        btn.className = 'opt' + (prevVal === val ? ' selected' : '');
+        btn.innerHTML = `<span class="dot"></span><span>${label}</span>`;
+        btn.onclick = () => choose(val);
+        wrap.appendChild(btn);
+      });
+    }
+
+    function choose(val) {
+      const q = QUESTIONS[idx];
+      if (q.type === 'scored') answers[idx] = val;
+      else pref[q.key] = val;
+      // 살짝 선택감을 보여주고 자동 진행
+      const opts = $('options').children;
+      for (const o of opts) o.classList.remove('selected');
+      Array.from(opts).find(o => o.textContent.trim() ===
+        q.options.find(op => op[1] === val)[0])?.classList.add('selected');
+      setTimeout(next, 220);
+    }
+
+    function next() {
+      if (idx < QUESTIONS.length - 1) { idx++; showQuestion(); }
+      else finish();
+    }
+    function prev() { if (idx > 0) { idx--; showQuestion(); } }
+
+    function finish() {
+      $('bar').style.width = '100%';
+      const result = compute();
+      renderResult(result);
+      showScreen('result');
+      $('progressWrap').style.display = 'none';
+    }
+
+    function compute() {
+      // 우울감 점수 → 마음지수(높을수록 건강)
+      const scored = QUESTIONS.filter(q => q.type === 'scored');
+      const maxRaw = scored.length * 3;
+      let raw = 0;
+      QUESTIONS.forEach((q, i) => { if (q.type === 'scored') raw += (answers[i] || 0); });
+      const score = Math.round((1 - raw / maxRaw) * 100);
+
+      let state, msg;
+      if (score >= 75) { state = '안정적인 마음'; msg = '전반적으로 마음이 잘 유지되고 있어요. 지금의 균형을 지켜주는 케어를 추천해요.'; }
+      else if (score >= 50) { state = '조금 지친 마음'; msg = '일상 속 피로와 긴장이 쌓여 있어요. 가볍게 마음을 풀어주는 시간이 필요해 보여요.'; }
+      else if (score >= 30) { state = '돌봄이 필요한 마음'; msg = '마음이 꽤 무거운 상태예요. 나에게 집중하는 케어를 권해드려요.'; }
+      else { state = '충분한 쉼이 필요한 마음'; msg = '지금은 스스로를 깊이 돌볼 시간이 필요해요. 1:1 세션에서 함께 살펴봐요.'; }
+
+      // 추천 로직
+      let key;
+      if (pref.price === 'any' || pref.goal === 'relief' || pref.goal === 'selfknow' || score < 30) {
+        key = 'oneonone';
+      } else if (pref.body === 'active' || pref.body === 'light') {
+        key = 'aroma';
+      } else if (pref.body === 'nature') {
+        key = 'sound';
+      } else {
+        key = 'singingbowl';
+      }
+      if (pref.price === 'high' && key !== 'oneonone') key = 'oneonone';
+
+      const tierPick = key === 'oneonone' ? 'one'
+        : (pref.who === 'couple' || pref.who === 'family') ? 'couple' : 'group';
+
+      return { score, state, msg, program: PROGRAMS[key], tierPick };
+    }
+
+    function renderResult(r) {
+      // 게이지 애니메이션
+      const circ = 2 * Math.PI * 82;
+      const arc = $('gaugeArc');
+      arc.style.strokeDasharray = circ;
+      arc.style.strokeDashoffset = circ;
+      requestAnimationFrame(() => {
+        arc.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)';
+        arc.style.strokeDashoffset = circ * (1 - r.score / 100);
+      });
+      // 숫자 카운트업
+      let cur = 0;
+      const step = () => {
+        cur += Math.max(1, Math.round(r.score / 28));
+        if (cur >= r.score) cur = r.score;
+        $('scoreVal').textContent = cur;
+        if (cur < r.score) requestAnimationFrame(step);
+      };
+      step();
+
+      $('stateBadge').textContent = r.state;
+      $('stateMsg').textContent = r.msg;
+      $('recName').textContent = r.program.name;
+      $('recDesc').textContent = r.program.desc;
+      $('recPrice').textContent = r.program.price;
+      $('recPriceNote').textContent = r.program.note;
+
+      const tiers = $('tiers');
+      tiers.innerHTML = '';
+      TIERS.forEach(t => {
+        const el = document.createElement('div');
+        el.className = 'tier' + (t.id === r.tierPick ? ' pick' : '');
+        el.innerHTML = `<div><div class="t-name">${t.name}${t.id === r.tierPick ? ' · 추천' : ''}</div>
+          <div class="t-desc">${t.desc}</div></div><div class="t-price">${t.price}</div>`;
+        tiers.appendChild(el);
+      });
+    }
+
+    function reserve() {
+      alert('예약 문의는 준비 중이에요.\n결과 화면을 캡처해 문의 채널로 보내주시면 안내해 드릴게요. 🌿');
+    }
+    function restart() {
+      idx = 0;
+      for (const k in answers) delete answers[k];
+      for (const k in pref) delete pref[k];
+      $('progressWrap').style.display = 'none';
+      showScreen('intro');
+    }
+  </script>
+</body>
+</html>
