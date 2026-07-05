@@ -130,6 +130,12 @@
       display: flex; gap: 10px; align-items: flex-start;
       font-size: 14px; color: var(--ink);
     }
+    .intro-list li::before {
+      content: '';
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+      flex: none; margin-top: 8px;
+    }
     .intro-list li b { color: var(--accent-deep); }
     .note {
       font-size: 12.5px;
@@ -319,18 +325,18 @@
         <div class="hero">
           <div class="hanja"><span class="h1c">然</span><span class="h2c">談</span></div>
           <p class="brand-cap">비본어게인 <span>연담</span> · 자연스럽고 깊은 마음</p>
-          <h1>마음, 톡 건드려 볼까요?</h1>
-          <p class="lead">2주간의 마음 상태와 나의 성향을 짧게 살펴보고<br>자연 속 전원주택에서의 꼭 맞는 케어를 찾아드려요.</p>
+          <h1>오늘, 마음은 안녕하신가요</h1>
+          <p class="lead">최근 2주의 마음을 가만히 들여다보고,<br>자연 속에서 나에게 필요한 쉼을 찾아드립니다.</p>
           <ul class="intro-list">
-            <li>🕐 <span><b>약 3분</b>, 편안하게 답하는 질문</span></li>
-            <li>💚 나의 <b>마음지수</b>를 점수로 확인</li>
-            <li>🪞 <b>내가 보는 나</b>와 <b>남이 보는 나</b> 비교</li>
-            <li>🌳 <b>자연 속 전원주택</b> 프로그램 맞춤 추천</li>
+            <li><span>천천히 답하셔도 <b>3분</b>이면 충분합니다</span></li>
+            <li><span>나의 <b>마음지수</b>를 확인합니다</span></li>
+            <li><span><b>내가 보는 나</b>와 <b>남이 보는 나</b>를 견주어 봅니다</span></li>
+            <li><span><b>자연 속 전원주택</b>에서 열리는 프로그램을 안내합니다</span></li>
           </ul>
-          <p class="note">본 진단은 정신과적 진단이 아닌, 셀프 체크와 프로그램 안내를 위한 참고용이에요.</p>
+          <p class="note">본 진단은 의학적 진단이 아닌, 스스로를 살피고 프로그램을 안내받기 위한 참고용입니다.</p>
         </div>
         <div class="actions">
-          <button class="btn" onclick="start()">시작하기</button>
+          <button class="btn" onclick="start()">마음 들여다보기</button>
         </div>
       </section>
 
@@ -409,8 +415,8 @@
 
         <div class="capture-tip">
           <span>📸</span>
-          <div><b>예약 방법</b><br>이 결과 화면을 <b>캡처</b>한 뒤 아래 <b>예약 신청</b> 버튼(네이버폼)에서
-          함께 첨부해 주시면, 담당 큐레이터가 딱 맞는 세션으로 안내해 드려요.</div>
+          <div><b>예약 방법</b><br>이 결과 화면을 <b>캡처</b>하신 뒤 아래 <b>예약 신청</b> 버튼(네이버폼)에서
+          함께 첨부해 주시면, 담당 큐레이터가 꼭 맞는 세션으로 안내해 드립니다.</div>
         </div>
 
         <div class="refund">
@@ -451,7 +457,7 @@
       // 우울감 측정
       { type: 'scored', title: '요즘 2주, 문득 마음이 가라앉거나 우울해지는 순간이 있으셨나요?',
         options: [ ['거의 없었어요', 0], ['가끔 있었어요', 1], ['자주 있었어요', 2], ['거의 매일 그랬어요', 3] ] },
-      { type: 'scored', title: '평소 즐기던 일에도, 예전만큼 흥이 나지 않으신가요?',
+      { type: 'scored', title: '평소 즐기던 일이, 예전만큼 즐겁게 느껴지지 않으신가요?',
         options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
       { type: 'scored', title: '잠자리에 누우면, 실제로 잠들기까지 얼마나 걸리세요?',
         sub: '입면 시간을 골라주세요.',
@@ -506,10 +512,10 @@
     ];
 
     const PROGRAMS = {
-      singingbowl: { name: '싱잉볼 명상', desc: '자연 속 전원주택의 고요함 안에서, 싱잉볼의 깊은 울림에 몸을 맡겨요. 애써 움직이지 않아도 마음이 서서히 가라앉는 회복의 시간이에요.', price: '69,000원', note: '~ / 그룹 세션' },
-      aroma: { name: '아로마테라피 스트레칭 명상', desc: '숲 향과 아로마가 어우러진 공간에서 굳은 몸을 천천히 풀어내는 스트레칭 명상. 몸을 움직일수록 마음까지 개운해져요.', price: '89,000원', note: '~ / 그룹 세션' },
-      sound: { name: '자연의 소리 사운드 테라피', desc: '바람·물·새소리가 흐르는 자연 한가운데에서, 아무것도 하지 않아도 되는 온전한 쉼. 자연의 소리가 지친 마음을 가만히 감싸줘요.', price: '79,000원', note: '~ / 그룹 세션' },
-      oneonone: { name: '1:1 맞춤 케어 세션', desc: '전문 큐레이터와 단둘이, 나의 마음과 성향을 깊이 들여다보는 프리미엄 세션. 조용한 전원주택에서 오롯이 나만을 위한 시간을 가져요.', price: '250,000 ~ 350,000원', note: '/ 1:1 맞춤' },
+      singingbowl: { name: '싱잉볼 명상', desc: '전원주택의 고요함 속에서 싱잉볼의 깊은 울림에 몸을 맡깁니다. 애써 무엇을 하지 않아도, 마음이 서서히 가라앉는 회복의 시간입니다.', price: '69,000원', note: '~ / 그룹 세션' },
+      aroma: { name: '아로마테라피 스트레칭 명상', desc: '숲의 향과 아로마가 어우러진 공간에서 굳어 있던 몸을 천천히 풀어냅니다. 몸의 긴장이 풀리면, 마음도 따라 가벼워집니다.', price: '89,000원', note: '~ / 그룹 세션' },
+      sound: { name: '자연의 소리 사운드 테라피', desc: '바람과 물, 새소리가 흐르는 자연 한가운데에서 온전히 쉬어 갑니다. 아무것도 하지 않아도 되는, 오롯한 쉼의 시간입니다.', price: '79,000원', note: '~ / 그룹 세션' },
+      oneonone: { name: '1:1 맞춤 케어 세션', desc: '전문 큐레이터와 마주 앉아 나의 마음과 결을 함께 들여다봅니다. 조용한 전원주택에서, 나에게 꼭 맞는 방향을 찾아가는 깊은 시간입니다.', price: '250,000 ~ 350,000원', note: '/ 1:1 맞춤' },
     };
 
     const TIERS = [
@@ -623,10 +629,10 @@
       const score = Math.round((1 - raw / maxRaw) * 100);
 
       let state, msg;
-      if (score >= 75) { state = '안정적인 마음'; msg = '전반적으로 마음이 잘 유지되고 있어요. 지금의 균형을 지켜주는 케어를 추천해요.'; }
-      else if (score >= 50) { state = '조금 지친 마음'; msg = '일상 속 피로와 긴장이 쌓여 있어요. 가볍게 마음을 풀어주는 시간이 필요해 보여요.'; }
-      else if (score >= 30) { state = '돌봄이 필요한 마음'; msg = '마음이 꽤 무거운 상태예요. 나에게 집중하는 케어를 권해드려요.'; }
-      else { state = '충분한 쉼이 필요한 마음'; msg = '지금은 스스로를 깊이 돌볼 시간이 필요해요. 1:1 세션에서 함께 살펴봐요.'; }
+      if (score >= 75) { state = '안정적인 마음'; msg = '마음이 잘 지켜지고 있습니다. 지금의 고요한 균형을 이어가는 시간을 권해드립니다.'; }
+      else if (score >= 50) { state = '조금 지친 마음'; msg = '일상의 피로와 긴장이 조용히 쌓여 있습니다. 마음을 천천히 풀어주는 시간이 필요해 보입니다.'; }
+      else if (score >= 30) { state = '돌봄이 필요한 마음'; msg = '마음이 꽤 무거워져 있습니다. 이제는 나를 먼저 살피는 시간을 가져보시길 권해드립니다.'; }
+      else { state = '충분한 쉼이 필요한 마음'; msg = '지금은 스스로를 깊이 돌볼 시간입니다. 1:1 세션에서 함께 천천히 살펴보면 좋겠습니다.'; }
 
       // 나 vs 타인 인식
       const self = checks.self || new Set();
@@ -636,11 +642,11 @@
       const othersOnly = TRAITS.filter(t => others.has(t) && !self.has(t));
       const gap = selfOnly.length + othersOnly.length;
       let personaMsg;
-      if (self.size + others.size === 0) personaMsg = '성향 문항을 건너뛰셨네요.';
-      else if (gap === 0) personaMsg = '스스로 보는 나와 남에게 비치는 내가 거의 일치해요. 안과 밖이 잘 통합된 편이에요.';
-      else if (gap <= 2) personaMsg = '내면과 겉모습이 대체로 닮아 있어요. 살짝 다른 결도 나만의 매력이에요.';
-      else if (gap <= 4) personaMsg = '내가 아는 나와 남에게 비치는 나 사이에 어느 정도 간극이 있어요. 그 틈을 들여다보면 나를 더 알 수 있어요.';
-      else personaMsg = '내면과 겉모습의 간극이 큰 편이에요. 나 자신을 깊이 알아가는 시간이 마음을 한결 가볍게 해줄 거예요.';
+      if (self.size + others.size === 0) personaMsg = '성향 문항을 건너뛰셨습니다.';
+      else if (gap === 0) personaMsg = '스스로 보는 나와 남에게 비치는 내가 거의 같습니다. 안과 밖이 잘 어우러진 분입니다.';
+      else if (gap <= 2) personaMsg = '내면과 겉모습이 대체로 닮아 있습니다. 조금 다른 결은 나만의 깊이이기도 합니다.';
+      else if (gap <= 4) personaMsg = '내가 아는 나와 남에게 비치는 나 사이에 어느 정도 간극이 있습니다. 그 틈을 가만히 들여다보면 나를 더 알게 됩니다.';
+      else personaMsg = '내면과 겉으로 보이는 모습의 간극이 큰 편입니다. 나를 깊이 알아가는 시간이 마음을 한결 가볍게 해줄 것입니다.';
 
       // 추천 로직
       let key;
@@ -715,7 +721,7 @@
       const btn = $('reserveBtn');
       if (NAVER_FORM_URL) { btn.href = NAVER_FORM_URL; btn.onclick = null; }
       else { btn.href = '#'; btn.onclick = e => { e.preventDefault();
-        alert('예약용 네이버폼 링크가 아직 연결되지 않았어요.\n결과 화면을 캡처해 문의 채널로 보내주시면 안내해 드릴게요. 🌿'); }; }
+        alert('예약용 네이버폼이 준비 중입니다.\n결과 화면을 캡처하여 문의 채널로 보내주시면 정성껏 안내해 드리겠습니다.'); }; }
     }
 
     function fillTags(id, arr, muted) {
