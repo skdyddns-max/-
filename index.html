@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f8e4dc" />
+  <meta name="theme-color" content="#f6eeea" />
   <title>마음터칭 · 마음지수 진단</title>
   <style>
     :root {
-      --bg: #f8e4dc;
-      --card: #ffffff;
-      --ink: #4a4340;
-      --ink-soft: #9c8b85;
-      --accent: #e2517f;        /* boa 핑크 */
-      --accent-deep: #cf3d6b;
-      --accent-soft: #fcecf0;
-      --green: #46bd28;         /* boa 그린 */
-      --green-deep: #38a01f;
-      --line: #f0dcd4;
-      --shadow: 0 10px 30px rgba(180, 90, 110, .12);
+      --bg: #f6eeea;
+      --card: #fffdfb;
+      --ink: #453e3b;
+      --ink-soft: #98897f;
+      --accent: #c17287;        /* 뮤트 로즈 (boa 핑크에서) */
+      --accent-deep: #a75c72;
+      --accent-soft: #f5e8ec;
+      --green: #8aa27a;         /* 세이지 그린 (boa 그린에서) */
+      --green-deep: #6f8a62;
+      --line: #eadfd8;
+      --shadow: 0 10px 30px rgba(150, 115, 105, .10);
       --radius: 20px;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -194,7 +194,7 @@
       padding: 16px; font-size: 16px; font-weight: 700;
       background: linear-gradient(135deg, var(--accent), var(--accent-deep));
       color: #fff; cursor: pointer;
-      box-shadow: 0 8px 18px rgba(102,114,63,.30);
+      box-shadow: 0 8px 18px rgba(167, 92, 114, .22);
       transition: transform .05s, opacity .2s;
       font-family: inherit;
       text-align: center; text-decoration: none;
@@ -297,10 +297,10 @@
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #241a1d; --card: #2f2226; --ink: #f0e5e2; --ink-soft: #b39a95;
-        --accent: #ef7aa0; --accent-deep: #f38fae; --accent-soft: #3a2830;
-        --green: #6fd257; --green-deep: #86dd70;
-        --line: #43323a; --shadow: 0 10px 30px rgba(0,0,0,.4);
+        --bg: #211c1e; --card: #2b2427; --ink: #ece3df; --ink-soft: #a3948e;
+        --accent: #c98ba0; --accent-deep: #d5a1b2; --accent-soft: #362b30;
+        --green: #9db08d; --green-deep: #b0c2a0;
+        --line: #3d3336; --shadow: 0 10px 30px rgba(0,0,0,.4);
       }
       .capture-tip { background: #3a2f1c; border-color: #55492c; color: #e0cf93; }
     }
