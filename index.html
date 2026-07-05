@@ -60,9 +60,16 @@
       padding: 4px 10px;
       border-radius: 999px;
     }
+    .byline {
+      padding: 0 22px;
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      letter-spacing: .01em;
+    }
+    .byline b { color: var(--accent-deep); font-weight: 700; }
 
     /* Progress */
-    .progress-wrap { padding: 6px 22px 0; }
+    .progress-wrap { padding: 8px 22px 0; }
     .progress {
       height: 6px;
       background: var(--line);
@@ -143,6 +150,7 @@
       cursor: pointer;
       transition: border-color .15s, background .15s, transform .05s;
       display: flex; align-items: center; gap: 12px;
+      font-family: inherit;
     }
     .opt:active { transform: scale(.99); }
     .opt .dot {
@@ -152,6 +160,23 @@
     }
     .opt.selected { border-color: var(--accent); background: var(--accent-soft); }
     .opt.selected .dot { border-color: var(--accent-deep); background: var(--accent-deep); box-shadow: inset 0 0 0 3px #fff; }
+
+    /* Checklist chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+    .chip {
+      border: 1.5px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 10px 15px;
+      font-size: 14.5px;
+      cursor: pointer;
+      transition: .12s;
+      font-family: inherit;
+    }
+    .chip:active { transform: scale(.97); }
+    .chip.on { border-color: var(--accent-deep); background: var(--accent-deep); color: #fff; font-weight: 600; }
+    .chip-count { font-size: 12.5px; color: var(--ink-soft); margin: 14px 0 0; }
 
     /* Buttons */
     .btn {
@@ -163,6 +188,7 @@
       box-shadow: 0 8px 18px rgba(95,125,103,.30);
       transition: transform .05s, opacity .2s;
       font-family: inherit;
+      text-align: center; text-decoration: none;
     }
     .btn:active { transform: translateY(1px); }
     .btn:disabled { opacity: .45; box-shadow: none; cursor: default; }
@@ -210,6 +236,23 @@
     .rec-price b { font-size: 20px; color: var(--accent-deep); }
     .rec-price small { font-size: 12.5px; color: var(--ink-soft); }
 
+    /* Self vs Others */
+    .persona-msg { font-size: 14px; color: var(--ink-soft); margin: 2px 0 16px; }
+    .persona-row { margin-bottom: 14px; }
+    .persona-row:last-child { margin-bottom: 0; }
+    .persona-label {
+      font-size: 13px; font-weight: 700; margin-bottom: 7px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .persona-label .ic { font-size: 15px; }
+    .persona-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+    .ptag {
+      font-size: 13px; padding: 6px 12px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent-deep); font-weight: 600;
+    }
+    .ptag.muted { background: var(--line); color: var(--ink-soft); }
+    .persona-empty { font-size: 13px; color: var(--ink-soft); }
+
     .price-tiers { display: grid; gap: 10px; margin-top: 4px; }
     .tier {
       display: flex; justify-content: space-between; align-items: center;
@@ -235,7 +278,8 @@
     .refund ul { margin: 8px 0 0; padding-left: 18px; }
     .refund li { margin: 3px 0; }
 
-    footer { text-align: center; font-size: 11.5px; color: var(--ink-soft); padding: 10px 22px 24px; }
+    footer { text-align: center; font-size: 11.5px; color: var(--ink-soft); padding: 14px 22px 24px; }
+    footer b { color: var(--accent-deep); }
 
     @media (prefers-color-scheme: dark) {
       :root {
@@ -244,7 +288,7 @@
         --line: #384135; --shadow: 0 10px 30px rgba(0,0,0,.35);
       }
       .capture-tip { background: #322c1a; border-color: #4a4227; color: #d8c690; }
-      .gauge-score { color: var(--accent-deep); }
+      .chip.on { color: #1c201b; }
     }
   </style>
 </head>
@@ -254,6 +298,7 @@
       <div class="logo">마음<span>터칭</span></div>
       <div class="tag">마음지수 진단</div>
     </header>
+    <div class="byline">by <b>비본어게인</b> 퍼스널브랜드</div>
 
     <div class="progress-wrap" id="progressWrap" style="display:none">
       <div class="progress"><i id="bar"></i></div>
@@ -266,11 +311,12 @@
         <div class="hero">
           <div class="mark">🌿</div>
           <h1>마음, 톡 건드려 볼까요?</h1>
-          <p class="lead">2주간의 마음 상태를 짧게 살펴보고<br>지금 나에게 맞는 케어를 추천해 드려요.</p>
+          <p class="lead">2주간의 마음 상태와 나의 성향을 짧게 살펴보고<br>지금 나에게 꼭 맞는 케어를 찾아드려요.</p>
           <ul class="intro-list">
-            <li>🕐 <span><b>2분</b>이면 충분한 간단한 질문</span></li>
+            <li>🕐 <span><b>2분</b>이면 충분한 편안한 질문</span></li>
             <li>💚 나의 <b>마음지수</b>를 점수로 확인</li>
-            <li>🎯 상태에 맞는 <b>맞춤 프로그램</b> 추천</li>
+            <li>🪞 <b>내가 보는 나</b>와 <b>남이 보는 나</b> 비교</li>
+            <li>🎯 상태와 성향에 맞는 <b>맞춤 프로그램</b> 추천</li>
           </ul>
           <p class="note">본 진단은 정신과적 진단이 아닌, 셀프 체크와 프로그램 안내를 위한 참고용이에요.</p>
         </div>
@@ -285,7 +331,9 @@
         <h2 class="q-title" id="qTitle"></h2>
         <p class="q-sub" id="qSub"></p>
         <div class="options" id="options"></div>
+        <p class="chip-count" id="chipCount" style="display:none"></p>
         <div class="actions">
+          <button class="btn" id="nextBtn" style="display:none" onclick="next()">다음</button>
           <button class="back" id="backBtn" onclick="prev()">← 이전</button>
         </div>
       </section>
@@ -317,6 +365,24 @@
           <p class="q-sub" id="stateMsg" style="margin-top:8px"></p>
         </div>
 
+        <!-- 나 vs 타인 인식 -->
+        <div class="card" id="personaCard">
+          <h3>내가 보는 나 · 남이 보는 나</h3>
+          <p class="persona-msg" id="personaMsg"></p>
+          <div class="persona-row">
+            <div class="persona-label"><span class="ic">🤝</span> 안과 밖이 닮은 모습</div>
+            <div class="persona-tags" id="pMatch"></div>
+          </div>
+          <div class="persona-row">
+            <div class="persona-label"><span class="ic">🌙</span> 나만 아는 속마음</div>
+            <div class="persona-tags" id="pSelf"></div>
+          </div>
+          <div class="persona-row">
+            <div class="persona-label"><span class="ic">🎭</span> 남에게 비치는 모습</div>
+            <div class="persona-tags" id="pOthers"></div>
+          </div>
+        </div>
+
         <div class="card">
           <h3>추천 프로그램</h3>
           <div class="rec-name" id="recName"></div>
@@ -333,8 +399,8 @@
 
         <div class="capture-tip">
           <span>📸</span>
-          <div><b>예약 방법</b><br>이 결과 화면을 <b>캡처</b>해서 예약 문의 시 함께 보내주시면,
-          담당 큐레이터가 딱 맞는 세션으로 안내해 드려요.</div>
+          <div><b>예약 방법</b><br>이 결과 화면을 <b>캡처</b>한 뒤 아래 <b>예약 신청</b> 버튼(네이버폼)에서
+          함께 첨부해 주시면, 담당 큐레이터가 딱 맞는 세션으로 안내해 드려요.</div>
         </div>
 
         <div class="refund">
@@ -348,49 +414,66 @@
         </div>
 
         <div class="actions">
-          <button class="btn" onclick="reserve()">예약 문의하기</button>
+          <a class="btn" id="reserveBtn" href="#" target="_blank" rel="noopener">예약 신청하기 (네이버폼)</a>
           <button class="btn ghost" onclick="restart()">다시 진단하기</button>
         </div>
       </section>
     </main>
 
-    <footer>ⓒ 마음터칭 · 이 진단은 참고용이며 의학적 진단을 대체하지 않습니다.</footer>
+    <footer>ⓒ 마음터칭 · powered by <b>비본어게인</b> 퍼스널브랜드<br>이 진단은 참고용이며 의학적 진단을 대체하지 않습니다.</footer>
   </div>
 
   <script>
-    // ---- 설문 정의 ----
-    // scored: 우울감 측정 문항(0~3점). pref: 추천용 선호 문항.
+    // ===== 설정 =====
+    // 네이버폼 예약 신청 URL을 여기에 붙여넣으세요. (예: https://naver.me/xxxxxxxx)
+    const NAVER_FORM_URL = "";
+
+    // ===== 설문 정의 =====
+    // scored: 우울감 측정(0~3점) / checklist: 성향 다중선택 / pref: 추천용 선호
+    const TRAITS = ['차분한','다정한','활발한','주도적인','예민한','완벽주의적인',
+      '유머러스한','신중한','감성적인','독립적인','배려심 깊은','솔직한'];
+
     const QUESTIONS = [
-      { type: 'scored', title: '최근 2주간, 하루 중 우울하거나 가라앉는 기분이 드시나요?',
+      { type: 'scored', title: '요즘 2주, 문득 마음이 가라앉거나 우울해지는 순간이 있으셨나요?',
         sub: '가장 가까운 것을 골라주세요.',
-        options: [ ['거의 없어요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
-      { type: 'scored', title: '평소 즐기던 일에 흥미나 즐거움을 느끼기 어려우신가요?',
+        options: [ ['거의 없었어요', 0], ['가끔 있었어요', 1], ['자주 있었어요', 2], ['거의 매일 그랬어요', 3] ] },
+      { type: 'scored', title: '평소 즐기던 일에도, 예전만큼 흥이 나지 않으신가요?',
         options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
-      { type: 'scored', title: '잠자리에 누워 실제로 잠들기까지 얼마나 걸리세요?',
+      { type: 'scored', title: '잠자리에 누우면, 실제로 잠들기까지 얼마나 걸리세요?',
         sub: '입면 시간을 골라주세요.',
-        options: [ ['15분 이내', 0], ['30분쯤', 1], ['1시간쯤', 2], ['1시간 이상 / 자주 깨요', 3] ] },
-      { type: 'scored', title: '아침에 일어나거나 하루 종일, 기운 없이 피곤하다고 느끼시나요?',
+        options: [ ['15분 안에 잠들어요', 0], ['30분쯤 걸려요', 1], ['1시간쯤 뒤척여요', 2], ['1시간 이상 · 자주 깨요', 3] ] },
+      { type: 'scored', title: '하루를 보내며, 몸도 마음도 쉽게 지친다고 느끼시나요?',
         options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
-      { type: 'scored', title: '사소한 일에도 예민해지거나 마음이 불안하신가요?',
+      { type: 'scored', title: '작은 일에도 마음이 예민해지거나, 괜히 불안해지곤 하나요?',
         options: [ ['그렇지 않아요', 0], ['가끔 그래요', 1], ['자주 그래요', 2], ['거의 매일 그래요', 3] ] },
-      { type: 'pref', key: 'body', title: '몸을 움직이는 활동, 어떤 쪽이 끌리세요?',
+
+      { type: 'checklist', key: 'self', min: 1,
+        title: '내가 보는 나',
+        sub: '스스로 떠올렸을 때 나와 가까운 모습을 모두 골라주세요.',
+        options: TRAITS },
+      { type: 'checklist', key: 'others', min: 1,
+        title: '남이 보는 나',
+        sub: '사람들이 나를 이렇게 볼 것 같다 싶은 모습을 모두 골라주세요.',
+        options: TRAITS },
+
+      { type: 'pref', key: 'body', title: '몸을 움직이는 시간, 어떤 결이 더 끌리세요?',
         sub: '추천에 활용돼요.',
         options: [
-          ['몸을 많이 쓰고 땀 흘리고 싶어요', 'active'],
-          ['가볍게 몸을 풀고 싶어요', 'light'],
+          ['땀이 날 만큼 몸을 충분히 쓰고 싶어요', 'active'],
+          ['가볍게 몸을 풀어주는 정도가 좋아요', 'light'],
           ['몸보다 마음을 가라앉히고 싶어요', 'calm'],
-          ['자연의 소리를 들으며 쉬고 싶어요', 'nature'] ] },
-      { type: 'pref', key: 'goal', title: '지금 마음 상태에 가장 가까운 건요?',
+          ['자연의 소리에 기대어 쉬고 싶어요', 'nature'] ] },
+      { type: 'pref', key: 'goal', title: '지금 마음에 가장 가까운 문장은요?',
         options: [
-          ['특정 프로그램을 체험해보고 싶어요', 'program'],
-          ['뭘 할진 모르겠지만 마음이 풀렸으면 해요', 'relief'],
-          ['나 자신에 대해 더 알고 싶어요', 'selfknow'] ] },
-      { type: 'pref', key: 'who', title: '누구와 함께하고 싶으세요?',
+          ['마음에 드는 프로그램을 직접 체험해보고 싶어요', 'program'],
+          ['뭘 해야 할진 몰라도, 마음이 좀 풀렸으면 해요', 'relief'],
+          ['이 기회에 나 자신을 더 알아가고 싶어요', 'selfknow'] ] },
+      { type: 'pref', key: 'who', title: '누구와 함께하면 좋을까요?',
         options: [
           ['혼자서 (개인 체험)', 'solo'],
           ['소중한 사람과 (커플 체험)', 'couple'],
           ['가족과 함께 (가족 워크숍)', 'family'] ] },
-      { type: 'pref', key: 'price', title: '가격대는 어느 정도 생각하세요?',
+      { type: 'pref', key: 'price', title: '비용은 어느 정도로 생각하고 계세요?',
         options: [
           ['부담 없이 가볍게', 'low'],
           ['나에게 집중된 프리미엄 케어', 'high'],
@@ -401,7 +484,7 @@
       singingbowl: { name: '싱잉볼 명상', desc: '싱잉볼의 깊은 진동과 울림에 몸을 맡기고, 애써 움직이지 않아도 마음이 서서히 가라앉는 회복의 시간이에요.', price: '69,000원', note: '~ / 그룹 세션' },
       aroma: { name: '아로마테라피 스트레칭 명상', desc: '은은한 아로마 향과 함께 굳은 몸을 풀어내는 스트레칭 명상으로, 몸을 쓰며 개운하게 마음까지 정돈해요.', price: '89,000원', note: '~ / 그룹 세션' },
       sound: { name: '자연의 소리 사운드 테라피', desc: '숲·물·바람 등 자연의 소리에 둘러싸여, 아무것도 하지 않아도 되는 온전한 쉼을 경험해요.', price: '79,000원', note: '~ / 그룹 세션' },
-      oneonone: { name: '1:1 맞춤 케어 세션', desc: '전문 큐레이터가 나의 마음 상태를 함께 들여다보고, 나에게 꼭 맞는 방향을 찾아가는 프리미엄 개인 세션이에요.', price: '250,000 ~ 350,000원', note: '/ 1:1 맞춤' },
+      oneonone: { name: '1:1 맞춤 케어 세션', desc: '전문 큐레이터가 나의 마음과 성향을 함께 들여다보고, 나에게 꼭 맞는 방향을 찾아가는 프리미엄 개인 세션이에요.', price: '250,000 ~ 350,000원', note: '/ 1:1 맞춤' },
     };
 
     const TIERS = [
@@ -410,10 +493,11 @@
       { id: 'one',    name: '1:1 맞춤 세션', desc: '개인 집중 프리미엄 케어',  price: '250,000원~' },
     ];
 
-    // ---- 상태 ----
+    // ===== 상태 =====
     let idx = 0;
-    const answers = {};        // 문항 index -> 값
-    const pref = {};           // key -> 값
+    const answers = {};        // 문항 index -> 값 (scored)
+    const pref = {};           // key -> 값 (pref)
+    const checks = {};         // key -> Set (checklist)
 
     const $ = id => document.getElementById(id);
 
@@ -429,7 +513,7 @@
       showScreen('question');
       $('progressWrap').style.display = 'block';
       const q = QUESTIONS[idx];
-      const pct = Math.round((idx) / QUESTIONS.length * 100);
+      const pct = Math.round(idx / QUESTIONS.length * 100);
       $('bar').style.width = pct + '%';
       $('progressLabel').textContent = `${idx + 1} / ${QUESTIONS.length}`;
       $('qNum').textContent = `Q${idx + 1}.`;
@@ -440,25 +524,52 @@
 
       const wrap = $('options');
       wrap.innerHTML = '';
-      const prevVal = q.type === 'scored' ? answers[idx] : pref[q.key];
-      q.options.forEach(([label, val]) => {
-        const btn = document.createElement('button');
-        btn.className = 'opt' + (prevVal === val ? ' selected' : '');
-        btn.innerHTML = `<span class="dot"></span><span>${label}</span>`;
-        btn.onclick = () => choose(val);
-        wrap.appendChild(btn);
-      });
+
+      if (q.type === 'checklist') {
+        wrap.className = 'chips';
+        if (!checks[q.key]) checks[q.key] = new Set();
+        const set = checks[q.key];
+        q.options.forEach(label => {
+          const chip = document.createElement('button');
+          chip.className = 'chip' + (set.has(label) ? ' on' : '');
+          chip.textContent = label;
+          chip.onclick = () => {
+            set.has(label) ? set.delete(label) : set.add(label);
+            chip.classList.toggle('on');
+            updateChipUI(q);
+          };
+          wrap.appendChild(chip);
+        });
+        $('chipCount').style.display = 'block';
+        $('nextBtn').style.display = 'block';
+        updateChipUI(q);
+      } else {
+        wrap.className = 'options';
+        $('chipCount').style.display = 'none';
+        $('nextBtn').style.display = 'none';
+        const prevVal = q.type === 'scored' ? answers[idx] : pref[q.key];
+        q.options.forEach(([label, val]) => {
+          const btn = document.createElement('button');
+          btn.className = 'opt' + (prevVal === val ? ' selected' : '');
+          btn.innerHTML = `<span class="dot"></span><span>${label}</span>`;
+          btn.onclick = () => choose(val, btn);
+          wrap.appendChild(btn);
+        });
+      }
     }
 
-    function choose(val) {
+    function updateChipUI(q) {
+      const n = checks[q.key].size;
+      $('chipCount').textContent = n ? `${n}개 선택됨` : '하나 이상 골라주세요.';
+      $('nextBtn').disabled = n < (q.min || 1);
+    }
+
+    function choose(val, btn) {
       const q = QUESTIONS[idx];
       if (q.type === 'scored') answers[idx] = val;
       else pref[q.key] = val;
-      // 살짝 선택감을 보여주고 자동 진행
-      const opts = $('options').children;
-      for (const o of opts) o.classList.remove('selected');
-      Array.from(opts).find(o => o.textContent.trim() ===
-        q.options.find(op => op[1] === val)[0])?.classList.add('selected');
+      for (const o of $('options').children) o.classList.remove('selected');
+      btn.classList.add('selected');
       setTimeout(next, 220);
     }
 
@@ -470,8 +581,7 @@
 
     function finish() {
       $('bar').style.width = '100%';
-      const result = compute();
-      renderResult(result);
+      renderResult(compute());
       showScreen('result');
       $('progressWrap').style.display = 'none';
     }
@@ -490,9 +600,23 @@
       else if (score >= 30) { state = '돌봄이 필요한 마음'; msg = '마음이 꽤 무거운 상태예요. 나에게 집중하는 케어를 권해드려요.'; }
       else { state = '충분한 쉼이 필요한 마음'; msg = '지금은 스스로를 깊이 돌볼 시간이 필요해요. 1:1 세션에서 함께 살펴봐요.'; }
 
+      // 나 vs 타인 인식
+      const self = checks.self || new Set();
+      const others = checks.others || new Set();
+      const match = TRAITS.filter(t => self.has(t) && others.has(t));
+      const selfOnly = TRAITS.filter(t => self.has(t) && !others.has(t));
+      const othersOnly = TRAITS.filter(t => others.has(t) && !self.has(t));
+      const gap = selfOnly.length + othersOnly.length;
+      let personaMsg;
+      if (self.size + others.size === 0) personaMsg = '성향 문항을 건너뛰셨네요.';
+      else if (gap === 0) personaMsg = '스스로 보는 나와 남에게 비치는 내가 거의 일치해요. 안과 밖이 잘 통합된 편이에요.';
+      else if (gap <= 2) personaMsg = '내면과 겉모습이 대체로 닮아 있어요. 살짝 다른 결도 나만의 매력이에요.';
+      else if (gap <= 4) personaMsg = '내가 아는 나와 남에게 비치는 나 사이에 어느 정도 간극이 있어요. 그 틈을 들여다보면 나를 더 알 수 있어요.';
+      else personaMsg = '내면과 겉모습의 간극이 큰 편이에요. 나 자신을 깊이 알아가는 시간이 마음을 한결 가볍게 해줄 거예요.';
+
       // 추천 로직
       let key;
-      if (pref.price === 'any' || pref.goal === 'relief' || pref.goal === 'selfknow' || score < 30) {
+      if (pref.price === 'any' || pref.goal === 'relief' || pref.goal === 'selfknow' || score < 30 || gap >= 5) {
         key = 'oneonone';
       } else if (pref.body === 'active' || pref.body === 'light') {
         key = 'aroma';
@@ -506,7 +630,8 @@
       const tierPick = key === 'oneonone' ? 'one'
         : (pref.who === 'couple' || pref.who === 'family') ? 'couple' : 'group';
 
-      return { score, state, msg, program: PROGRAMS[key], tierPick };
+      return { score, state, msg, program: PROGRAMS[key], tierPick,
+               persona: { match, selfOnly, othersOnly, msg: personaMsg, any: self.size + others.size > 0 } };
     }
 
     function renderResult(r) {
@@ -519,7 +644,6 @@
         arc.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)';
         arc.style.strokeDashoffset = circ * (1 - r.score / 100);
       });
-      // 숫자 카운트업
       let cur = 0;
       const step = () => {
         cur += Math.max(1, Math.round(r.score / 28));
@@ -531,6 +655,14 @@
 
       $('stateBadge').textContent = r.state;
       $('stateMsg').textContent = r.msg;
+
+      // persona
+      $('personaCard').style.display = r.persona.any ? 'block' : 'none';
+      $('personaMsg').textContent = r.persona.msg;
+      fillTags('pMatch', r.persona.match, false);
+      fillTags('pSelf', r.persona.selfOnly, true);
+      fillTags('pOthers', r.persona.othersOnly, true);
+
       $('recName').textContent = r.program.name;
       $('recDesc').textContent = r.program.desc;
       $('recPrice').textContent = r.program.price;
@@ -545,15 +677,31 @@
           <div class="t-desc">${t.desc}</div></div><div class="t-price">${t.price}</div>`;
         tiers.appendChild(el);
       });
+
+      // 네이버폼 예약 버튼
+      const btn = $('reserveBtn');
+      if (NAVER_FORM_URL) { btn.href = NAVER_FORM_URL; btn.onclick = null; }
+      else { btn.href = '#'; btn.onclick = e => { e.preventDefault();
+        alert('예약용 네이버폼 링크가 아직 연결되지 않았어요.\n결과 화면을 캡처해 문의 채널로 보내주시면 안내해 드릴게요. 🌿'); }; }
     }
 
-    function reserve() {
-      alert('예약 문의는 준비 중이에요.\n결과 화면을 캡처해 문의 채널로 보내주시면 안내해 드릴게요. 🌿');
+    function fillTags(id, arr, muted) {
+      const box = $(id);
+      box.innerHTML = '';
+      if (!arr.length) { box.innerHTML = '<span class="persona-empty">— 없음</span>'; return; }
+      arr.forEach(t => {
+        const s = document.createElement('span');
+        s.className = 'ptag' + (muted ? ' muted' : '');
+        s.textContent = t;
+        box.appendChild(s);
+      });
     }
+
     function restart() {
       idx = 0;
       for (const k in answers) delete answers[k];
       for (const k in pref) delete pref[k];
+      for (const k in checks) delete checks[k];
       $('progressWrap').style.display = 'none';
       showScreen('intro');
     }
