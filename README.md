@@ -7,7 +7,7 @@
 
 ## 접속
 
-- 웹: https://skdyddns-max.github.io/-/
+- 웹: https://skdyddns-max.github.io/-/ (GitHub Pages 자동 배포)
 - 모바일 최적화 페이지이며, 브로셔 QR 코드로 연결됩니다.
 
 ## 무엇을 하나요?
