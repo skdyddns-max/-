@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화용 스튜디오 — AI 영상 화용언어치료 제작 도구</title>
+<style>
+  :root {
+    --rose: #c98a8a;
+    --rose-deep: #a96a6a;
+    --sage: #8aa98a;
+    --sage-deep: #6a8a6a;
+    --ink: #3d3835;
+    --sub: #7a716b;
+    --bg: #faf7f4;
+    --card: #ffffff;
+    --line: #e8e0d8;
+    --danger: #c0392b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, var(--rose) 0%, var(--sage) 100%);
+    color: #fff; padding: 28px 20px 22px; text-align: center;
+  }
+  header h1 { font-size: 22px; letter-spacing: -0.5px; }
+  header p { font-size: 13px; opacity: 0.92; margin-top: 4px; }
+  nav {
+    display: flex; gap: 4px; padding: 10px 12px; background: #fff;
+    border-bottom: 1px solid var(--line); overflow-x: auto;
+    position: sticky; top: 0; z-index: 50;
+  }
+  nav button {
+    flex: 1; min-width: 76px; border: none; background: transparent;
+    padding: 9px 6px; border-radius: 10px; font-size: 13px; color: var(--sub);
+    cursor: pointer; white-space: nowrap; font-family: inherit;
+  }
+  nav button.active { background: var(--rose); color: #fff; font-weight: 700; }
+  nav button.done::after { content: " ✓"; color: var(--sage-deep); }
+  nav button.active.done::after { color: #fff; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 80px; }
+  section.step { display: none; }
+  section.step.visible { display: block; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 10px; color: var(--rose-deep); }
+  .card h3 { font-size: 14px; margin: 10px 0 6px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+  label span.hint { font-weight: 400; color: var(--sub); font-size: 12px; }
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 10px; font-size: 14px; font-family: inherit; background: #fff;
+    color: var(--ink);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .btn {
+    display: inline-block; border: none; border-radius: 10px; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    padding: 12px 18px; margin-top: 12px;
+  }
+  .btn-primary { background: var(--rose); color: #fff; }
+  .btn-primary:hover { background: var(--rose-deep); }
+  .btn-sage { background: var(--sage); color: #fff; }
+  .btn-sage:hover { background: var(--sage-deep); }
+  .btn-ghost { background: #f1ebe5; color: var(--ink); }
+  .btn-sm { padding: 7px 12px; font-size: 12px; margin-top: 8px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .scene-card { border-left: 4px solid var(--sage); }
+  .scene-card.negative { border-left-color: var(--rose); }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px;
+    padding: 2px 10px; margin-left: 6px; vertical-align: middle;
+  }
+  .tag.positive { background: #e7f0e7; color: var(--sage-deep); }
+  .tag.negative { background: #f7e7e7; color: var(--rose-deep); }
+  .tag.neutral  { background: #eee9e3; color: var(--sub); }
+  .dialogue { background: #faf7f2; border-radius: 10px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
+  .dialogue p { margin: 3px 0; }
+  .dialogue b { color: var(--rose-deep); }
+  .dialogue em { color: var(--sub); font-size: 12px; font-style: normal; }
+  .promptbox {
+    background: #2f2b28; color: #e8e0d8; border-radius: 10px; padding: 12px 14px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12.5px;
+    white-space: pre-wrap; word-break: break-word; margin: 8px 0; max-height: 220px; overflow-y: auto;
+  }
+  .status {
+    font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-top: 12px; display: none;
+  }
+  .status.show { display: block; }
+  .status.info  { background: #eef3ee; color: var(--sage-deep); }
+  .status.error { background: #f9ecea; color: var(--danger); }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid #cdd9cd;
+    border-top-color: var(--sage-deep); border-radius: 50%; margin-right: 6px;
+    animation: spin 0.8s linear infinite; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .quiz-item { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; margin: 10px 0; }
+  .muted { color: var(--sub); font-size: 12.5px; }
+  .divider { border: none; border-top: 1px solid var(--line); margin: 14px 0; }
+  .empty { text-align: center; color: var(--sub); padding: 30px 10px; font-size: 14px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--sage-deep); }
+  .checkline { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13.5px; }
+  .checkline input { width: auto; }
+  footer { text-align: center; font-size: 12px; color: var(--sub); padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎬 화용 스튜디오</h1>
+  <p>AI 영상 기반 화용언어치료 콘텐츠 — 대본 · 영상 · 음성 · 퀴즈 통합 제작</p>
+</header>
+
+<nav id="nav">
+  <button data-step="0" onclick="app.go(0)">📚 목록</button>
+  <button data-step="1" class="active" onclick="app.go(1)">① 목표 설정</button>
+  <button data-step="2" onclick="app.go(2)">② 대본</button>
+  <button data-step="3" onclick="app.go(3)">③ 영상 제작</button>
+  <button data-step="4" onclick="app.go(4)">④ 퀴즈</button>
+  <button data-step="5" onclick="app.go(5)">⑤ 내보내기</button>
+  <button data-step="6" onclick="app.go(6)">⚙ 설정</button>
+</nav>
+
+<main>
+
+<!-- 📚 프로젝트 목록 -->
+<section class="step" id="step0">
+  <div class="card">
+    <h2>📚 내 프로젝트</h2>
+    <p class="muted">목표 기술·아동별로 프로젝트를 여러 개 만들어 관리할 수 있습니다. 모든 프로젝트는 이 브라우저에 저장됩니다.</p>
+    <button class="btn btn-primary" onclick="app.newProject()">＋ 새 프로젝트</button>
+  </div>
+  <div id="library-area"></div>
+</section>
+
+<!-- ① 목표 설정 -->
+<section class="step visible" id="step1">
+  <div class="card">
+    <h2>① 치료 목표 설정</h2>
+    <p class="muted">목표 화용 기술과 아동 정보를 입력하면, 비디오 모델링용 시나리오 전체(대본·영상 프롬프트·음성 대본·토론 질문·퀴즈)가 한 번에 생성됩니다.</p>
+
+    <label>목표 화용 기술</label>
+    <select id="f-skill-preset" onchange="app.onSkillPreset()">
+      <option value="">직접 입력…</option>
+      <option>놀이에 끼어들어 함께 놀자고 요청하기</option>
+      <option>차례 지키기와 순서 기다리기</option>
+      <option>인사하기와 대화 시작하기</option>
+      <option>사과하기와 갈등 해결하기</option>
+      <option>도움 요청하기</option>
+      <option>상대방의 표정·기분 읽고 반응하기</option>
+      <option>주제 유지하며 대화 주고받기</option>
+      <option>거절 표현을 적절하게 하기</option>
+    </select>
+    <input type="text" id="f-skill" placeholder="예: 친구가 속상해할 때 위로하는 말 하기" style="margin-top:8px;">
+
+    <div class="row">
+      <div>
+        <label>대상 연령</label>
+        <select id="f-age">
+          <option>4~5세</option><option selected>5~7세</option>
+          <option>초등 저학년(8~10세)</option><option>초등 고학년(11~13세)</option>
+        </select>
+      </div>
+      <div>
+        <label>장면 수</label>
+        <select id="f-count">
+          <option value="2">2개</option><option value="3" selected>3개</option>
+          <option value="4">4개</option><option value="5">5개</option>
+        </select>
+      </div>
+    </div>
+
+    <label>상황·장소 <span class="hint">(비워두면 AI가 연령에 맞게 정합니다)</span></label>
+    <input type="text" id="f-place" placeholder="예: 유치원 블록놀이 시간, 학교 급식실, 놀이터">
+
+    <label>아동 특성 메모 <span class="hint">(선택 — 관심사, 언어 수준, 주의할 점 등)</span></label>
+    <textarea id="f-traits" placeholder="예: 공룡을 좋아함. 두 단어 문장 수준. 큰 소리에 민감함."></textarea>
+
+    <label>영상 스타일</label>
+    <select id="f-style">
+      <option selected>따뜻한 2D 애니메이션 (아동용, 권장)</option>
+      <option>3D 애니메이션 (픽사풍)</option>
+      <option>수채화 그림책 스타일</option>
+      <option>실사 스타일</option>
+    </select>
+
+    <div class="checkline">
+      <input type="checkbox" id="f-negative" checked>
+      <span>"잘못된 예시" 장면 포함 (올바른 모델과 비교 학습)</span>
+    </div>
+
+    <button class="btn btn-primary" id="btn-generate" onclick="app.generate()">🪄 시나리오 생성하기</button>
+    <div class="status" id="gen-status"></div>
+
+    <div id="copy-mode-box" style="display:none;">
+      <hr class="divider">
+      <h3>📋 프롬프트 복사 모드</h3>
+      <p class="muted">API 키 없이 사용하는 방법입니다. ① 아래 프롬프트를 복사해서 Claude(claude.ai)나 ChatGPT에 붙여넣고, ② 돌아온 JSON 결과를 아래 칸에 붙여넣은 뒤 적용을 누르세요.</p>
+      <div class="promptbox" id="copy-prompt"></div>
+      <button class="btn btn-ghost btn-sm" onclick="app.copyText('copy-prompt')">📋 프롬프트 복사</button>
+      <label>AI가 출력한 JSON 붙여넣기</label>
+      <textarea id="paste-json" placeholder='{"title": ...}' style="min-height:110px;"></textarea>
+      <button class="btn btn-sage btn-sm" onclick="app.applyPastedJSON()">✅ 결과 적용하기</button>
+    </div>
+  </div>
+</section>
+
+<!-- ② 대본 -->
+<section class="step" id="step2">
+  <div id="scenario-area"><div class="empty">아직 생성된 시나리오가 없습니다.<br>① 목표 설정에서 시나리오를 먼저 생성해 주세요.</div></div>
+</section>
+
+<!-- ③ 영상 제작 -->
+<section class="step" id="step3">
+  <div id="video-area"><div class="empty">시나리오를 먼저 생성해 주세요.</div></div>
+</section>
+
+<!-- ④ 퀴즈 -->
+<section class="step" id="step4">
+  <div id="quiz-area"><div class="empty">시나리오를 먼저 생성해 주세요.</div></div>
+</section>
+
+<!-- ⑤ 내보내기 -->
+<section class="step" id="step5">
+  <div class="card">
+    <h2>⑤ 내보내기</h2>
+    <h3>🎯 치료용 인터랙티브 플레이어</h3>
+    <p class="muted">영상 재생 → 장면 사이 퀴즈 → 세션 요약 → 토론 질문까지 진행되는 독립 실행형 HTML 파일입니다. 태블릿이나 PC에서 파일을 열고, 만들어 둔 영상 파일(+선택: 더빙 음성)을 장면별로 지정하면 바로 치료 세션에 사용할 수 있습니다. 더빙 음성을 지정하면 영상과 동시에 재생됩니다. (인터넷 연결 불필요)</p>
+    <p class="muted">📊 <b>진행 기록</b>: 아동 이름을 입력하고 세션을 마치면 퀴즈 시도 횟수·첫 시도 정답률이 자동 저장되고, 지난 기록을 CSV(엑셀)로 내려받을 수 있습니다. 🔁 장면 다시 보기 버튼으로 반복 시청도 지원합니다.</p>
+    <button class="btn btn-primary" onclick="app.exportPlayer()">⬇️ 플레이어 HTML 다운로드</button>
+    <hr class="divider">
+    <h3>💾 프로젝트 백업</h3>
+    <p class="muted">프로젝트 데이터(JSON)를 저장해 두면 다른 기기에서 불러와 이어서 작업할 수 있습니다.</p>
+    <button class="btn btn-ghost" onclick="app.exportProject()">⬇️ 프로젝트 JSON 저장</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">⬆️ 프로젝트 JSON 불러오기</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="app.importProject(this)">
+    <div class="status" id="export-status"></div>
+  </div>
+</section>
+
+<!-- ⚙ 설정 -->
+<section class="step" id="step6">
+  <div class="card">
+    <h2>⚙ 설정</h2>
+    <label>대본 생성 방식</label>
+    <select id="s-mode" onchange="app.saveSettings()">
+      <option value="api">Claude API 자동 생성 (Anthropic 키 필요)</option>
+      <option value="gemini">Gemini API 자동 생성 (Google 키 필요 · 무료 등급 가능)</option>
+      <option value="copy">프롬프트 복사 모드 (API 키 불필요)</option>
+    </select>
+    <label>Anthropic API 키 <span class="hint">(이 브라우저에만 저장됩니다 — 공용 PC에서는 사용하지 마세요)</span></label>
+    <input type="password" id="s-apikey" placeholder="sk-ant-..." onchange="app.saveSettings()">
+    <p class="muted" style="margin-top:8px;">API 키는 <a href="https://platform.claude.com" target="_blank">platform.claude.com</a>에서 발급받을 수 있습니다. 키가 없다면 "프롬프트 복사 모드"를 선택하세요 — claude.ai 무료 계정으로도 사용할 수 있습니다.</p>
+    <hr class="divider">
+    <h3>🎥 Gemini 영상 자동 생성 (Veo)</h3>
+    <label>Google Gemini API 키 <span class="hint">(이 브라우저에만 저장됩니다)</span></label>
+    <input type="password" id="s-geminikey" placeholder="AIza..." onchange="app.saveSettings()">
+    <label>영상 생성 모델</label>
+    <select id="s-veomodel" onchange="app.saveSettings()">
+      <option value="veo-3.0-fast-generate-001" selected>Veo 3 Fast — 빠르고 저렴 (권장)</option>
+      <option value="veo-3.0-generate-001">Veo 3 — 고품질</option>
+      <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast (프리뷰)</option>
+      <option value="veo-3.1-generate-preview">Veo 3.1 (프리뷰)</option>
+    </select>
+    <p class="muted" style="margin-top:8px;">키는 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>에서 발급합니다. 이 키 하나로 <b>대본 생성(무료 등급 가능)</b> · <b>Veo 영상 생성(유료 등급, 영상 1개당 과금)</b> · <b>TTS 더빙 생성</b>을 모두 사용합니다.</p>
+    <hr class="divider">
+    <h3>🎬 영상 생성 도구 바로가기</h3>
+    <p class="muted">③ 영상 제작 단계의 프롬프트를 아래 도구에 붙여넣어 영상을 만드세요.</p>
+    <p style="font-size:14px; margin-top:6px;">
+      · <a href="https://klingai.com" target="_blank">Kling AI</a> — 캐릭터 일관성 우수<br>
+      · <a href="https://sora.com" target="_blank">Sora</a> · <a href="https://runwayml.com" target="_blank">Runway</a> — 텍스트→영상<br>
+      · <a href="https://typecast.ai" target="_blank">Typecast</a> — 한국어 아동 음성 더빙<br>
+      · <a href="https://vrew.ai" target="_blank">Vrew</a> — 자막·편집
+    </p>
+    <hr class="divider">
+    <button class="btn btn-ghost" onclick="app.resetAll()" style="color:var(--danger)">🗑 프로젝트 초기화</button>
+  </div>
+</section>
+
+</main>
+
+<footer>화용 스튜디오 · AI 생성 콘텐츠는 반드시 치료사의 검수 후 사용하세요 · 영상은 치료 보조 도구이며 실제 상호작용 활동과 병행해야 합니다</footer>
+
+<script type="module">
+/* ============================================================
+   화용 스튜디오 — 상태 관리
+   ============================================================ */
+const LS_KEY = "pragStudio_v1";
+
+const state = {
+  settings: { mode: "api", apiKey: "", geminiKey: "", veoModel: "veo-3.0-fast-generate-001" },
+  form: null,          // 마지막 생성에 쓴 폼 값 (작업 중 프로젝트)
+  project: null,       // { title, characters[], scenes[], quiz[] } (작업 중 프로젝트)
+  videos: {},          // sceneNo -> 메모(URL/파일명) (작업 중 프로젝트)
+  projects: [],        // 프로젝트 라이브러리 [{id, createdAt, updatedAt, form, project, videos}]
+  currentId: null,     // 작업 중 프로젝트의 라이브러리 id
+};
+
+function save() {
+  // 작업 중 프로젝트를 라이브러리에 동기화
+  if (state.project) {
+    if (!state.currentId) state.currentId = String(Date.now());
+    let entry = state.projects.find(p => p.id === state.currentId);
+    if (!entry) {
+      entry = { id: state.currentId, createdAt: new Date().toISOString() };
+      state.projects.push(entry);
+    }
+    entry.form = state.form;
+    entry.project = state.project;
+    entry.videos = state.videos;
+    entry.updatedAt = new Date().toISOString();
+  }
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) Object.assign(state, JSON.parse(raw));
+  } catch (e) { /* 손상된 저장분은 무시 */ }
+  // 구버전(단일 프로젝트) 저장분 마이그레이션
+  if (!Array.isArray(state.projects)) { state.projects = []; state.currentId = null; }
+  if (state.project && !state.projects.some(p => p.id === state.currentId)) {
+    const id = state.currentId || String(Date.now());
+    state.currentId = id;
+    state.projects.push({
+      id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      form: state.form, project: state.project, videos: state.videos,
+    });
+  }
+}
+
+/* ============================================================
+   JSON 스키마 (구조화 출력 — API 모드에서 형식 보장)
+   ============================================================ */
+const SCENE_SCHEMA = {
+  type: "object",
+  properties: {
+    no: { type: "integer", description: "장면 번호 (1부터)" },
+    title: { type: "string", description: "장면 제목 (한국어)" },
+    model_type: { type: "string", enum: ["positive", "negative", "neutral"], description: "positive=올바른 모델, negative=잘못된 예시, neutral=상황 제시" },
+    summary_ko: { type: "string", description: "장면 요약 (한국어, 치료사용)" },
+    dialogue: {
+      type: "array",
+      description: "대사 목록. 비언어 행동은 emotion에 기술",
+      items: {
+        type: "object",
+        properties: {
+          speaker: { type: "string" },
+          line: { type: "string", description: "대사 (연령에 맞는 한국어)" },
+          emotion: { type: "string", description: "표정·몸짓·말투 지시 (한국어)" }
+        },
+        required: ["speaker", "line", "emotion"],
+        additionalProperties: false
+      }
+    },
+    video_prompt_en: { type: "string", description: "AI 영상 생성 도구용 영어 프롬프트. 캐릭터 외형 묘사를 매 장면 동일하게 포함, 스타일·카메라·표정·행동을 구체적으로. 5~10초 분량 1샷 기준" },
+    tts_note_ko: { type: "string", description: "성우/TTS 더빙 지시 (한국어): 목소리 톤, 속도, 감정" },
+    discussion_questions: { type: "array", items: { type: "string" }, description: "시청 후 치료사가 물어볼 토론 질문 2~3개 (한국어)" }
+  },
+  required: ["no", "title", "model_type", "summary_ko", "dialogue", "video_prompt_en", "tts_note_ko", "discussion_questions"],
+  additionalProperties: false
+};
+
+const PROJECT_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "에피소드 제목 (한국어, 아동 친화적)" },
+    characters: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name_ko: { type: "string" },
+          description_en: { type: "string", description: "영상 생성 시 매 장면 복사해 쓸 영어 외형 묘사 (일관성 유지용)" },
+          personality_ko: { type: "string" }
+        },
+        required: ["name_ko", "description_en", "personality_ko"],
+        additionalProperties: false
+      }
+    },
+    scenes: { type: "array", items: SCENE_SCHEMA },
+    quiz: {
+      type: "array",
+      description: "장면 사이에 나올 선택형 질문",
+      items: {
+        type: "object",
+        properties: {
+          after_scene: { type: "integer", description: "이 장면 번호가 끝난 뒤 표시" },
+          question: { type: "string" },
+          options: { type: "array", items: { type: "string" }, description: "선택지 3개" },
+          answer_index: { type: "integer", description: "정답 인덱스 (0부터)" },
+          explanation: { type: "string", description: "정답 해설 (아동에게 읽어줄 말)" }
+        },
+        required: ["after_scene", "question", "options", "answer_index", "explanation"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["title", "characters", "scenes", "quiz"],
+  additionalProperties: false
+};
+
+/* ============================================================
+   프롬프트 구성
+   ============================================================ */
+const SYSTEM_PROMPT = `당신은 화용언어치료(pragmatic language therapy) 전문 언어재활사이자 아동 콘텐츠 작가입니다.
+비디오 모델링(video modeling) 기법에 근거해, 아동이 목표 화용 기술을 관찰 학습할 수 있는 짧은 영상 시나리오를 만듭니다.
+
+원칙:
+- 대사는 대상 연령의 언어 수준에 맞게 짧고 명확하게. 어려운 어휘 금지.
+- 목표 기술이 사용되는 순간을 장면의 중심에 두고, 표정·몸짓 등 비언어 단서를 반드시 함께 기술.
+- "잘못된 예시(negative)" 장면은 과장되지 않게, 아동이 무엇이 문제인지 알아챌 수 있는 수준으로.
+- 마지막 장면은 반드시 올바른 모델(positive)로 끝나 긍정적 인상을 남길 것.
+- video_prompt_en에는 캐릭터의 영어 외형 묘사(characters의 description_en)를 매번 그대로 포함해 장면 간 캐릭터 일관성을 유지할 것. 텍스트/글자가 화면에 나오지 않게 "no text, no captions"를 포함할 것.
+- 퀴즈는 정답을 맞히는 것보다 이유를 생각하게 하는 방향으로. 오답 선택지도 아동이 실제로 할 법한 행동으로.`;
+
+function buildUserPrompt(f) {
+  return `다음 조건으로 화용언어치료용 비디오 모델링 시나리오를 만들어 주세요.
+
+- 목표 화용 기술: ${f.skill}
+- 대상 연령: ${f.age}
+- 장면 수: ${f.count}개
+- 상황·장소: ${f.place || "연령에 맞게 자유롭게"}
+- 아동 특성: ${f.traits || "특이사항 없음"}
+- 영상 스타일: ${f.style}
+- 잘못된 예시 장면: ${f.negative ? "1개 포함" : "포함하지 않음 (모두 올바른 모델)"}
+
+캐릭터는 2~3명, 각 장면은 5~10초 영상 1개 기준으로 작성해 주세요.`;
+}
+
+// JSON 출력 구조 안내 (프롬프트 복사 모드 + Gemini 모드 공용)
+const SCHEMA_GUIDE = `결과는 아래 구조의 JSON **하나만** 출력하세요. JSON 외의 설명 문장은 쓰지 마세요.
+
+{
+  "title": "에피소드 제목(한국어)",
+  "characters": [
+    { "name_ko": "이름", "description_en": "영상 생성용 영어 외형 묘사(모든 장면에서 동일하게 쓸 것)", "personality_ko": "성격" }
+  ],
+  "scenes": [
+    {
+      "no": 1,
+      "title": "장면 제목",
+      "model_type": "positive | negative | neutral",
+      "summary_ko": "장면 요약",
+      "dialogue": [ { "speaker": "이름", "line": "대사", "emotion": "표정·몸짓·말투" } ],
+      "video_prompt_en": "영어 영상 생성 프롬프트 (캐릭터 외형 포함, no text/no captions 포함)",
+      "tts_note_ko": "더빙 지시",
+      "discussion_questions": ["토론 질문 2~3개"]
+    }
+  ],
+  "quiz": [
+    { "after_scene": 1, "question": "질문", "options": ["선택지1","선택지2","선택지3"], "answer_index": 0, "explanation": "해설" }
+  ]
+}`;
+
+// 프롬프트 복사 모드용: 스키마 설명을 포함한 전체 프롬프트
+function buildCopyPrompt(f) {
+  return SYSTEM_PROMPT + "\n\n" + buildUserPrompt(f) + "\n\n" + SCHEMA_GUIDE;
+}
+
+function buildRevisePrompt(scene, feedback) {
+  const p = state.project;
+  return `다음은 "${p.title}" 에피소드(목표 기술: ${state.form.skill}, 대상: ${state.form.age})의 한 장면입니다.
+
+등장인물:
+${p.characters.map(c => `- ${c.name_ko}: ${c.personality_ko} / 영어 외형: ${c.description_en}`).join("\n")}
+
+현재 장면 JSON:
+${JSON.stringify(scene, null, 2)}
+
+치료사의 수정 요청:
+"${feedback}"
+
+수정 요청을 반영해 이 장면을 다시 작성해 주세요. 장면 번호(no)와 전체 이야기 흐름은 유지하고, video_prompt_en에는 캐릭터 영어 외형 묘사와 "no text, no captions"를 그대로 포함하세요.`;
+}
+
+/* ============================================================
+   Claude API 호출 (브라우저에서 공식 SDK 사용)
+   ============================================================ */
+let sdkPromise = null;
+function loadSDK() {
+  if (!sdkPromise) sdkPromise = import("https://esm.sh/@anthropic-ai/sdk@latest");
+  return sdkPromise;
+}
+
+async function callClaude(userPrompt, schema) {
+  const { default: Anthropic } = await loadSDK();
+  const client = new Anthropic({
+    apiKey: state.settings.apiKey,
+    dangerouslyAllowBrowser: true, // 개인용 도구: 키는 사용자 본인 브라우저에만 저장됨
+  });
+  const response = await client.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 16000,
+    thinking: { type: "adaptive" },
+    system: SYSTEM_PROMPT,
+    output_config: { format: { type: "json_schema", schema } },
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  if (response.stop_reason === "refusal") {
+    throw new Error("모델이 이 요청의 생성을 거절했습니다. 내용을 조정해 다시 시도해 주세요.");
+  }
+  if (response.stop_reason === "max_tokens") {
+    throw new Error("출력이 너무 길어 잘렸습니다. 장면 수를 줄여 다시 시도해 주세요.");
+  }
+  const text = response.content.find(b => b.type === "text")?.text ?? "";
+  return JSON.parse(text);
+}
+
+/* ---------- Gemini 텍스트 생성 (대본) ---------- */
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+
+function stripFences(s) {
+  return String(s).trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+}
+
+async function callGemini(userPrompt, system = SYSTEM_PROMPT) {
+  const key = state.settings.geminiKey;
+  const res = await fetch(`${GEMINI_BASE}/models/gemini-2.5-flash:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig: { responseMimeType: "application/json" },
+    }),
+  });
+  if (!res.ok) throw await geminiError(res);
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  if (!text) {
+    const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || "";
+    throw new Error("Gemini 응답이 비어 있습니다" + (reason ? " (" + reason + ")" : "") + ". 다시 시도해 주세요.");
+  }
+  return JSON.parse(stripFences(text));
+}
+
+function apiErrorMessage(err) {
+  const s = err?.status;
+  if (s === 401) return "API 키가 올바르지 않습니다. ⚙ 설정에서 키를 확인해 주세요.";
+  if (s === 429) return "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.";
+  if (s >= 500) return "Anthropic 서버가 일시적으로 불안정합니다. 잠시 후 다시 시도해 주세요.";
+  return err?.message || "알 수 없는 오류가 발생했습니다.";
+}
+
+/* ============================================================
+   UI 유틸
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function setStatus(id, kind, html) {
+  const el = $(id);
+  el.className = "status show " + kind;
+  el.innerHTML = html;
+}
+function clearStatus(id) { $(id).className = "status"; }
+
+function readForm() {
+  return {
+    skill: $("f-skill").value.trim(),
+    age: $("f-age").value,
+    count: parseInt($("f-count").value, 10),
+    place: $("f-place").value.trim(),
+    traits: $("f-traits").value.trim(),
+    style: $("f-style").value,
+    negative: $("f-negative").checked,
+  };
+}
+
+/* ============================================================
+   앱 동작
+   ============================================================ */
+const app = {
+
+  go(n) {
+    document.querySelectorAll("section.step").forEach(s => s.classList.remove("visible"));
+    $("step" + n).classList.add("visible");
+    document.querySelectorAll("nav button").forEach(b =>
+      b.classList.toggle("active", b.dataset.step == n));
+    window.scrollTo(0, 0);
+  },
+
+  onSkillPreset() {
+    const v = $("f-skill-preset").value;
+    if (v) $("f-skill").value = v;
+  },
+
+  async generate() {
+    const f = readForm();
+    if (!f.skill) { setStatus("gen-status", "error", "목표 화용 기술을 입력해 주세요."); return; }
+    state.form = f;
+
+    const engine = state.settings.mode;
+    const hasKey = engine === "api" ? !!state.settings.apiKey
+                 : engine === "gemini" ? !!state.settings.geminiKey
+                 : false;
+
+    if (engine === "copy" || !hasKey) {
+      // 프롬프트 복사 모드
+      $("copy-mode-box").style.display = "block";
+      $("copy-prompt").textContent = buildCopyPrompt(f);
+      if (engine !== "copy" && !hasKey) {
+        setStatus("gen-status", "info", "API 키가 설정되지 않아 <b>프롬프트 복사 모드</b>로 전환했습니다. 아래 프롬프트를 복사해 claude.ai에 붙여넣으세요. (⚙ 설정에서 키를 넣으면 자동 생성됩니다)");
+      } else {
+        setStatus("gen-status", "info", "아래 프롬프트를 복사해 claude.ai 또는 ChatGPT에 붙여넣고, 결과 JSON을 붙여넣기 칸에 넣어 주세요.");
+      }
+      save();
+      return;
+    }
+
+    // 자동 생성 (Claude 또는 Gemini)
+    const btn = $("btn-generate");
+    btn.disabled = true;
+    setStatus("gen-status", "info", '<span class="spinner"></span>시나리오를 생성하고 있습니다… (30초~2분 정도 걸릴 수 있어요)');
+    try {
+      const project = engine === "gemini"
+        ? await callGemini(buildUserPrompt(f) + "\n\n" + SCHEMA_GUIDE)
+        : await callClaude(buildUserPrompt(f), PROJECT_SCHEMA);
+      if (!project.scenes || !project.characters) throw new Error("생성 결과의 형식이 올바르지 않습니다. 다시 시도해 주세요.");
+      state.project = project;
+      state.videos = {};
+      save();
+      this.renderAll();
+      setStatus("gen-status", "info", `✅ "<b>${esc(project.title)}</b>" 시나리오가 완성되었습니다! ② 대본 탭에서 확인하세요.`);
+      this.go(2);
+    } catch (err) {
+      setStatus("gen-status", "error", "⚠️ " + esc(engine === "gemini" ? (err.message || String(err)) : apiErrorMessage(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  applyPastedJSON() {
+    let raw = $("paste-json").value.trim();
+    if (!raw) { setStatus("gen-status", "error", "JSON을 붙여넣어 주세요."); return; }
+    // ```json ... ``` 코드펜스 제거
+    raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    try {
+      const project = JSON.parse(raw);
+      if (!project.scenes || !project.characters) throw new Error("scenes/characters 항목이 없습니다");
+      state.project = project;
+      state.videos = {};
+      save();
+      this.renderAll();
+      setStatus("gen-status", "info", `✅ "<b>${esc(project.title)}</b>" 시나리오를 불러왔습니다!`);
+      this.go(2);
+    } catch (e) {
+      setStatus("gen-status", "error", "JSON 해석에 실패했습니다: " + esc(e.message) + " — AI 출력 전체(중괄호 포함)를 그대로 붙여넣었는지 확인해 주세요.");
+    }
+  },
+
+  async reviseScene(idx) {
+    const feedback = $("rev-input-" + idx).value.trim();
+    if (!feedback) { alert("수정 요청 내용을 입력해 주세요."); return; }
+    const scene = state.project.scenes[idx];
+
+    const engine = state.settings.mode;
+    const hasKey = engine === "api" ? !!state.settings.apiKey
+                 : engine === "gemini" ? !!state.settings.geminiKey
+                 : false;
+
+    if (engine === "copy" || !hasKey) {
+      // 복사 모드: 수정 프롬프트를 보여주고 결과를 붙여넣게 함
+      const box = $("rev-copy-" + idx);
+      box.style.display = "block";
+      box.querySelector(".promptbox").textContent =
+        buildRevisePrompt(scene, feedback) + "\n\n결과는 이 장면과 같은 구조의 JSON 하나만 출력하세요.";
+      return;
+    }
+
+    const btn = $("rev-btn-" + idx);
+    btn.disabled = true; btn.textContent = "수정 중…";
+    try {
+      const revised = engine === "gemini"
+        ? await callGemini(buildRevisePrompt(scene, feedback) + "\n\n수정된 장면을 원래 장면과 같은 구조의 JSON 하나만으로 출력하세요.")
+        : await callClaude(buildRevisePrompt(scene, feedback), SCENE_SCHEMA);
+      revised.no = scene.no; // 번호 고정
+      state.project.scenes[idx] = revised;
+      save();
+      this.renderAll();
+      this.go(2);
+    } catch (err) {
+      alert("수정 실패: " + (engine === "gemini" ? (err.message || String(err)) : apiErrorMessage(err)));
+      btn.disabled = false; btn.textContent = "✏️ 이 장면 수정하기";
+    }
+  },
+
+  applyRevisedJSON(idx) {
+    const ta = $("rev-paste-" + idx);
+    let raw = ta.value.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    try {
+      const revised = JSON.parse(raw);
+      revised.no = state.project.scenes[idx].no;
+      state.project.scenes[idx] = revised;
+      save();
+      this.renderAll();
+      this.go(2);
+    } catch (e) {
+      alert("JSON 해석 실패: " + e.message);
+    }
+  },
+
+  copyText(id) {
+    const el = $(id);
+    navigator.clipboard.writeText(el.textContent).then(
+      () => { el.style.outline = "2px solid var(--sage)"; setTimeout(() => el.style.outline = "", 800); },
+      () => alert("복사에 실패했습니다. 직접 드래그해서 복사해 주세요.")
+    );
+  },
+
+  saveVideoNote(no, value) {
+    state.videos[no] = value;
+    save();
+  },
+
+  saveQuizField(qi, field, value) {
+    const q = state.project.quiz[qi];
+    if (field === "answer_index" || field === "after_scene") value = parseInt(value, 10) || 0;
+    if (field.startsWith("option")) {
+      q.options[parseInt(field.slice(6), 10)] = value;
+    } else {
+      q[field] = value;
+    }
+    save();
+  },
+
+  removeQuiz(qi) {
+    if (!confirm("이 퀴즈를 삭제할까요?")) return;
+    state.project.quiz.splice(qi, 1);
+    save();
+    this.renderQuiz();
+  },
+
+  addQuiz() {
+    state.project.quiz.push({
+      after_scene: state.project.scenes[0]?.no ?? 1,
+      question: "", options: ["", "", ""], answer_index: 0, explanation: ""
+    });
+    save();
+    this.renderQuiz();
+  },
+
+  /* ---------- 프로젝트 라이브러리 ---------- */
+  newProject() {
+    save(); // 작업 중이던 것 보존
+    state.project = null;
+    state.form = null;
+    state.videos = {};
+    state.currentId = String(Date.now());
+    save();
+    fillFormUI();
+    this.renderAll();
+    this.go(1);
+  },
+
+  openProject(id) {
+    save();
+    const entry = state.projects.find(p => p.id === id);
+    if (!entry) return;
+    state.currentId = entry.id;
+    state.form = entry.form || null;
+    state.project = entry.project || null;
+    state.videos = entry.videos || {};
+    save();
+    fillFormUI();
+    this.renderAll();
+    this.go(state.project ? 2 : 1);
+  },
+
+  duplicateProject(id) {
+    const entry = state.projects.find(p => p.id === id);
+    if (!entry) return;
+    const copy = JSON.parse(JSON.stringify(entry));
+    copy.id = String(Date.now());
+    copy.createdAt = copy.updatedAt = new Date().toISOString();
+    if (copy.project?.title) copy.project.title += " (복사본)";
+    state.projects.push(copy);
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    this.renderLibrary();
+  },
+
+  deleteProject(id) {
+    const entry = state.projects.find(p => p.id === id);
+    if (!entry) return;
+    if (!confirm(`"${entry.project?.title || "이 프로젝트"}"를 삭제할까요?`)) return;
+    state.projects = state.projects.filter(p => p.id !== id);
+    if (state.currentId === id) {
+      state.currentId = null;
+      state.project = null;
+      state.form = null;
+      state.videos = {};
+      fillFormUI();
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    this.renderAll();
+  },
+
+  renderLibrary() {
+    const area = $("library-area");
+    if (!area) return;
+    if (!state.projects.length) {
+      area.innerHTML = '<div class="empty">저장된 프로젝트가 없습니다.<br>① 목표 설정에서 시나리오를 생성하면 자동으로 여기에 저장됩니다.</div>';
+      return;
+    }
+    const sorted = state.projects.slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+    area.innerHTML = sorted.map(p => `
+      <div class="card scene-card">
+        <h2>${esc(p.project?.title || "(제목 없음)")}${p.id === state.currentId ? '<span class="tag positive">작업 중</span>' : ""}</h2>
+        <p class="muted">목표: ${esc(p.form?.skill || "-")} · 장면 ${p.project?.scenes?.length || 0}개 · 수정: ${esc((p.updatedAt || "").slice(0, 10))}</p>
+        <button class="btn btn-sage btn-sm" onclick="app.openProject('${p.id}')">📂 열기</button>
+        <button class="btn btn-ghost btn-sm" onclick="app.duplicateProject('${p.id}')">📄 복제</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="app.deleteProject('${p.id}')">삭제</button>
+      </div>`).join("");
+  },
+
+  /* ---------- 렌더링 ---------- */
+  renderAll() {
+    this.renderScenario();
+    this.renderVideo();
+    this.renderQuiz();
+    this.renderLibrary();
+    this.updateNavBadges();
+  },
+
+  updateNavBadges() {
+    const has = !!state.project;
+    document.querySelector('nav button[data-step="1"]').classList.toggle("done", has);
+    document.querySelector('nav button[data-step="2"]').classList.toggle("done", has);
+  },
+
+  renderScenario() {
+    const area = $("scenario-area");
+    const p = state.project;
+    if (!p) { area.innerHTML = '<div class="empty">아직 생성된 시나리오가 없습니다.<br>① 목표 설정에서 시나리오를 먼저 생성해 주세요.</div>'; return; }
+
+    const tagLabel = { positive: "올바른 모델", negative: "잘못된 예시", neutral: "상황 제시" };
+    let html = `
+      <div class="card">
+        <h2>🎬 ${esc(p.title)}</h2>
+        <p class="muted">목표: ${esc(state.form?.skill || "")} · 대상: ${esc(state.form?.age || "")}</p>
+        <h3>등장인물</h3>
+        ${p.characters.map(c => `<p style="font-size:14px;">• <b>${esc(c.name_ko)}</b> — ${esc(c.personality_ko)}</p>`).join("")}
+      </div>`;
+
+    p.scenes.forEach((s, i) => {
+      html += `
+      <div class="card scene-card ${s.model_type}">
+        <h2>장면 ${s.no}. ${esc(s.title)}<span class="tag ${s.model_type}">${tagLabel[s.model_type] || s.model_type}</span></h2>
+        <p class="muted">${esc(s.summary_ko)}</p>
+        <div class="dialogue">
+          ${s.dialogue.map(d => `<p><b>${esc(d.speaker)}</b>: ${esc(d.line)} <em>(${esc(d.emotion)})</em></p>`).join("")}
+        </div>
+        <p class="muted">💬 시청 후 질문: ${s.discussion_questions.map(esc).join(" / ")}</p>
+        <details>
+          <summary>✏️ 이 장면 수정 요청</summary>
+          <textarea id="rev-input-${i}" placeholder="예: 대사를 더 짧게, 주인공이 먼저 사과하게, 배경을 놀이터로"></textarea>
+          <button class="btn btn-sage btn-sm" id="rev-btn-${i}" onclick="app.reviseScene(${i})">✏️ 이 장면 수정하기</button>
+          <div id="rev-copy-${i}" style="display:none;">
+            <p class="muted" style="margin-top:8px;">아래 프롬프트를 claude.ai에 붙여넣고, 결과 JSON을 그 아래 칸에 넣어 주세요.</p>
+            <div class="promptbox"></div>
+            <textarea id="rev-paste-${i}" placeholder="수정된 장면 JSON 붙여넣기"></textarea>
+            <button class="btn btn-ghost btn-sm" onclick="app.applyRevisedJSON(${i})">✅ 적용</button>
+          </div>
+        </details>
+      </div>`;
+    });
+    area.innerHTML = html;
+  },
+
+  renderVideo() {
+    const area = $("video-area");
+    const p = state.project;
+    if (!p) { area.innerHTML = '<div class="empty">시나리오를 먼저 생성해 주세요.</div>'; return; }
+
+    let html = `
+      <div class="card">
+        <h2>③ 영상 · 음성 제작</h2>
+        <p class="muted"><b>방법 A (자동)</b>: ⚙ 설정에 Gemini API 키를 넣으면 장면별 <b>🎬 Veo로 바로 생성</b>(영상)과 <b>🎙 TTS 더빙 생성</b>(음성)을 이 화면에서 바로 만들고 저장할 수 있습니다.</p>
+        <p class="muted"><b>방법 B (수동)</b>: 영상 프롬프트를 복사해 Kling·Sora·Runway 등에 붙여넣어 만드세요. <b>더빙 대본</b>은 Typecast 등 한국어 TTS에 사용합니다.</p>
+        <p class="muted">💡 캐릭터 일관성 팁: 모든 프롬프트에 같은 캐릭터 묘사가 이미 포함되어 있습니다. 같은 도구·같은 스타일로 한 번에 생성하는 것이 가장 안정적입니다.</p>
+        <div class="checkline">
+          <input type="checkbox" id="veo-audio" ${state.settings.veoAudio !== false ? "checked" : ""}
+                 onchange="app.saveVeoAudio(this.checked)">
+          <span>Veo 영상에 한국어 대사 오디오 포함 <span class="hint">(Veo 3 음성 생성 — 캐릭터가 대사를 직접 말합니다. 발음이 어색하면 끄고 TTS 더빙을 사용하세요)</span></span>
+        </div>
+      </div>`;
+
+    p.scenes.forEach(s => {
+      const ttsScript = s.dialogue.map(d => `${d.speaker}: ${d.line}`).join("\n");
+      html += `
+      <div class="card scene-card ${s.model_type}">
+        <h2>장면 ${s.no}. ${esc(s.title)}</h2>
+        <h3>🎥 영상 생성 프롬프트 (영어)</h3>
+        <div class="promptbox" id="vp-${s.no}">${esc(s.video_prompt_en)}</div>
+        <button class="btn btn-ghost btn-sm" onclick="app.copyText('vp-${s.no}')">📋 프롬프트 복사</button>
+        <button class="btn btn-sage btn-sm" id="veo-btn-${s.no}" onclick="app.generateVideo(${s.no})">🎬 Veo로 바로 생성</button>
+        <div class="status" id="veo-status-${s.no}"></div>
+        <div id="veo-out-${s.no}">${veoPreviewHTML(s.no)}</div>
+
+        <h3>🎙 더빙 대본 (TTS용)</h3>
+        <div class="promptbox" id="tts-${s.no}">${esc(ttsScript)}</div>
+        <button class="btn btn-ghost btn-sm" onclick="app.copyText('tts-${s.no}')">📋 대본 복사</button>
+        <button class="btn btn-sage btn-sm" id="tts-btn-${s.no}" onclick="app.generateTTS(${s.no})">🎙 Gemini TTS로 더빙 생성</button>
+        <div class="status" id="tts-status-${s.no}"></div>
+        <div id="tts-out-${s.no}">${ttsPreviewHTML(s.no)}</div>
+        <p class="muted">더빙 지시: ${esc(s.tts_note_ko)}</p>
+
+        <label>완성된 영상 메모 <span class="hint">(파일명 또는 링크)</span></label>
+        <input type="text" id="vnote-${s.no}" value="${esc(state.videos[s.no] || "")}" placeholder="예: scene${s.no}.mp4"
+               onchange="app.saveVideoNote(${s.no}, this.value)">
+      </div>`;
+    });
+    area.innerHTML = html;
+  },
+
+  renderQuiz() {
+    const area = $("quiz-area");
+    const p = state.project;
+    if (!p) { area.innerHTML = '<div class="empty">시나리오를 먼저 생성해 주세요.</div>'; return; }
+
+    let html = `
+      <div class="card">
+        <h2>④ 장면 사이 퀴즈</h2>
+        <p class="muted">플레이어에서 해당 장면이 끝나면 영상이 멈추고 이 질문이 나옵니다. 문구를 아동에게 맞게 자유롭게 수정하세요.</p>
+        <div id="quiz-list">`;
+
+    p.quiz.forEach((q, qi) => {
+      html += `
+        <div class="quiz-item">
+          <div class="row">
+            <div>
+              <label>표시 시점</label>
+              <select onchange="app.saveQuizField(${qi}, 'after_scene', this.value)">
+                ${p.scenes.map(s => `<option value="${s.no}" ${q.after_scene === s.no ? "selected" : ""}>장면 ${s.no} 끝난 뒤</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label>정답</label>
+              <select onchange="app.saveQuizField(${qi}, 'answer_index', this.value)">
+                ${q.options.map((o, oi) => `<option value="${oi}" ${q.answer_index === oi ? "selected" : ""}>${oi + 1}번</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <label>질문</label>
+          <input type="text" value="${esc(q.question)}" onchange="app.saveQuizField(${qi}, 'question', this.value)">
+          ${q.options.map((o, oi) => `
+            <label>선택지 ${oi + 1}</label>
+            <input type="text" value="${esc(o)}" onchange="app.saveQuizField(${qi}, 'option${oi}', this.value)">`).join("")}
+          <label>정답 해설 <span class="hint">(정답 선택 시 읽어줄 말)</span></label>
+          <input type="text" value="${esc(q.explanation)}" onchange="app.saveQuizField(${qi}, 'explanation', this.value)">
+          <button class="btn btn-ghost btn-sm" onclick="app.removeQuiz(${qi})" style="color:var(--danger)">삭제</button>
+        </div>`;
+    });
+
+    html += `</div>
+        <button class="btn btn-sage btn-sm" onclick="app.addQuiz()">＋ 퀴즈 추가</button>
+      </div>`;
+    area.innerHTML = html;
+  },
+
+  /* ---------- 내보내기 ---------- */
+  exportProject() {
+    if (!state.project) { setStatus("export-status", "error", "먼저 시나리오를 생성해 주세요."); return; }
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    downloadBlob(blob, sanitizeName(state.project.title) + "_프로젝트.json");
+    setStatus("export-status", "info", "프로젝트 JSON을 저장했습니다.");
+  },
+
+  importProject(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.project) throw new Error("프로젝트 데이터가 아닙니다");
+        Object.assign(state, data);
+        save();
+        this.renderAll();
+        this.loadSettingsUI();
+        setStatus("export-status", "info", `✅ "${esc(state.project.title)}" 프로젝트를 불러왔습니다.`);
+      } catch (e) {
+        setStatus("export-status", "error", "불러오기 실패: " + esc(e.message));
+      }
+    };
+    reader.readAsText(file);
+    input.value = "";
+  },
+
+  exportPlayer() {
+    if (!state.project) { setStatus("export-status", "error", "먼저 시나리오를 생성해 주세요."); return; }
+    const html = buildPlayerHTML(state.project);
+    const blob = new Blob([html], { type: "text/html" });
+    downloadBlob(blob, sanitizeName(state.project.title) + "_플레이어.html");
+    setStatus("export-status", "info", "✅ 플레이어를 저장했습니다. 파일을 열고 장면별 영상 파일을 지정한 뒤 '시작하기'를 누르세요.");
+  },
+
+  resetAll() {
+    if (!confirm("저장된 프로젝트를 전부 지우고 처음부터 시작할까요? (설정은 유지됩니다)")) return;
+    state.project = null; state.form = null; state.videos = {};
+    state.projects = []; state.currentId = null;
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    fillFormUI();
+    this.renderAll();
+    this.go(1);
+  },
+
+  saveSettings() {
+    state.settings.mode = $("s-mode").value;
+    state.settings.apiKey = $("s-apikey").value.trim();
+    state.settings.geminiKey = $("s-geminikey").value.trim();
+    state.settings.veoModel = $("s-veomodel").value;
+    save();
+  },
+
+  loadSettingsUI() {
+    $("s-mode").value = state.settings.mode;
+    $("s-apikey").value = state.settings.apiKey;
+    $("s-geminikey").value = state.settings.geminiKey || "";
+    if (state.settings.veoModel) $("s-veomodel").value = state.settings.veoModel;
+  },
+
+  /* ---------- Gemini(Veo) 영상 생성 ---------- */
+  async generateVideo(no) {
+    const key = state.settings.geminiKey;
+    if (!key) {
+      setStatus("veo-status-" + no, "error", "⚙ 설정에서 Google Gemini API 키를 먼저 입력해 주세요.");
+      return;
+    }
+    const scene = state.project.scenes.find(s => s.no === no);
+    const btn = $("veo-btn-" + no);
+    btn.disabled = true;
+    const statusId = "veo-status-" + no;
+    setStatus(statusId, "info", '<span class="spinner"></span>영상 생성을 요청하고 있습니다…');
+
+    const model = state.settings.veoModel || "veo-3.0-fast-generate-001";
+    const base = "https://generativelanguage.googleapis.com/v1beta";
+    const headers = { "Content-Type": "application/json", "x-goog-api-key": key };
+
+    // Veo 3 음성 생성: 대사 오디오 포함 옵션이 켜져 있으면 대사를 프롬프트에 실어 보냄
+    let prompt = scene.video_prompt_en;
+    if (state.settings.veoAudio !== false && scene.dialogue?.length) {
+      prompt += "\n\nAudio: The characters speak in Korean with clear, warm, child-friendly voices. Dialogue:\n" +
+        scene.dialogue.map(d => `${d.speaker} says in Korean: "${d.line}" (${d.emotion})`).join("\n");
+    }
+
+    try {
+      // 1) 생성 요청 (장기 실행 작업)
+      let res = await fetch(`${base}/models/${model}:predictLongRunning`, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: { aspectRatio: "16:9" },
+        }),
+      });
+      if (!res.ok) throw await geminiError(res);
+      let op = await res.json();
+
+      // 2) 완료될 때까지 대기 (보통 1~3분)
+      const t0 = Date.now();
+      while (!op.done) {
+        if (Date.now() - t0 > 8 * 60 * 1000) throw new Error("생성 시간이 8분을 넘어 중단했습니다. 잠시 후 다시 시도해 주세요.");
+        const sec = Math.round((Date.now() - t0) / 1000);
+        setStatus(statusId, "info", `<span class="spinner"></span>Veo가 영상을 만들고 있습니다… (${sec}초 경과 · 보통 1~3분)`);
+        await sleep(8000);
+        res = await fetch(`${base}/${op.name}`, { headers: { "x-goog-api-key": key } });
+        if (!res.ok) throw await geminiError(res);
+        op = await res.json();
+      }
+      if (op.error) throw new Error(op.error.message || "생성 작업이 실패했습니다.");
+
+      // 3) 결과에서 영상 URI 추출 (응답 형태가 버전에 따라 다를 수 있어 둘 다 처리)
+      const r = op.response || {};
+      const gv = r.generateVideoResponse || r;
+      const sample = (gv.generatedSamples || gv.generatedVideos || [])[0];
+      const uri = sample?.video?.uri;
+      if (!uri) {
+        const reasons = (gv.raiMediaFilteredReasons || []).join(" / ");
+        throw new Error(reasons
+          ? "안전 필터로 생성이 차단되었습니다: " + reasons + " — 프롬프트에서 아동 실사 묘사를 빼고 동물·캐릭터 중심으로 바꿔 보세요."
+          : "응답에 영상이 포함되지 않았습니다. 프롬프트를 조금 바꿔 다시 시도해 주세요.");
+      }
+
+      // 4) 영상 내려받아 미리보기
+      setStatus(statusId, "info", '<span class="spinner"></span>완성! 영상을 내려받는 중…');
+      const vres = await fetch(uri, { headers: { "x-goog-api-key": key } });
+      if (!vres.ok) throw new Error("영상 다운로드에 실패했습니다 (HTTP " + vres.status + ")");
+      const blob = await vres.blob();
+      if (veoResults[no]) URL.revokeObjectURL(veoResults[no].url);
+      veoResults[no] = { blob, url: URL.createObjectURL(blob) };
+      $("veo-out-" + no).innerHTML = veoPreviewHTML(no);
+      if (!state.videos[no]) {
+        state.videos[no] = `장면${no}_veo.mp4`;
+        save();
+        const noteEl = $("vnote-" + no);
+        if (noteEl) noteEl.value = state.videos[no];
+      }
+      setStatus(statusId, "info", "✅ 영상이 완성되었습니다! 마음에 들면 <b>mp4 저장</b>을 눌러 보관하세요. (저장하지 않으면 페이지를 닫을 때 사라집니다)");
+    } catch (err) {
+      setStatus(statusId, "error", "⚠️ " + esc(err.message || String(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  saveVeo(no) {
+    const r = veoResults[no];
+    if (!r) return;
+    downloadBlob(r.blob, sanitizeName(state.project?.title || "장면") + `_장면${no}.mp4`);
+  },
+
+  saveVeoAudio(v) {
+    state.settings.veoAudio = v;
+    save();
+  },
+
+  /* ---------- Gemini TTS 더빙 생성 ---------- */
+  async generateTTS(no) {
+    const key = state.settings.geminiKey;
+    if (!key) {
+      setStatus("tts-status-" + no, "error", "⚙ 설정에서 Google Gemini API 키를 먼저 입력해 주세요.");
+      return;
+    }
+    const scene = state.project.scenes.find(s => s.no === no);
+    const spoken = scene.dialogue.filter(d => d.line && !/^\(.*\)$/.test(d.line.trim())); // 지문만 있는 줄 제외
+    if (!spoken.length) {
+      setStatus("tts-status-" + no, "error", "이 장면에는 읽을 대사가 없습니다.");
+      return;
+    }
+    const btn = $("tts-btn-" + no);
+    btn.disabled = true;
+    const statusId = "tts-status-" + no;
+    setStatus(statusId, "info", '<span class="spinner"></span>더빙 음성을 생성하고 있습니다…');
+
+    const speakers = [...new Set(spoken.map(d => d.speaker))];
+    const transcript = spoken.map(d => `${d.speaker}: ${d.line}`).join("\n");
+    const direction = `다음 대화를 자연스러운 한국어로 읽어주세요. 아동용 콘텐츠이므로 밝고 명확하게, 각 대사의 감정을 살려서. ${scene.tts_note_ko || ""}\n\n`;
+
+    // Gemini TTS는 다중 화자를 최대 2명까지 지원 — 넘으면 한 목소리로 낭독
+    const VOICES = ["Kore", "Puck"];
+    const speechConfig = speakers.length <= 2
+      ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: speakers.map((sp, i) => ({
+            speaker: sp, voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[i] } },
+          })) } }
+      : { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } };
+
+    try {
+      const res = await fetch(`${GEMINI_BASE}/models/gemini-2.5-flash-preview-tts:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: direction + transcript }] }],
+          generationConfig: { responseModalities: ["AUDIO"], speechConfig },
+        }),
+      });
+      if (!res.ok) throw await geminiError(res);
+      const data = await res.json();
+      const part = (data.candidates?.[0]?.content?.parts || []).find(p => p.inlineData?.data);
+      if (!part) throw new Error("응답에 음성이 포함되지 않았습니다. 다시 시도해 주세요.");
+      const rate = parseInt((part.inlineData.mimeType || "").match(/rate=(\d+)/)?.[1] || "24000", 10);
+      const blob = pcmBase64ToWavBlob(part.inlineData.data, rate);
+      if (ttsResults[no]) URL.revokeObjectURL(ttsResults[no].url);
+      ttsResults[no] = { blob, url: URL.createObjectURL(blob) };
+      $("tts-out-" + no).innerHTML = ttsPreviewHTML(no);
+      setStatus(statusId, "info", "✅ 더빙이 완성되었습니다! 들어보고 마음에 들면 <b>wav 저장</b>을 눌러 보관하세요.");
+    } catch (err) {
+      setStatus(statusId, "error", "⚠️ " + esc(err.message || String(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  saveTTS(no) {
+    const r = ttsResults[no];
+    if (!r) return;
+    downloadBlob(r.blob, sanitizeName(state.project?.title || "장면") + `_장면${no}_더빙.wav`);
+  },
+};
+
+function sanitizeName(s) { return String(s).replace(/[\\/:*?"<>|]/g, "_").slice(0, 40) || "화용스튜디오"; }
+
+/* ---------- Gemini(Veo) 보조 ---------- */
+const veoResults = {};   // sceneNo -> { blob, url }  (세션 중에만 유지 — 저장 버튼으로 보관)
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function geminiError(res) {
+  let msg = "";
+  try { msg = (await res.json())?.error?.message || ""; } catch (e) { /* 본문 없음 */ }
+  if (res.status === 400 && /api key/i.test(msg)) return new Error("Gemini API 키가 올바르지 않습니다. ⚙ 설정에서 확인해 주세요.");
+  if (res.status === 403) return new Error("이 키로는 Veo를 쓸 수 없습니다. Google AI Studio에서 결제(유료 등급)가 설정된 프로젝트의 키인지 확인해 주세요." + (msg ? " (" + msg + ")" : ""));
+  if (res.status === 404) return new Error("선택한 Veo 모델을 사용할 수 없습니다. ⚙ 설정에서 다른 모델을 선택해 보세요.");
+  if (res.status === 429) return new Error("요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+  return new Error(msg || "Gemini API 오류 (HTTP " + res.status + ")");
+}
+
+function veoPreviewHTML(no) {
+  const r = veoResults[no];
+  if (!r) return "";
+  return `<video controls playsinline src="${r.url}" style="width:100%;border-radius:10px;margin-top:10px;background:#000;"></video>
+    <button class="btn btn-primary btn-sm" onclick="app.saveVeo(${no})">⬇️ mp4 저장</button>`;
+}
+
+/* ---------- Gemini TTS 보조 ---------- */
+const ttsResults = {};   // sceneNo -> { blob, url }  (세션 중에만 유지)
+
+function ttsPreviewHTML(no) {
+  const r = ttsResults[no];
+  if (!r) return "";
+  return `<audio controls src="${r.url}" style="width:100%;margin-top:10px;"></audio>
+    <button class="btn btn-primary btn-sm" onclick="app.saveTTS(${no})">⬇️ wav 저장</button>`;
+}
+
+// Gemini TTS는 원시 PCM(16비트 모노)을 돌려주므로 WAV 헤더를 붙여 재생 가능하게 만든다
+function pcmBase64ToWavBlob(b64, sampleRate) {
+  const bin = atob(b64);
+  const len = bin.length;
+  const buf = new ArrayBuffer(44 + len);
+  const v = new DataView(buf);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, "RIFF"); v.setUint32(4, 36 + len, true); writeStr(8, "WAVE");
+  writeStr(12, "fmt "); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);                 // PCM
+  v.setUint16(22, 1, true);                 // 모노
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 2, true);    // byte rate (16bit mono)
+  v.setUint16(32, 2, true);                 // block align
+  v.setUint16(34, 16, true);                // bits per sample
+  writeStr(36, "data"); v.setUint32(40, len, true);
+  for (let i = 0; i < len; i++) v.setUint8(44 + i, bin.charCodeAt(i));
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ============================================================
+   치료용 인터랙티브 플레이어 HTML 생성
+   (독립 실행형 — 영상 파일은 사용자가 열어서 지정)
+   ============================================================ */
+function buildPlayerHTML(project) {
+  const data = JSON.stringify(project).replace(/</g, "\\u003c");
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(project.title)} — 치료 플레이어</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:#2f2b28; color:#fff; min-height:100vh; }
+  #setup { max-width:560px; margin:0 auto; padding:30px 20px 60px; }
+  #setup h1 { font-size:20px; margin-bottom:6px; }
+  #setup p { color:#c9beb4; font-size:13.5px; margin-bottom:16px; }
+  #setup h3 { font-size:15px; margin:22px 0 8px; color:#e8d8c8; }
+  .slot { background:#3d3835; border-radius:12px; padding:14px; margin-bottom:10px; }
+  .slot b { display:block; margin-bottom:6px; font-size:14px; }
+  .slot input { color:#c9beb4; font-size:13px; }
+  .slot .ok { color:#9fd49f; font-size:12px; }
+  input.name { width:100%; padding:12px 14px; border:none; border-radius:12px;
+    font-size:15px; font-family:inherit; background:#3d3835; color:#fff; }
+  button.big { display:block; width:100%; border:none; border-radius:14px; padding:16px;
+    font-size:17px; font-weight:800; font-family:inherit; cursor:pointer;
+    background:#c98a8a; color:#fff; margin-top:14px; }
+  button.big:disabled { opacity:0.4; }
+  button.mini { border:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:8px;
+    padding:7px 12px; font-family:inherit; cursor:pointer; font-size:13px; margin:6px 6px 0 0; }
+  table.log { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  table.log th, table.log td { padding:7px 8px; text-align:left; border-bottom:1px solid #4a443f; }
+  table.log th { color:#c9beb4; font-weight:600; }
+  #stage { display:none; position:fixed; inset:0; background:#000; }
+  video { width:100%; height:100%; object-fit:contain; }
+  #overlay { display:none; position:fixed; inset:0; background:rgba(30,26,24,0.96);
+    padding:30px 20px; overflow-y:auto; z-index:20; }
+  #overlay .inner { max-width:520px; margin:0 auto; text-align:center; }
+  #overlay h2 { font-size:22px; margin:20px 0 24px; line-height:1.5; }
+  .opt { display:block; width:100%; border:2px solid #6a6058; background:#3d3835; color:#fff;
+    border-radius:14px; padding:16px; font-size:17px; font-family:inherit;
+    cursor:pointer; margin-bottom:12px; text-align:left; }
+  .opt.correct { border-color:#8aa98a; background:#3c4a3c; }
+  .opt.wrong { border-color:#c98a8a; background:#4a3838; }
+  #feedback { font-size:17px; min-height:30px; margin:14px 0; line-height:1.6; }
+  .talk { text-align:left; background:#3d3835; border-radius:12px; padding:14px 16px;
+    margin:10px 0; font-size:16px; }
+  .result { text-align:left; background:#3d3835; border-radius:12px; padding:12px 16px;
+    margin:8px 0; font-size:15px; }
+  .result .good { color:#9fd49f; }
+  .result .retry { color:#e8b98a; }
+  #bar { position:fixed; top:0; left:0; right:0; padding:10px 14px; display:flex;
+    justify-content:space-between; align-items:center; background:linear-gradient(rgba(0,0,0,0.6),transparent);
+    z-index:10; font-size:13px; color:#ddd; }
+  #bar .btns button { border:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:8px;
+    padding:6px 12px; font-family:inherit; cursor:pointer; font-size:13px; margin-left:6px; }
+</style>
+</head>
+<body>
+<div id="setup">
+  <h1>🎬 ${esc(project.title)}</h1>
+  <p>아동 이름을 적고, 장면별 영상 파일을 지정한 뒤 시작하세요. 영상이 없는 장면은 건너뜁니다. 더빙 음성(wav/mp3)을 함께 지정하면 영상과 동시에 재생됩니다 — 영상에 이미 대사 음성이 들어 있다면 비워 두세요.</p>
+  <h3>👧 아동 이름 <span style="font-weight:400;color:#c9beb4;">(기록에 남습니다 · 선택)</span></h3>
+  <input class="name" id="child-name" placeholder="예: 지우">
+  <h3>🎞 장면 영상</h3>
+  <div id="slots"></div>
+  <button class="big" id="start" disabled>▶ 시작하기</button>
+  <h3>📊 지난 기록</h3>
+  <div id="log-area"></div>
+</div>
+<div id="stage">
+  <div id="bar">
+    <span id="bar-title"></span>
+    <span class="btns">
+      <button onclick="replayCurrent()">🔁 다시보기</button>
+      <button onclick="location.reload()">처음으로</button>
+    </span>
+  </div>
+  <video id="vid" playsinline></video>
+</div>
+<div id="overlay"><div class="inner" id="ov-inner"></div></div>
+
+<script>
+var PROJECT = ${data};
+var LOGKEY = "화용플레이어기록::" + PROJECT.title;
+var files = {};   // sceneNo -> objectURL
+var order = PROJECT.scenes.map(function(s){ return s.no; });
+var pos = -1;
+
+// ----- 세션 기록 -----
+var session = { child: "", startedAt: "", quizLog: {} };  // quizLog: quizIndex -> {question, attempts, firstTry}
+var sessionSaved = false;
+
+function loadLogs() {
+  try { return JSON.parse(localStorage.getItem(LOGKEY)) || []; } catch (e) { return []; }
+}
+function saveSession() {
+  var results = [];
+  for (var k in session.quizLog) results.push(session.quizLog[k]);
+  if (!results.length || sessionSaved) return;
+  sessionSaved = true;
+  var logs = loadLogs();
+  logs.push({ date: session.startedAt, child: session.child || "(이름 없음)", results: results });
+  try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) { /* 저장 공간 부족 시 무시 */ }
+}
+
+function renderLogs() {
+  var area = document.getElementById("log-area");
+  var logs = loadLogs();
+  if (!logs.length) { area.innerHTML = "<p style='margin:0;'>아직 기록이 없습니다. 세션을 마치면 여기에 정답률이 쌓입니다.</p>"; return; }
+  var h = "<table class='log'><tr><th>날짜</th><th>아동</th><th>첫 시도 정답</th></tr>";
+  logs.slice().reverse().forEach(function(g){
+    var first = g.results.filter(function(r){ return r.firstTry; }).length;
+    h += "<tr><td>" + escText(g.date.slice(0, 10)) + "</td><td>" + escText(g.child) +
+         "</td><td>" + first + " / " + g.results.length + "</td></tr>";
+  });
+  h += "</table>";
+  h += "<button class='mini' onclick='downloadCSV()'>⬇️ 기록 CSV 내려받기</button>";
+  h += "<button class='mini' onclick='clearLogs()'>🗑 기록 지우기</button>";
+  area.innerHTML = h;
+}
+
+function downloadCSV() {
+  var rows = [["날짜", "아동", "질문", "시도 횟수", "첫 시도 정답"]];
+  loadLogs().forEach(function(g){
+    g.results.forEach(function(r){
+      rows.push([g.date.slice(0, 16).replace("T", " "), g.child, r.question, r.attempts, r.firstTry ? "O" : "X"]);
+    });
+  });
+  var csv = "\\uFEFF" + rows.map(function(r){
+    return r.map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(",");
+  }).join("\\n");
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = PROJECT.title + "_기록.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function clearLogs() {
+  if (!confirm("저장된 기록을 모두 지울까요?")) return;
+  localStorage.removeItem(LOGKEY);
+  renderLogs();
+}
+
+// ----- 준비 화면 -----
+var audios = {};   // sceneNo -> objectURL (더빙 음성, 선택)
+var slots = document.getElementById("slots");
+PROJECT.scenes.forEach(function(s){
+  var d = document.createElement("div");
+  d.className = "slot";
+  d.innerHTML = "<b>장면 " + s.no + ". " + escText(s.title) + "</b>";
+
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "video/*";
+  inp.addEventListener("change", function(){
+    if (inp.files[0]) {
+      files[s.no] = URL.createObjectURL(inp.files[0]);
+      var ok = d.querySelector(".ok-v") || d.insertBefore(document.createElement("div"), audLabel);
+      ok.className = "ok ok-v"; ok.textContent = "✓ " + inp.files[0].name;
+      document.getElementById("start").disabled = Object.keys(files).length === 0;
+    }
+  });
+  d.appendChild(inp);
+
+  var audLabel = document.createElement("div");
+  audLabel.style.cssText = "margin-top:8px;font-size:12px;color:#c9beb4;";
+  audLabel.textContent = "🎙 더빙 음성 (선택)";
+  d.appendChild(audLabel);
+  var inpA = document.createElement("input");
+  inpA.type = "file"; inpA.accept = "audio/*";
+  inpA.addEventListener("change", function(){
+    if (inpA.files[0]) {
+      audios[s.no] = URL.createObjectURL(inpA.files[0]);
+      var ok = d.querySelector(".ok-a") || d.appendChild(document.createElement("div"));
+      ok.className = "ok ok-a"; ok.textContent = "✓ " + inpA.files[0].name;
+    }
+  });
+  d.appendChild(inpA);
+
+  slots.appendChild(d);
+});
+renderLogs();
+
+document.getElementById("start").addEventListener("click", function(){
+  session.child = document.getElementById("child-name").value.trim();
+  session.startedAt = new Date().toISOString();
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("stage").style.display = "block";
+  next();
+});
+
+var vid = document.getElementById("vid");
+var aud = new Audio();   // 더빙 음성 — 영상과 함께 재생/일시정지
+vid.addEventListener("ended", function(){ aud.pause(); afterScene(order[pos]); });
+vid.addEventListener("play", function(){ if (audios[order[pos]]) aud.play().catch(function(){}); });
+vid.addEventListener("pause", function(){ if (!vid.ended) aud.pause(); });
+
+function next() {
+  pos++;
+  while (pos < order.length && !files[order[pos]]) pos++;   // 영상 없는 장면 건너뜀
+  if (pos >= order.length) { finish(); return; }
+  var no = order[pos];
+  var scene = sceneByNo(no);
+  document.getElementById("bar-title").textContent = "장면 " + no + " / " + order[order.length-1] + " · " + scene.title;
+  hideOverlay();
+  aud.pause();
+  if (audios[no]) { aud.src = audios[no]; aud.currentTime = 0; }
+  vid.src = files[no];
+  vid.play();
+}
+
+function replayCurrent() {
+  if (pos < 0 || pos >= order.length) return;
+  hideOverlay();
+  if (audios[order[pos]]) aud.currentTime = 0;
+  vid.currentTime = 0;
+  vid.play();
+}
+
+function sceneByNo(no) {
+  for (var i = 0; i < PROJECT.scenes.length; i++) if (PROJECT.scenes[i].no === no) return PROJECT.scenes[i];
+  return null;
+}
+
+// ----- 장면 종료 후: 퀴즈 → 다음 장면 -----
+function afterScene(no) {
+  for (var i = 0; i < PROJECT.quiz.length; i++) {
+    if (PROJECT.quiz[i].after_scene === no) { showQuiz(PROJECT.quiz[i], i); return; }
+  }
+  next();
+}
+
+var attempts = 0;
+function showQuiz(q, qi) {
+  attempts = 0;
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🤔 " + escText(q.question) + "</h2>";
+  q.options.forEach(function(o, i){
+    h += "<button class='opt' data-i='" + i + "'>" + (i+1) + ". " + escText(o) + "</button>";
+  });
+  h += "<div id='feedback'></div>";
+  inner.innerHTML = h;
+  showOverlay();
+  inner.querySelectorAll(".opt").forEach(function(btn){
+    btn.addEventListener("click", function(){ answer(q, qi, parseInt(btn.dataset.i, 10), btn); });
+  });
+}
+
+function answer(q, qi, i, btn) {
+  var fb = document.getElementById("feedback");
+  attempts++;
+  if (i === q.answer_index) {
+    // 같은 퀴즈를 (다시보기로) 두 번 풀어도 기록은 첫 번째 것만 남김
+    if (!session.quizLog[qi]) {
+      session.quizLog[qi] = { question: q.question, attempts: attempts, firstTry: attempts === 1 };
+    }
+    btn.classList.add("correct");
+    fb.innerHTML = "🎉 딩동댕! " + escText(q.explanation) +
+      "<br><br><button class='big' style='display:inline-block;width:auto;padding:12px 24px;background:#8aa98a;' onclick='replayCurrent()'>🔁 장면 다시 보기</button>" +
+      " <button class='big' style='display:inline-block;width:auto;padding:12px 28px;' onclick='next()'>다음 장면 ▶</button>";
+    document.querySelectorAll(".opt").forEach(function(b){ b.disabled = true; });
+  } else {
+    btn.classList.add("wrong");
+    btn.disabled = true;
+    fb.textContent = "음… 다시 한번 생각해 볼까요? 🙂";
+  }
+}
+
+// ----- 모든 장면 종료: 세션 요약 + 토론 질문 -----
+function finish() {
+  saveSession();
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🌟 다 봤어요!</h2>";
+
+  var results = [];
+  for (var k in session.quizLog) results.push(session.quizLog[k]);
+  if (results.length) {
+    var first = results.filter(function(r){ return r.firstTry; }).length;
+    h += "<div class='result'><b>" + escText(session.child || "우리 친구") + "</b>의 오늘 기록 — 첫 시도 정답 <b>" +
+         first + " / " + results.length + "</b></div>";
+    results.forEach(function(r){
+      h += "<div class='result'>" + (r.firstTry
+        ? "<span class='good'>✓ 한 번에 정답!</span>"
+        : "<span class='retry'>↻ " + r.attempts + "번 만에 정답</span>") +
+        " — " + escText(r.question) + "</div>";
+    });
+  }
+
+  h += "<h2 style='font-size:19px;margin-top:26px;'>💬 이야기 나눠 볼까요?</h2>";
+  PROJECT.scenes.forEach(function(s){
+    (s.discussion_questions || []).forEach(function(qq){
+      h += "<div class='talk'>💬 " + escText(qq) + "</div>";
+    });
+  });
+  h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
+  inner.innerHTML = h;
+  showOverlay();
+}
+
+function showOverlay(){ document.getElementById("overlay").style.display = "block"; }
+function hideOverlay(){ document.getElementById("overlay").style.display = "none"; }
+function escText(s){ var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+<\/script>
+</body>
+</html>`;
+}
+
+/* ============================================================
+   초기화
+   ============================================================ */
+// 작업 중 프로젝트의 폼 값을 화면에 반영 (없으면 기본값)
+function fillFormUI() {
+  const f = state.form || {};
+  $("f-skill").value = f.skill || "";
+  $("f-skill-preset").value = "";
+  $("f-age").value = f.age || "5~7세";
+  $("f-count").value = String(f.count || 3);
+  $("f-place").value = f.place || "";
+  $("f-traits").value = f.traits || "";
+  $("f-style").value = f.style || "따뜻한 2D 애니메이션 (아동용, 권장)";
+  $("f-negative").checked = f.negative !== false;
+  $("paste-json").value = "";
+  $("copy-mode-box").style.display = "none";
+  clearStatus("gen-status");
+}
+
+load();
+window.app = app;
+app.loadSettingsUI();
+app.renderAll();
+fillFormUI();
+</script>
+</body>
+</html>
