@@ -127,6 +127,7 @@
   <button data-step="3" onclick="app.go(3)">③ 영상 제작</button>
   <button data-step="4" onclick="app.go(4)">④ 퀴즈</button>
   <button data-step="5" onclick="app.go(5)">⑤ 내보내기</button>
+  <button data-step="7" onclick="app.go(7)">🃏 감정 카드</button>
   <button data-step="6" onclick="app.go(6)">⚙ 설정</button>
 </nav>
 
@@ -260,6 +261,34 @@
     <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">⬆️ 프로젝트 JSON 불러오기</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="app.importProject(this)">
     <div class="status" id="export-status"></div>
+  </div>
+</section>
+
+<!-- 🃏 감정 카드 -->
+<section class="step" id="step7">
+  <div class="card">
+    <h2>🃏 감정 카드 만들기</h2>
+    <p class="muted">표정 읽기·감정 어휘 훈련용 카드입니다. 이야기 속 주인공이 여러 감정의 표정을 짓는 그림을 생성해, 화면으로 보여주거나 인쇄해서 사용하세요.</p>
+    <p class="muted">💡 활용법: 카드를 보여주고 <b>"어떤 기분일까?"</b> 묻기 → 이야기 속 상황과 연결하기("도도가 언제 이런 표정이었지?") → 거울 보며 표정 따라 하기.</p>
+
+    <label>카드 주인공</label>
+    <select id="emo-char"></select>
+
+    <label>감정 고르기</label>
+    <div id="emo-list" style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px;"></div>
+
+    <label>그림 스타일</label>
+    <select id="emo-style">
+      <option selected>따뜻한 2D 애니메이션</option>
+      <option>수채화 그림책</option>
+      <option>3D 애니메이션 (픽사풍)</option>
+    </select>
+
+    <button class="btn btn-primary" id="emo-btn" onclick="app.generateEmotionCards()">🪄 카드 생성하기</button>
+    <div class="status" id="emo-status"></div>
+    <div id="emo-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;"></div>
+    <button class="btn btn-sage" id="emo-sheet-btn" onclick="app.exportEmotionSheet()" style="display:none;">🖨 인쇄용 카드 시트 다운로드</button>
+    <p class="muted" style="margin-top:10px;">이미지 생성은 ⚙ 설정의 Gemini API 키(유료 등급)를 사용하며 장당 소액 과금됩니다. 카드는 저장 버튼을 누르기 전까지는 페이지를 닫으면 사라집니다.</p>
   </div>
 </section>
 
@@ -846,6 +875,7 @@ const app = {
     this.renderVideo();
     this.renderQuiz();
     this.renderLibrary();
+    this.renderEmotionUI();
     this.updateNavBadges();
   },
 
@@ -1210,6 +1240,117 @@ const app = {
     if (!r) return;
     downloadBlob(r.blob, sanitizeName(state.project?.title || "장면") + `_장면${no}_더빙.wav`);
   },
+
+  /* ---------- 감정 카드 ---------- */
+  renderEmotionUI() {
+    const sel = $("emo-char");
+    if (!sel) return;
+    const chars = state.project?.characters || [];
+    sel.innerHTML = chars.map(c =>
+      `<option value="${esc(c.description_en)}">${esc(c.name_ko)} (이야기 주인공)</option>`).join("") +
+      `<option value="${esc(GENERIC_CHAR)}">기본 아동 캐릭터</option>`;
+    const list = $("emo-list");
+    if (!list.childElementCount) {
+      list.innerHTML = EMOTIONS.map(e => `
+        <label class="checkline" style="margin:0; font-weight:400;">
+          <input type="checkbox" value="${e.ko}" ${DEFAULT_EMOTIONS.includes(e.ko) ? "checked" : ""}> ${e.ko}
+        </label>`).join("");
+    }
+    this.renderEmoGrid();
+  },
+
+  renderEmoGrid() {
+    const grid = $("emo-grid");
+    if (!grid) return;
+    grid.innerHTML = EMOTIONS.filter(e => emoCards[e.ko]).map(e => emoCardHTML(e.ko)).join("");
+    $("emo-sheet-btn").style.display = Object.keys(emoCards).length ? "inline-block" : "none";
+  },
+
+  async generateEmotionCards() {
+    const key = state.settings.geminiKey;
+    if (!key) {
+      setStatus("emo-status", "error", "⚙ 설정에서 Google Gemini API 키를 먼저 입력해 주세요.");
+      return;
+    }
+    const picked = [...document.querySelectorAll("#emo-list input:checked")].map(i => i.value);
+    if (!picked.length) {
+      setStatus("emo-status", "error", "감정을 하나 이상 골라 주세요.");
+      return;
+    }
+    const charDesc = $("emo-char").value || GENERIC_CHAR;
+    const style = $("emo-style").value;
+    const btn = $("emo-btn");
+    btn.disabled = true;
+    let failed = [];
+    try {
+      for (let i = 0; i < picked.length; i++) {
+        const e = EMOTIONS.find(x => x.ko === picked[i]);
+        setStatus("emo-status", "info",
+          `<span class="spinner"></span>"${e.ko}" 카드를 그리고 있습니다… (${i + 1} / ${picked.length})`);
+        const prompt = `Close-up portrait card illustration of ${charDesc}, showing a clearly ${e.en} facial expression with ${e.cue}. ` +
+          `Style: ${style}, warm and friendly for young children, simple soft plain background, square composition, no text, no captions, no letters.`;
+        try {
+          emoCards[e.ko] = await callGeminiImage(prompt);
+          this.renderEmoGrid();
+        } catch (err) {
+          failed.push(e.ko);
+          // 키/권한 오류는 반복해도 같으므로 즉시 중단
+          if (/키|유료 등급|한도/.test(err.message || "")) throw err;
+        }
+      }
+      if (failed.length) {
+        setStatus("emo-status", "error", `⚠️ 일부 카드(${failed.join(", ")}) 생성에 실패했습니다. 다시 시도해 주세요.`);
+      } else {
+        setStatus("emo-status", "info", "✅ 카드가 완성되었습니다! 마음에 들면 PNG로 저장하거나 인쇄용 시트를 내려받으세요.");
+      }
+    } catch (err) {
+      setStatus("emo-status", "error", "⚠️ " + esc(err.message || String(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  saveEmoCard(ko) {
+    const c = emoCards[ko];
+    if (!c) return;
+    const ext = (c.mime.split("/")[1] || "png").replace("jpeg", "jpg");
+    downloadBlob(b64ToBlob(c.data, c.mime), `감정카드_${ko}.${ext}`);
+  },
+
+  exportEmotionSheet() {
+    const cards = EMOTIONS.filter(e => emoCards[e.ko]);
+    if (!cards.length) return;
+    const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>감정 카드 시트</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:#eee; }
+  .sheet { background:#fff; max-width:190mm; margin:10px auto; padding:12mm;
+    display:grid; grid-template-columns:1fr 1fr; gap:8mm; }
+  .cardp { border:2px dashed #999; border-radius:12px; padding:6mm; text-align:center;
+    page-break-inside:avoid; }
+  .cardp img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; }
+  .cardp b { display:block; font-size:22px; margin-top:5mm; }
+  .noprint { position:sticky; top:0; background:#3d3835; color:#fff; text-align:center;
+    padding:12px; font-size:14px; z-index:10; }
+  .noprint button { border:none; border-radius:8px; background:#c98a8a; color:#fff;
+    font-family:inherit; font-size:14px; font-weight:700; padding:9px 20px; cursor:pointer; margin-left:10px; }
+  @media print { .noprint { display:none; } body { background:#fff; } .sheet { margin:0; max-width:none; } }
+</style>
+</head>
+<body>
+<div class="noprint">점선을 따라 잘라 카드로 사용하세요 <button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>
+<div class="sheet">
+${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};base64,${emoCards[e.ko].data}"><b>${esc(e.ko)}</b></div>`).join("\n")}
+</div>
+</body>
+</html>`;
+    downloadBlob(new Blob([html], { type: "text/html" }), "감정카드_시트.html");
+    setStatus("emo-status", "info", "✅ 카드 시트를 저장했습니다. 파일을 열고 인쇄한 뒤 점선을 따라 자르세요.");
+  },
 };
 
 function sanitizeName(s) { return String(s).replace(/[\\/:*?"<>|]/g, "_").slice(0, 40) || "화용스튜디오"; }
@@ -1233,6 +1374,57 @@ function veoPreviewHTML(no) {
   if (!r) return "";
   return `<video controls playsinline src="${r.url}" style="width:100%;border-radius:10px;margin-top:10px;background:#000;"></video>
     <button class="btn btn-primary btn-sm" onclick="app.saveVeo(${no})">⬇️ mp4 저장</button>`;
+}
+
+/* ---------- 감정 카드 (Gemini 이미지 생성) ---------- */
+const EMOTIONS = [
+  { ko: "기쁨",     en: "joyful and happy",      cue: "a big bright smile" },
+  { ko: "슬픔",     en: "sad",                   cue: "teary downturned eyes and a small frown" },
+  { ko: "화남",     en: "angry",                 cue: "furrowed brows and puffed cheeks" },
+  { ko: "놀람",     en: "surprised",             cue: "wide open eyes and a round open mouth" },
+  { ko: "무서움",   en: "scared and afraid",     cue: "worried wide eyes with hands near the face" },
+  { ko: "부끄러움", en: "shy and embarrassed",   cue: "blushing cheeks and an averted gaze" },
+  { ko: "신남",     en: "excited",               cue: "sparkling eyes and arms raised in joy" },
+  { ko: "피곤함",   en: "tired and sleepy",      cue: "droopy half-closed eyes and a yawn" },
+];
+const DEFAULT_EMOTIONS = ["기쁨", "슬픔", "화남", "놀람"];
+const GENERIC_CHAR = "a friendly cartoon child with a round face and short hair";
+const emoCards = {};   // 감정ko -> { mime, data(base64) }  (세션 중에만 유지)
+
+async function callGeminiImage(prompt) {
+  const key = state.settings.geminiKey;
+  const res = await fetch(`${GEMINI_BASE}/models/gemini-2.5-flash-image:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    }),
+  });
+  if (!res.ok) throw await geminiError(res);
+  const data = await res.json();
+  const part = (data.candidates?.[0]?.content?.parts || []).find(p => p.inlineData?.mimeType?.startsWith("image/"));
+  if (!part) throw new Error("응답에 이미지가 포함되지 않았습니다. 다시 시도해 주세요.");
+  return { mime: part.inlineData.mimeType, data: part.inlineData.data };
+}
+
+function b64ToBlob(b64, mime) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function emoCardHTML(ko) {
+  const c = emoCards[ko];
+  if (!c) return "";
+  return `<div style="border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff;">
+    <img src="data:${c.mime};base64,${c.data}" style="width:100%; display:block; aspect-ratio:1; object-fit:cover;">
+    <div style="padding:8px; text-align:center;">
+      <b style="font-size:15px;">${esc(ko)}</b><br>
+      <button class="btn btn-ghost btn-sm" onclick="app.saveEmoCard('${esc(ko)}')">⬇️ PNG 저장</button>
+    </div>
+  </div>`;
 }
 
 /* ---------- Gemini TTS 보조 ---------- */
