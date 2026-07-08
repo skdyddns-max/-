@@ -1046,10 +1046,13 @@ const app = {
 
   exportPlayer() {
     if (!state.project) { setStatus("export-status", "error", "먼저 시나리오를 생성해 주세요."); return; }
-    const html = buildPlayerHTML(state.project);
+    const cards = EMOTIONS.filter(e => emoCards[e.ko])
+      .map(e => ({ ko: e.ko, mime: emoCards[e.ko].mime, data: emoCards[e.ko].data }));
+    const html = buildPlayerHTML(state.project, cards);
     const blob = new Blob([html], { type: "text/html" });
     downloadBlob(blob, sanitizeName(state.project.title) + "_플레이어.html");
-    setStatus("export-status", "info", "✅ 플레이어를 저장했습니다. 파일을 열고 장면별 영상 파일을 지정한 뒤 '시작하기'를 누르세요.");
+    setStatus("export-status", "info", "✅ 플레이어를 저장했습니다. 파일을 열고 장면별 영상 파일을 지정한 뒤 '시작하기'를 누르세요." +
+      (cards.length ? ` (감정 카드 ${cards.length}장이 함께 담겨 '감정 놀이' 모드를 쓸 수 있어요)` : " 🃏 감정 카드 탭에서 카드를 만들어 두면 플레이어에 '감정 놀이' 모드가 함께 담깁니다."));
   },
 
   exportWorksheet() {
@@ -1569,8 +1572,9 @@ ${quizPage}
    치료용 인터랙티브 플레이어 HTML 생성
    (독립 실행형 — 영상 파일은 사용자가 열어서 지정)
    ============================================================ */
-function buildPlayerHTML(project) {
+function buildPlayerHTML(project, emotionCards = []) {
   const data = JSON.stringify(project).replace(/</g, "\\u003c");
+  const cardsData = JSON.stringify(emotionCards).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1633,6 +1637,7 @@ function buildPlayerHTML(project) {
   <h3>🎞 장면 영상</h3>
   <div id="slots"></div>
   <button class="big" id="start" disabled>▶ 시작하기</button>
+  <button class="big" id="emo-start" style="background:#8aa98a; display:none;">🃏 감정 놀이 (영상 없이 가능)</button>
   <h3>📊 지난 기록</h3>
   <div id="log-area"></div>
 </div>
@@ -1650,6 +1655,8 @@ function buildPlayerHTML(project) {
 
 <script>
 var PROJECT = ${data};
+var CARDS = ${cardsData};   // 감정 카드 [{ko, mime, data}]
+var EMO_WORDS = ["기쁨", "슬픔", "화남", "놀람", "무서움", "부끄러움", "신남", "피곤함"];
 var LOGKEY = "화용플레이어기록::" + PROJECT.title;
 var files = {};   // sceneNo -> objectURL
 var order = PROJECT.scenes.map(function(s){ return s.no; });
@@ -1665,10 +1672,14 @@ function loadLogs() {
 function saveSession() {
   var results = [];
   for (var k in session.quizLog) results.push(session.quizLog[k]);
-  if (!results.length || sessionSaved) return;
-  sessionSaved = true;
+  if (!results.length) return;
   var logs = loadLogs();
-  logs.push({ date: session.startedAt, child: session.child || "(이름 없음)", results: results });
+  if (sessionSaved && logs.length) {
+    logs[logs.length - 1].results = results;   // 같은 세션에 감정 놀이가 이어지면 갱신
+  } else {
+    sessionSaved = true;
+    logs.push({ date: session.startedAt, child: session.child || "(이름 없음)", results: results });
+  }
   try { localStorage.setItem(LOGKEY, JSON.stringify(logs)); } catch (e) { /* 저장 공간 부족 시 무시 */ }
 }
 
@@ -1756,6 +1767,97 @@ document.getElementById("start").addEventListener("click", function(){
   document.getElementById("stage").style.display = "block";
   next();
 });
+
+// ----- 감정 놀이 (카드가 담겨 있을 때만) -----
+if (CARDS.length) document.getElementById("emo-start").style.display = "block";
+document.getElementById("emo-start").addEventListener("click", function(){
+  startEmotionQuiz(false);
+});
+
+var emoOrder = [], emoPos = -1, emoAttempts = 0;
+
+function startEmotionQuiz(fromStory) {
+  if (!session.startedAt) {
+    session.child = (document.getElementById("child-name").value || "").trim();
+    session.startedAt = new Date().toISOString();
+  }
+  document.getElementById("setup").style.display = "none";
+  emoOrder = CARDS.map(function(_, i){ return i; });
+  for (var i = emoOrder.length - 1; i > 0; i--) {   // 섞기
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = emoOrder[i]; emoOrder[i] = emoOrder[j]; emoOrder[j] = t;
+  }
+  emoPos = -1;
+  nextEmo();
+}
+
+function nextEmo() {
+  emoPos++;
+  if (emoPos >= emoOrder.length) { emoFinish(); return; }
+  emoAttempts = 0;
+  var card = CARDS[emoOrder[emoPos]];
+  // 보기: 정답 + 다른 감정 단어 2개
+  var pool = EMO_WORDS.filter(function(w){ return w !== card.ko; });
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  var opts = [card.ko, pool[0], pool[1]];
+  for (var i2 = opts.length - 1; i2 > 0; i2--) {
+    var j2 = Math.floor(Math.random() * (i2 + 1));
+    var t2 = opts[i2]; opts[i2] = opts[j2]; opts[j2] = t2;
+  }
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🃏 어떤 기분일까요? <span style='font-size:14px;color:#c9beb4;'>(" + (emoPos + 1) + " / " + emoOrder.length + ")</span></h2>";
+  h += "<img src='data:" + card.mime + ";base64," + card.data + "' style='width:65%;max-width:280px;border-radius:16px;display:block;margin:0 auto 20px;'>";
+  opts.forEach(function(w){
+    h += "<button class='opt emo-opt' data-w='" + escText(w) + "'>" + escText(w) + "</button>";
+  });
+  h += "<div id='feedback'></div>";
+  inner.innerHTML = h;
+  showOverlay();
+  inner.querySelectorAll(".emo-opt").forEach(function(btn){
+    btn.addEventListener("click", function(){ answerEmo(card, btn.dataset.w, btn); });
+  });
+}
+
+function answerEmo(card, chosen, btn) {
+  var fb = document.getElementById("feedback");
+  emoAttempts++;
+  if (chosen === card.ko) {
+    if (!session.quizLog["emo-" + card.ko]) {
+      session.quizLog["emo-" + card.ko] = { question: "감정 읽기: " + card.ko, attempts: emoAttempts, firstTry: emoAttempts === 1 };
+    }
+    btn.classList.add("correct");
+    document.querySelectorAll(".emo-opt").forEach(function(b){ b.disabled = true; });
+    fb.innerHTML = "🎉 맞아요, <b>" + escText(card.ko) + "</b>이에요! 이런 표정을 따라 해 볼까요?" +
+      "<br><br><button class='big' style='display:inline-block;width:auto;padding:12px 28px;' onclick='nextEmo()'>다음 카드 ▶</button>";
+  } else {
+    btn.classList.add("wrong");
+    btn.disabled = true;
+    fb.textContent = "음… 얼굴을 다시 한번 잘 볼까요? 🙂";
+  }
+}
+
+function emoFinish() {
+  saveSession();
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🌟 감정 놀이 끝!</h2>";
+  var results = [];
+  for (var k in session.quizLog) if (k.indexOf("emo-") === 0) results.push(session.quizLog[k]);
+  if (results.length) {
+    var first = results.filter(function(r){ return r.firstTry; }).length;
+    h += "<div class='result'><b>" + escText(session.child || "우리 친구") + "</b>의 감정 읽기 — 첫 시도 정답 <b>" + first + " / " + results.length + "</b></div>";
+    results.forEach(function(r){
+      h += "<div class='result'>" + (r.firstTry
+        ? "<span class='good'>✓ 한 번에 정답!</span>"
+        : "<span class='retry'>↻ " + r.attempts + "번 만에 정답</span>") + " — " + escText(r.question) + "</div>";
+    });
+  }
+  h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
+  inner.innerHTML = h;
+  showOverlay();
+}
 
 var vid = document.getElementById("vid");
 var aud = new Audio();   // 더빙 음성 — 영상과 함께 재생/일시정지
@@ -1860,6 +1962,9 @@ function finish() {
       h += "<div class='talk'>💬 " + escText(qq) + "</div>";
     });
   });
+  if (CARDS.length) {
+    h += "<button class='big' style='background:#8aa98a;' onclick='startEmotionQuiz(true)'>🃏 이어서 감정 놀이 하기</button>";
+  }
   h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
   inner.innerHTML = h;
   showOverlay();
