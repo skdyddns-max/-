@@ -240,9 +240,10 @@
 <section class="step" id="step6">
   <div class="card">
     <h2>⚙ 설정</h2>
-    <label>생성 방식</label>
+    <label>대본 생성 방식</label>
     <select id="s-mode" onchange="app.saveSettings()">
-      <option value="api">Claude API 자동 생성 (API 키 필요)</option>
+      <option value="api">Claude API 자동 생성 (Anthropic 키 필요)</option>
+      <option value="gemini">Gemini API 자동 생성 (Google 키 필요 · 무료 등급 가능)</option>
       <option value="copy">프롬프트 복사 모드 (API 키 불필요)</option>
     </select>
     <label>Anthropic API 키 <span class="hint">(이 브라우저에만 저장됩니다 — 공용 PC에서는 사용하지 마세요)</span></label>
@@ -259,7 +260,7 @@
       <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast (프리뷰)</option>
       <option value="veo-3.1-generate-preview">Veo 3.1 (프리뷰)</option>
     </select>
-    <p class="muted" style="margin-top:8px;">키는 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>에서 발급합니다. Veo 영상 생성은 Gemini API <b>유료 등급</b>에서 제공되며, 영상 1개(8초)당 과금됩니다. 키를 넣으면 ③ 영상 제작 단계에서 장면별로 바로 생성할 수 있습니다.</p>
+    <p class="muted" style="margin-top:8px;">키는 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>에서 발급합니다. 이 키 하나로 <b>대본 생성(무료 등급 가능)</b> · <b>Veo 영상 생성(유료 등급, 영상 1개당 과금)</b> · <b>TTS 더빙 생성</b>을 모두 사용합니다.</p>
     <hr class="divider">
     <h3>🎬 영상 생성 도구 바로가기</h3>
     <p class="muted">③ 영상 제작 단계의 프롬프트를 아래 도구에 붙여넣어 영상을 만드세요.</p>
@@ -398,11 +399,8 @@ function buildUserPrompt(f) {
 캐릭터는 2~3명, 각 장면은 5~10초 영상 1개 기준으로 작성해 주세요.`;
 }
 
-// 프롬프트 복사 모드용: 스키마 설명을 포함한 전체 프롬프트
-function buildCopyPrompt(f) {
-  return SYSTEM_PROMPT + "\n\n" + buildUserPrompt(f) + `
-
-결과는 아래 구조의 JSON **하나만** 출력하세요. JSON 외의 설명 문장은 쓰지 마세요.
+// JSON 출력 구조 안내 (프롬프트 복사 모드 + Gemini 모드 공용)
+const SCHEMA_GUIDE = `결과는 아래 구조의 JSON **하나만** 출력하세요. JSON 외의 설명 문장은 쓰지 마세요.
 
 {
   "title": "에피소드 제목(한국어)",
@@ -425,6 +423,10 @@ function buildCopyPrompt(f) {
     { "after_scene": 1, "question": "질문", "options": ["선택지1","선택지2","선택지3"], "answer_index": 0, "explanation": "해설" }
   ]
 }`;
+
+// 프롬프트 복사 모드용: 스키마 설명을 포함한 전체 프롬프트
+function buildCopyPrompt(f) {
+  return SYSTEM_PROMPT + "\n\n" + buildUserPrompt(f) + "\n\n" + SCHEMA_GUIDE;
 }
 
 function buildRevisePrompt(scene, feedback) {
@@ -474,6 +476,34 @@ async function callClaude(userPrompt, schema) {
   }
   const text = response.content.find(b => b.type === "text")?.text ?? "";
   return JSON.parse(text);
+}
+
+/* ---------- Gemini 텍스트 생성 (대본) ---------- */
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+
+function stripFences(s) {
+  return String(s).trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+}
+
+async function callGemini(userPrompt, system = SYSTEM_PROMPT) {
+  const key = state.settings.geminiKey;
+  const res = await fetch(`${GEMINI_BASE}/models/gemini-2.5-flash:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig: { responseMimeType: "application/json" },
+    }),
+  });
+  if (!res.ok) throw await geminiError(res);
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  if (!text) {
+    const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || "";
+    throw new Error("Gemini 응답이 비어 있습니다" + (reason ? " (" + reason + ")" : "") + ". 다시 시도해 주세요.");
+  }
+  return JSON.parse(stripFences(text));
 }
 
 function apiErrorMessage(err) {
@@ -532,11 +562,16 @@ const app = {
     if (!f.skill) { setStatus("gen-status", "error", "목표 화용 기술을 입력해 주세요."); return; }
     state.form = f;
 
-    if (state.settings.mode === "copy" || !state.settings.apiKey) {
+    const engine = state.settings.mode;
+    const hasKey = engine === "api" ? !!state.settings.apiKey
+                 : engine === "gemini" ? !!state.settings.geminiKey
+                 : false;
+
+    if (engine === "copy" || !hasKey) {
       // 프롬프트 복사 모드
       $("copy-mode-box").style.display = "block";
       $("copy-prompt").textContent = buildCopyPrompt(f);
-      if (state.settings.mode === "api" && !state.settings.apiKey) {
+      if (engine !== "copy" && !hasKey) {
         setStatus("gen-status", "info", "API 키가 설정되지 않아 <b>프롬프트 복사 모드</b>로 전환했습니다. 아래 프롬프트를 복사해 claude.ai에 붙여넣으세요. (⚙ 설정에서 키를 넣으면 자동 생성됩니다)");
       } else {
         setStatus("gen-status", "info", "아래 프롬프트를 복사해 claude.ai 또는 ChatGPT에 붙여넣고, 결과 JSON을 붙여넣기 칸에 넣어 주세요.");
@@ -545,12 +580,15 @@ const app = {
       return;
     }
 
-    // API 모드
+    // 자동 생성 (Claude 또는 Gemini)
     const btn = $("btn-generate");
     btn.disabled = true;
     setStatus("gen-status", "info", '<span class="spinner"></span>시나리오를 생성하고 있습니다… (30초~2분 정도 걸릴 수 있어요)');
     try {
-      const project = await callClaude(buildUserPrompt(f), PROJECT_SCHEMA);
+      const project = engine === "gemini"
+        ? await callGemini(buildUserPrompt(f) + "\n\n" + SCHEMA_GUIDE)
+        : await callClaude(buildUserPrompt(f), PROJECT_SCHEMA);
+      if (!project.scenes || !project.characters) throw new Error("생성 결과의 형식이 올바르지 않습니다. 다시 시도해 주세요.");
       state.project = project;
       state.videos = {};
       save();
@@ -558,7 +596,7 @@ const app = {
       setStatus("gen-status", "info", `✅ "<b>${esc(project.title)}</b>" 시나리오가 완성되었습니다! ② 대본 탭에서 확인하세요.`);
       this.go(2);
     } catch (err) {
-      setStatus("gen-status", "error", "⚠️ " + esc(apiErrorMessage(err)));
+      setStatus("gen-status", "error", "⚠️ " + esc(engine === "gemini" ? (err.message || String(err)) : apiErrorMessage(err)));
     } finally {
       btn.disabled = false;
     }
@@ -588,7 +626,12 @@ const app = {
     if (!feedback) { alert("수정 요청 내용을 입력해 주세요."); return; }
     const scene = state.project.scenes[idx];
 
-    if (state.settings.mode === "copy" || !state.settings.apiKey) {
+    const engine = state.settings.mode;
+    const hasKey = engine === "api" ? !!state.settings.apiKey
+                 : engine === "gemini" ? !!state.settings.geminiKey
+                 : false;
+
+    if (engine === "copy" || !hasKey) {
       // 복사 모드: 수정 프롬프트를 보여주고 결과를 붙여넣게 함
       const box = $("rev-copy-" + idx);
       box.style.display = "block";
@@ -600,14 +643,16 @@ const app = {
     const btn = $("rev-btn-" + idx);
     btn.disabled = true; btn.textContent = "수정 중…";
     try {
-      const revised = await callClaude(buildRevisePrompt(scene, feedback), SCENE_SCHEMA);
+      const revised = engine === "gemini"
+        ? await callGemini(buildRevisePrompt(scene, feedback) + "\n\n수정된 장면을 원래 장면과 같은 구조의 JSON 하나만으로 출력하세요.")
+        : await callClaude(buildRevisePrompt(scene, feedback), SCENE_SCHEMA);
       revised.no = scene.no; // 번호 고정
       state.project.scenes[idx] = revised;
       save();
       this.renderAll();
       this.go(2);
     } catch (err) {
-      alert("수정 실패: " + apiErrorMessage(err));
+      alert("수정 실패: " + (engine === "gemini" ? (err.message || String(err)) : apiErrorMessage(err)));
       btn.disabled = false; btn.textContent = "✏️ 이 장면 수정하기";
     }
   },
@@ -728,9 +773,14 @@ const app = {
     let html = `
       <div class="card">
         <h2>③ 영상 · 음성 제작</h2>
-        <p class="muted"><b>방법 A (자동)</b>: ⚙ 설정에 Gemini API 키를 넣으면 장면별 <b>🎬 Veo로 바로 생성</b> 버튼으로 이 화면에서 영상을 만들고 mp4로 저장할 수 있습니다.</p>
+        <p class="muted"><b>방법 A (자동)</b>: ⚙ 설정에 Gemini API 키를 넣으면 장면별 <b>🎬 Veo로 바로 생성</b>(영상)과 <b>🎙 TTS 더빙 생성</b>(음성)을 이 화면에서 바로 만들고 저장할 수 있습니다.</p>
         <p class="muted"><b>방법 B (수동)</b>: 영상 프롬프트를 복사해 Kling·Sora·Runway 등에 붙여넣어 만드세요. <b>더빙 대본</b>은 Typecast 등 한국어 TTS에 사용합니다.</p>
         <p class="muted">💡 캐릭터 일관성 팁: 모든 프롬프트에 같은 캐릭터 묘사가 이미 포함되어 있습니다. 같은 도구·같은 스타일로 한 번에 생성하는 것이 가장 안정적입니다.</p>
+        <div class="checkline">
+          <input type="checkbox" id="veo-audio" ${state.settings.veoAudio !== false ? "checked" : ""}
+                 onchange="app.saveVeoAudio(this.checked)">
+          <span>Veo 영상에 한국어 대사 오디오 포함 <span class="hint">(Veo 3 음성 생성 — 캐릭터가 대사를 직접 말합니다. 발음이 어색하면 끄고 TTS 더빙을 사용하세요)</span></span>
+        </div>
       </div>`;
 
     p.scenes.forEach(s => {
@@ -748,6 +798,9 @@ const app = {
         <h3>🎙 더빙 대본 (TTS용)</h3>
         <div class="promptbox" id="tts-${s.no}">${esc(ttsScript)}</div>
         <button class="btn btn-ghost btn-sm" onclick="app.copyText('tts-${s.no}')">📋 대본 복사</button>
+        <button class="btn btn-sage btn-sm" id="tts-btn-${s.no}" onclick="app.generateTTS(${s.no})">🎙 Gemini TTS로 더빙 생성</button>
+        <div class="status" id="tts-status-${s.no}"></div>
+        <div id="tts-out-${s.no}">${ttsPreviewHTML(s.no)}</div>
         <p class="muted">더빙 지시: ${esc(s.tts_note_ko)}</p>
 
         <label>완성된 영상 메모 <span class="hint">(파일명 또는 링크)</span></label>
@@ -880,12 +933,19 @@ const app = {
     const base = "https://generativelanguage.googleapis.com/v1beta";
     const headers = { "Content-Type": "application/json", "x-goog-api-key": key };
 
+    // Veo 3 음성 생성: 대사 오디오 포함 옵션이 켜져 있으면 대사를 프롬프트에 실어 보냄
+    let prompt = scene.video_prompt_en;
+    if (state.settings.veoAudio !== false && scene.dialogue?.length) {
+      prompt += "\n\nAudio: The characters speak in Korean with clear, warm, child-friendly voices. Dialogue:\n" +
+        scene.dialogue.map(d => `${d.speaker} says in Korean: "${d.line}" (${d.emotion})`).join("\n");
+    }
+
     try {
       // 1) 생성 요청 (장기 실행 작업)
       let res = await fetch(`${base}/models/${model}:predictLongRunning`, {
         method: "POST", headers,
         body: JSON.stringify({
-          instances: [{ prompt: scene.video_prompt_en }],
+          instances: [{ prompt }],
           parameters: { aspectRatio: "16:9" },
         }),
       });
@@ -944,6 +1004,73 @@ const app = {
     if (!r) return;
     downloadBlob(r.blob, sanitizeName(state.project?.title || "장면") + `_장면${no}.mp4`);
   },
+
+  saveVeoAudio(v) {
+    state.settings.veoAudio = v;
+    save();
+  },
+
+  /* ---------- Gemini TTS 더빙 생성 ---------- */
+  async generateTTS(no) {
+    const key = state.settings.geminiKey;
+    if (!key) {
+      setStatus("tts-status-" + no, "error", "⚙ 설정에서 Google Gemini API 키를 먼저 입력해 주세요.");
+      return;
+    }
+    const scene = state.project.scenes.find(s => s.no === no);
+    const spoken = scene.dialogue.filter(d => d.line && !/^\(.*\)$/.test(d.line.trim())); // 지문만 있는 줄 제외
+    if (!spoken.length) {
+      setStatus("tts-status-" + no, "error", "이 장면에는 읽을 대사가 없습니다.");
+      return;
+    }
+    const btn = $("tts-btn-" + no);
+    btn.disabled = true;
+    const statusId = "tts-status-" + no;
+    setStatus(statusId, "info", '<span class="spinner"></span>더빙 음성을 생성하고 있습니다…');
+
+    const speakers = [...new Set(spoken.map(d => d.speaker))];
+    const transcript = spoken.map(d => `${d.speaker}: ${d.line}`).join("\n");
+    const direction = `다음 대화를 자연스러운 한국어로 읽어주세요. 아동용 콘텐츠이므로 밝고 명확하게, 각 대사의 감정을 살려서. ${scene.tts_note_ko || ""}\n\n`;
+
+    // Gemini TTS는 다중 화자를 최대 2명까지 지원 — 넘으면 한 목소리로 낭독
+    const VOICES = ["Kore", "Puck"];
+    const speechConfig = speakers.length <= 2
+      ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: speakers.map((sp, i) => ({
+            speaker: sp, voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[i] } },
+          })) } }
+      : { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } };
+
+    try {
+      const res = await fetch(`${GEMINI_BASE}/models/gemini-2.5-flash-preview-tts:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: direction + transcript }] }],
+          generationConfig: { responseModalities: ["AUDIO"], speechConfig },
+        }),
+      });
+      if (!res.ok) throw await geminiError(res);
+      const data = await res.json();
+      const part = (data.candidates?.[0]?.content?.parts || []).find(p => p.inlineData?.data);
+      if (!part) throw new Error("응답에 음성이 포함되지 않았습니다. 다시 시도해 주세요.");
+      const rate = parseInt((part.inlineData.mimeType || "").match(/rate=(\d+)/)?.[1] || "24000", 10);
+      const blob = pcmBase64ToWavBlob(part.inlineData.data, rate);
+      if (ttsResults[no]) URL.revokeObjectURL(ttsResults[no].url);
+      ttsResults[no] = { blob, url: URL.createObjectURL(blob) };
+      $("tts-out-" + no).innerHTML = ttsPreviewHTML(no);
+      setStatus(statusId, "info", "✅ 더빙이 완성되었습니다! 들어보고 마음에 들면 <b>wav 저장</b>을 눌러 보관하세요.");
+    } catch (err) {
+      setStatus(statusId, "error", "⚠️ " + esc(err.message || String(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  saveTTS(no) {
+    const r = ttsResults[no];
+    if (!r) return;
+    downloadBlob(r.blob, sanitizeName(state.project?.title || "장면") + `_장면${no}_더빙.wav`);
+  },
 };
 
 function sanitizeName(s) { return String(s).replace(/[\\/:*?"<>|]/g, "_").slice(0, 40) || "화용스튜디오"; }
@@ -967,6 +1094,36 @@ function veoPreviewHTML(no) {
   if (!r) return "";
   return `<video controls playsinline src="${r.url}" style="width:100%;border-radius:10px;margin-top:10px;background:#000;"></video>
     <button class="btn btn-primary btn-sm" onclick="app.saveVeo(${no})">⬇️ mp4 저장</button>`;
+}
+
+/* ---------- Gemini TTS 보조 ---------- */
+const ttsResults = {};   // sceneNo -> { blob, url }  (세션 중에만 유지)
+
+function ttsPreviewHTML(no) {
+  const r = ttsResults[no];
+  if (!r) return "";
+  return `<audio controls src="${r.url}" style="width:100%;margin-top:10px;"></audio>
+    <button class="btn btn-primary btn-sm" onclick="app.saveTTS(${no})">⬇️ wav 저장</button>`;
+}
+
+// Gemini TTS는 원시 PCM(16비트 모노)을 돌려주므로 WAV 헤더를 붙여 재생 가능하게 만든다
+function pcmBase64ToWavBlob(b64, sampleRate) {
+  const bin = atob(b64);
+  const len = bin.length;
+  const buf = new ArrayBuffer(44 + len);
+  const v = new DataView(buf);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, "RIFF"); v.setUint32(4, 36 + len, true); writeStr(8, "WAVE");
+  writeStr(12, "fmt "); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);                 // PCM
+  v.setUint16(22, 1, true);                 // 모노
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 2, true);    // byte rate (16bit mono)
+  v.setUint16(32, 2, true);                 // block align
+  v.setUint16(34, 16, true);                // bits per sample
+  writeStr(36, "data"); v.setUint32(40, len, true);
+  for (let i = 0; i < len; i++) v.setUint8(44 + i, bin.charCodeAt(i));
+  return new Blob([buf], { type: "audio/wav" });
 }
 
 function downloadBlob(blob, filename) {
