@@ -121,6 +121,7 @@
 </header>
 
 <nav id="nav">
+  <button data-step="0" onclick="app.go(0)">📚 목록</button>
   <button data-step="1" class="active" onclick="app.go(1)">① 목표 설정</button>
   <button data-step="2" onclick="app.go(2)">② 대본</button>
   <button data-step="3" onclick="app.go(3)">③ 영상 제작</button>
@@ -130,6 +131,16 @@
 </nav>
 
 <main>
+
+<!-- 📚 프로젝트 목록 -->
+<section class="step" id="step0">
+  <div class="card">
+    <h2>📚 내 프로젝트</h2>
+    <p class="muted">목표 기술·아동별로 프로젝트를 여러 개 만들어 관리할 수 있습니다. 모든 프로젝트는 이 브라우저에 저장됩니다.</p>
+    <button class="btn btn-primary" onclick="app.newProject()">＋ 새 프로젝트</button>
+  </div>
+  <div id="library-area"></div>
+</section>
 
 <!-- ① 목표 설정 -->
 <section class="step visible" id="step1">
@@ -223,7 +234,7 @@
   <div class="card">
     <h2>⑤ 내보내기</h2>
     <h3>🎯 치료용 인터랙티브 플레이어</h3>
-    <p class="muted">영상 재생 → 장면 사이 퀴즈 → 세션 요약 → 토론 질문까지 진행되는 독립 실행형 HTML 파일입니다. 태블릿이나 PC에서 파일을 열고, 만들어 둔 영상 파일을 장면별로 지정하면 바로 치료 세션에 사용할 수 있습니다. (인터넷 연결 불필요)</p>
+    <p class="muted">영상 재생 → 장면 사이 퀴즈 → 세션 요약 → 토론 질문까지 진행되는 독립 실행형 HTML 파일입니다. 태블릿이나 PC에서 파일을 열고, 만들어 둔 영상 파일(+선택: 더빙 음성)을 장면별로 지정하면 바로 치료 세션에 사용할 수 있습니다. 더빙 음성을 지정하면 영상과 동시에 재생됩니다. (인터넷 연결 불필요)</p>
     <p class="muted">📊 <b>진행 기록</b>: 아동 이름을 입력하고 세션을 마치면 퀴즈 시도 횟수·첫 시도 정답률이 자동 저장되고, 지난 기록을 CSV(엑셀)로 내려받을 수 있습니다. 🔁 장면 다시 보기 버튼으로 반복 시청도 지원합니다.</p>
     <button class="btn btn-primary" onclick="app.exportPlayer()">⬇️ 플레이어 HTML 다운로드</button>
     <hr class="divider">
@@ -287,17 +298,45 @@ const LS_KEY = "pragStudio_v1";
 
 const state = {
   settings: { mode: "api", apiKey: "", geminiKey: "", veoModel: "veo-3.0-fast-generate-001" },
-  form: null,          // 마지막 생성에 쓴 폼 값
-  project: null,       // { title, characters[], scenes[], quiz[] }
-  videos: {},          // sceneNo -> 메모(URL/파일명)
+  form: null,          // 마지막 생성에 쓴 폼 값 (작업 중 프로젝트)
+  project: null,       // { title, characters[], scenes[], quiz[] } (작업 중 프로젝트)
+  videos: {},          // sceneNo -> 메모(URL/파일명) (작업 중 프로젝트)
+  projects: [],        // 프로젝트 라이브러리 [{id, createdAt, updatedAt, form, project, videos}]
+  currentId: null,     // 작업 중 프로젝트의 라이브러리 id
 };
 
-function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function save() {
+  // 작업 중 프로젝트를 라이브러리에 동기화
+  if (state.project) {
+    if (!state.currentId) state.currentId = String(Date.now());
+    let entry = state.projects.find(p => p.id === state.currentId);
+    if (!entry) {
+      entry = { id: state.currentId, createdAt: new Date().toISOString() };
+      state.projects.push(entry);
+    }
+    entry.form = state.form;
+    entry.project = state.project;
+    entry.videos = state.videos;
+    entry.updatedAt = new Date().toISOString();
+  }
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) Object.assign(state, JSON.parse(raw));
   } catch (e) { /* 손상된 저장분은 무시 */ }
+  // 구버전(단일 프로젝트) 저장분 마이그레이션
+  if (!Array.isArray(state.projects)) { state.projects = []; state.currentId = null; }
+  if (state.project && !state.projects.some(p => p.id === state.currentId)) {
+    const id = state.currentId || String(Date.now());
+    state.currentId = id;
+    state.projects.push({
+      id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      form: state.form, project: state.project, videos: state.videos,
+    });
+  }
 }
 
 /* ============================================================
@@ -712,11 +751,85 @@ const app = {
     this.renderQuiz();
   },
 
+  /* ---------- 프로젝트 라이브러리 ---------- */
+  newProject() {
+    save(); // 작업 중이던 것 보존
+    state.project = null;
+    state.form = null;
+    state.videos = {};
+    state.currentId = String(Date.now());
+    save();
+    fillFormUI();
+    this.renderAll();
+    this.go(1);
+  },
+
+  openProject(id) {
+    save();
+    const entry = state.projects.find(p => p.id === id);
+    if (!entry) return;
+    state.currentId = entry.id;
+    state.form = entry.form || null;
+    state.project = entry.project || null;
+    state.videos = entry.videos || {};
+    save();
+    fillFormUI();
+    this.renderAll();
+    this.go(state.project ? 2 : 1);
+  },
+
+  duplicateProject(id) {
+    const entry = state.projects.find(p => p.id === id);
+    if (!entry) return;
+    const copy = JSON.parse(JSON.stringify(entry));
+    copy.id = String(Date.now());
+    copy.createdAt = copy.updatedAt = new Date().toISOString();
+    if (copy.project?.title) copy.project.title += " (복사본)";
+    state.projects.push(copy);
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    this.renderLibrary();
+  },
+
+  deleteProject(id) {
+    const entry = state.projects.find(p => p.id === id);
+    if (!entry) return;
+    if (!confirm(`"${entry.project?.title || "이 프로젝트"}"를 삭제할까요?`)) return;
+    state.projects = state.projects.filter(p => p.id !== id);
+    if (state.currentId === id) {
+      state.currentId = null;
+      state.project = null;
+      state.form = null;
+      state.videos = {};
+      fillFormUI();
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    this.renderAll();
+  },
+
+  renderLibrary() {
+    const area = $("library-area");
+    if (!area) return;
+    if (!state.projects.length) {
+      area.innerHTML = '<div class="empty">저장된 프로젝트가 없습니다.<br>① 목표 설정에서 시나리오를 생성하면 자동으로 여기에 저장됩니다.</div>';
+      return;
+    }
+    const sorted = state.projects.slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+    area.innerHTML = sorted.map(p => `
+      <div class="card scene-card">
+        <h2>${esc(p.project?.title || "(제목 없음)")}${p.id === state.currentId ? '<span class="tag positive">작업 중</span>' : ""}</h2>
+        <p class="muted">목표: ${esc(p.form?.skill || "-")} · 장면 ${p.project?.scenes?.length || 0}개 · 수정: ${esc((p.updatedAt || "").slice(0, 10))}</p>
+        <button class="btn btn-sage btn-sm" onclick="app.openProject('${p.id}')">📂 열기</button>
+        <button class="btn btn-ghost btn-sm" onclick="app.duplicateProject('${p.id}')">📄 복제</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="app.deleteProject('${p.id}')">삭제</button>
+      </div>`).join("");
+  },
+
   /* ---------- 렌더링 ---------- */
   renderAll() {
     this.renderScenario();
     this.renderVideo();
     this.renderQuiz();
+    this.renderLibrary();
     this.updateNavBadges();
   },
 
@@ -894,9 +1007,11 @@ const app = {
   },
 
   resetAll() {
-    if (!confirm("프로젝트를 모두 지우고 처음부터 시작할까요? (설정은 유지됩니다)")) return;
+    if (!confirm("저장된 프로젝트를 전부 지우고 처음부터 시작할까요? (설정은 유지됩니다)")) return;
     state.project = null; state.form = null; state.videos = {};
-    save();
+    state.projects = []; state.currentId = null;
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    fillFormUI();
     this.renderAll();
     this.go(1);
   },
@@ -1198,7 +1313,7 @@ function buildPlayerHTML(project) {
 <body>
 <div id="setup">
   <h1>🎬 ${esc(project.title)}</h1>
-  <p>아동 이름을 적고, 장면별 영상 파일을 지정한 뒤 시작하세요. 영상이 없는 장면은 건너뜁니다.</p>
+  <p>아동 이름을 적고, 장면별 영상 파일을 지정한 뒤 시작하세요. 영상이 없는 장면은 건너뜁니다. 더빙 음성(wav/mp3)을 함께 지정하면 영상과 동시에 재생됩니다 — 영상에 이미 대사 음성이 들어 있다면 비워 두세요.</p>
   <h3>👧 아동 이름 <span style="font-weight:400;color:#c9beb4;">(기록에 남습니다 · 선택)</span></h3>
   <input class="name" id="child-name" placeholder="예: 지우">
   <h3>🎞 장면 영상</h3>
@@ -1282,22 +1397,40 @@ function clearLogs() {
 }
 
 // ----- 준비 화면 -----
+var audios = {};   // sceneNo -> objectURL (더빙 음성, 선택)
 var slots = document.getElementById("slots");
 PROJECT.scenes.forEach(function(s){
   var d = document.createElement("div");
   d.className = "slot";
   d.innerHTML = "<b>장면 " + s.no + ". " + escText(s.title) + "</b>";
+
   var inp = document.createElement("input");
   inp.type = "file"; inp.accept = "video/*";
   inp.addEventListener("change", function(){
     if (inp.files[0]) {
       files[s.no] = URL.createObjectURL(inp.files[0]);
-      var ok = d.querySelector(".ok") || d.appendChild(document.createElement("div"));
-      ok.className = "ok"; ok.textContent = "✓ " + inp.files[0].name;
+      var ok = d.querySelector(".ok-v") || d.insertBefore(document.createElement("div"), audLabel);
+      ok.className = "ok ok-v"; ok.textContent = "✓ " + inp.files[0].name;
       document.getElementById("start").disabled = Object.keys(files).length === 0;
     }
   });
   d.appendChild(inp);
+
+  var audLabel = document.createElement("div");
+  audLabel.style.cssText = "margin-top:8px;font-size:12px;color:#c9beb4;";
+  audLabel.textContent = "🎙 더빙 음성 (선택)";
+  d.appendChild(audLabel);
+  var inpA = document.createElement("input");
+  inpA.type = "file"; inpA.accept = "audio/*";
+  inpA.addEventListener("change", function(){
+    if (inpA.files[0]) {
+      audios[s.no] = URL.createObjectURL(inpA.files[0]);
+      var ok = d.querySelector(".ok-a") || d.appendChild(document.createElement("div"));
+      ok.className = "ok ok-a"; ok.textContent = "✓ " + inpA.files[0].name;
+    }
+  });
+  d.appendChild(inpA);
+
   slots.appendChild(d);
 });
 renderLogs();
@@ -1311,7 +1444,10 @@ document.getElementById("start").addEventListener("click", function(){
 });
 
 var vid = document.getElementById("vid");
-vid.addEventListener("ended", function(){ afterScene(order[pos]); });
+var aud = new Audio();   // 더빙 음성 — 영상과 함께 재생/일시정지
+vid.addEventListener("ended", function(){ aud.pause(); afterScene(order[pos]); });
+vid.addEventListener("play", function(){ if (audios[order[pos]]) aud.play().catch(function(){}); });
+vid.addEventListener("pause", function(){ if (!vid.ended) aud.pause(); });
 
 function next() {
   pos++;
@@ -1321,6 +1457,8 @@ function next() {
   var scene = sceneByNo(no);
   document.getElementById("bar-title").textContent = "장면 " + no + " / " + order[order.length-1] + " · " + scene.title;
   hideOverlay();
+  aud.pause();
+  if (audios[no]) { aud.src = audios[no]; aud.currentTime = 0; }
   vid.src = files[no];
   vid.play();
 }
@@ -1328,6 +1466,7 @@ function next() {
 function replayCurrent() {
   if (pos < 0 || pos >= order.length) return;
   hideOverlay();
+  if (audios[order[pos]]) aud.currentTime = 0;
   vid.currentTime = 0;
   vid.play();
 }
@@ -1423,20 +1562,27 @@ function escText(s){ var d = document.createElement("div"); d.textContent = s ==
 /* ============================================================
    초기화
    ============================================================ */
+// 작업 중 프로젝트의 폼 값을 화면에 반영 (없으면 기본값)
+function fillFormUI() {
+  const f = state.form || {};
+  $("f-skill").value = f.skill || "";
+  $("f-skill-preset").value = "";
+  $("f-age").value = f.age || "5~7세";
+  $("f-count").value = String(f.count || 3);
+  $("f-place").value = f.place || "";
+  $("f-traits").value = f.traits || "";
+  $("f-style").value = f.style || "따뜻한 2D 애니메이션 (아동용, 권장)";
+  $("f-negative").checked = f.negative !== false;
+  $("paste-json").value = "";
+  $("copy-mode-box").style.display = "none";
+  clearStatus("gen-status");
+}
+
 load();
 window.app = app;
 app.loadSettingsUI();
 app.renderAll();
-if (state.form) {
-  // 마지막 입력값 복원
-  $("f-skill").value = state.form.skill || "";
-  $("f-age").value = state.form.age || "5~7세";
-  $("f-count").value = String(state.form.count || 3);
-  $("f-place").value = state.form.place || "";
-  $("f-traits").value = state.form.traits || "";
-  $("f-style").value = state.form.style || "따뜻한 2D 애니메이션 (아동용, 권장)";
-  $("f-negative").checked = state.form.negative !== false;
-}
+fillFormUI();
 </script>
 </body>
 </html>
