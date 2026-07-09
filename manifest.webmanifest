@@ -1,0 +1,14 @@
+{
+  "name": "화용 스튜디오 — AI 영상 화용언어치료 제작 도구",
+  "short_name": "화용 스튜디오",
+  "description": "대본·영상·음성·퀴즈·감정 카드까지, 화용언어치료 콘텐츠 통합 제작 도구",
+  "start_url": "./studio.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F8F4F0",
+  "theme_color": "#C4817E",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

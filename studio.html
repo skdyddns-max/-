@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>화용 스튜디오 — AI 영상 화용언어치료 제작 도구</title>
+<meta name="theme-color" content="#C4817E">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root {
@@ -318,6 +321,7 @@
     <h3>🎯 치료용 인터랙티브 플레이어</h3>
     <p class="muted">영상 재생 → 장면 사이 퀴즈 → 세션 요약 → 토론 질문까지 진행되는 독립 실행형 HTML 파일입니다. 태블릿이나 PC에서 파일을 열고, 만들어 둔 영상 파일(+선택: 더빙 음성)을 장면별로 지정하면 바로 치료 세션에 사용할 수 있습니다. 더빙 음성을 지정하면 영상과 동시에 재생됩니다. (인터넷 연결 불필요)</p>
     <p class="muted">📊 <b>진행 기록</b>: 아동 이름을 입력하고 세션을 마치면 퀴즈 시도 횟수·첫 시도 정답률이 자동 저장되고, 지난 기록을 CSV(엑셀)로 내려받을 수 있습니다. 🔁 장면 다시 보기 버튼으로 반복 시청도 지원합니다.</p>
+    <p class="muted">🎤 <b>말하기 연습</b>: 퀴즈가 끝나면 아동이 주인공의 대사를 직접 말하고 녹음해 들어보는 역할극 단계가 이어집니다(플레이어에서 켜고 끌 수 있음). "스스로/도움 받아 말했어요" 평가가 기록에 함께 남습니다.</p>
     <button class="btn btn-primary" onclick="app.exportPlayer()">⬇️ 플레이어 HTML 다운로드</button>
     <hr class="divider">
     <h3>🖨 인쇄용 활동지</h3>
@@ -1717,6 +1721,10 @@ function buildPlayerHTML(project, emotionCards = []) {
   <input class="name" id="child-name" placeholder="예: 지우">
   <h3>🎞 장면 영상</h3>
   <div id="slots"></div>
+  <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; cursor:pointer;">
+    <input type="checkbox" id="speak-on" checked style="accent-color:#C4817E; transform:scale(1.2);">
+    🎤 말하기 연습 포함 (퀴즈 후 아동이 대사를 직접 말하고 녹음해 봅니다)
+  </label>
   <button class="big" id="start" disabled>▶ 시작하기</button>
   <button class="big" id="emo-start" style="background:#8CA888; display:none;">🃏 감정 놀이 (영상 없이 가능)</button>
   <h3>📊 지난 기록</h3>
@@ -1973,11 +1981,96 @@ function sceneByNo(no) {
   return null;
 }
 
-// ----- 장면 종료 후: 퀴즈 → 다음 장면 -----
+// ----- 장면 종료 후: 퀴즈 → 말하기 연습 → 다음 장면 -----
 function afterScene(no) {
   for (var i = 0; i < PROJECT.quiz.length; i++) {
     if (PROJECT.quiz[i].after_scene === no) { showQuiz(PROJECT.quiz[i], i); return; }
   }
+  maybeSpeak(no);
+}
+
+// ----- 말하기 연습 (역할극) -----
+function speakOn() {
+  var el = document.getElementById("speak-on");
+  return el && el.checked;
+}
+
+function maybeSpeak(no) {
+  var s = sceneByNo(no);
+  var lines = s ? s.dialogue.filter(function(d){ return d.line && !/^\\(.*\\)$/.test(d.line.trim()); }) : [];
+  if (speakOn() && lines.length && !session.quizLog["spk-" + no]) {
+    showSpeak(s, lines);
+  } else {
+    next();
+  }
+}
+
+var recStream = null, recRecorder = null, recChunks = [], recUrl = null;
+
+function showSpeak(s, lines) {
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🎤 이제 직접 말해볼까요?</h2>";
+  h += "<div class='talk'>" + lines.map(function(d){
+    return "<b>" + escText(d.speaker) + "</b>: " + escText(d.line);
+  }).join("<br>") + "</div>";
+  h += "<p style='font-size:15px;color:#C7BCB1;margin:12px 0;'>" +
+       escText(session.child || "우리 친구") + "(이)가 주인공처럼 말해 보세요. 녹음해서 다시 들어볼 수 있어요.</p>";
+  h += "<div id='rec-area'>" +
+       "<button class='big' id='rec-btn' style='background:#8CA888;' onclick='toggleRec()'>⏺ 녹음 시작</button>" +
+       "<div id='rec-out'></div></div>";
+  h += "<p style='font-size:13px;color:#C7BCB1;margin:18px 0 6px;'>치료사 기록</p>";
+  h += "<button class='opt' onclick='rateSpeak(" + s.no + ", true)'>⭐ 스스로 말했어요</button>";
+  h += "<button class='opt' onclick='rateSpeak(" + s.no + ", false)'>🤝 도움 받아 말했어요</button>";
+  h += "<button class='mini' onclick='endSpeak(); next();'>건너뛰기 ▶</button>";
+  inner.innerHTML = h;
+  showOverlay();
+}
+
+async function toggleRec() {
+  var btn = document.getElementById("rec-btn");
+  if (recRecorder && recRecorder.state === "recording") {
+    recRecorder.stop();
+    btn.textContent = "⏺ 다시 녹음";
+    return;
+  }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    document.getElementById("rec-out").innerHTML =
+      "<p style='font-size:13px;color:#EBBE8E;margin-top:8px;'>마이크를 사용할 수 없어요 — 녹음 없이 말하기만 해도 좋아요!</p>";
+    btn.style.display = "none";
+    return;
+  }
+  recChunks = [];
+  recRecorder = new MediaRecorder(recStream);
+  recRecorder.ondataavailable = function(e){ if (e.data.size) recChunks.push(e.data); };
+  recRecorder.onstop = function(){
+    if (recUrl) URL.revokeObjectURL(recUrl);
+    recUrl = URL.createObjectURL(new Blob(recChunks, { type: recRecorder.mimeType || "audio/webm" }));
+    document.getElementById("rec-out").innerHTML =
+      "<audio controls src='" + recUrl + "' style='width:100%;margin-top:12px;'></audio>";
+    recStream.getTracks().forEach(function(t){ t.stop(); });
+  };
+  recRecorder.start();
+  btn.textContent = "⏹ 녹음 끝내기";
+  document.getElementById("rec-out").innerHTML =
+    "<p style='font-size:13px;color:#A3D6A0;margin-top:8px;'>🔴 녹음 중… 또박또박 말해 보세요!</p>";
+}
+
+function endSpeak() {
+  if (recRecorder && recRecorder.state === "recording") recRecorder.stop();
+  if (recStream) recStream.getTracks().forEach(function(t){ t.stop(); });
+  recRecorder = null; recStream = null;
+}
+
+function rateSpeak(no, independent) {
+  endSpeak();
+  var s = sceneByNo(no);
+  session.quizLog["spk-" + no] = {
+    question: "말하기: " + (s ? s.title : "장면 " + no),
+    attempts: independent ? 1 : 2,
+    firstTry: independent,
+  };
   next();
 }
 
@@ -2008,7 +2101,7 @@ function answer(q, qi, i, btn) {
     btn.classList.add("correct");
     fb.innerHTML = "🎉 딩동댕! " + escText(q.explanation) +
       "<br><br><button class='big' style='display:inline-block;width:auto;padding:12px 24px;background:#8CA888;' onclick='replayCurrent()'>🔁 장면 다시 보기</button>" +
-      " <button class='big' style='display:inline-block;width:auto;padding:12px 28px;' onclick='next()'>다음 장면 ▶</button>";
+      " <button class='big' style='display:inline-block;width:auto;padding:12px 28px;' onclick='maybeSpeak(" + q.after_scene + ")'>계속 ▶</button>";
     document.querySelectorAll(".opt").forEach(function(b){ b.disabled = true; });
   } else {
     btn.classList.add("wrong");
