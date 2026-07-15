@@ -172,6 +172,15 @@
   .art-ship{background:linear-gradient(150deg,#caa15f,#e4b578);display:grid;place-items:center;}
   .art-ship .pill{background:rgba(23,21,15,.86);color:#f3ecdf;font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:8px 14px;border-radius:999px;}
 
+  /* 소비자 관점 체크리스트 */
+  .scrut{margin-top:46px;display:grid;gap:2px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
+  .scrut-row{background:var(--paper);padding:24px 28px;display:flex;gap:20px;align-items:flex-start;transition:background .2s;}
+  .scrut-row:hover{background:#fbf9f3;}
+  .scrut-row .sn{font-family:var(--mono);font-size:13px;color:var(--accent-deep);font-weight:600;letter-spacing:.06em;padding-top:2px;flex:none;}
+  .scrut-row h4{font-size:17px;font-weight:800;letter-spacing:-.02em;}
+  .scrut-row p{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.65;}
+  .scrut-row p b{color:var(--ink);font-weight:700;}
+
   /* FEATURES */
   .feat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin-top:52px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
   @media(max-width:760px){ .feat-grid{grid-template-columns:1fr;} }
@@ -337,17 +346,65 @@
   .dp-specs .r .k{width:130px;flex:none;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#8a8377;padding-top:2px;}
   .dp-specs .r .v{color:#1B1813;font-weight:600;}
 
-  .dp-assure{background:var(--char);color:#EDE8DD;}
-  .dp-assure .dp-eyebrow{color:#e6c485;}
-  .dp-assure .dp-h{font-size:22px;font-weight:850;letter-spacing:-.03em;margin-top:12px;color:#fff;}
-  .dp-assure .items{margin-top:28px;display:grid;gap:2px;}
-  .dp-assure .it{display:flex;gap:13px;align-items:flex-start;font-size:14.5px;font-weight:500;color:#DED9CE;padding:14px 0;border-top:1px solid rgba(255,255,255,.1);line-height:1.55;}
-  .dp-assure .it .ck{color:var(--dp-accent);flex:none;font-weight:700;margin-top:1px;}
+  .dp .dp-h{font-size:22px;font-weight:850;line-height:1.3;letter-spacing:-.03em;margin-top:12px;}
 
-  .dp-voice{padding:64px 36px;background:#FBF9F4;text-align:center;}
-  .dp-voice .mark{font-family:Georgia,"Times New Roman",serif;font-size:52px;line-height:.4;color:var(--dp-accent);height:26px;}
-  .dp-voice .quote{font-size:20px;font-weight:700;line-height:1.6;letter-spacing:-.02em;margin-top:16px;max-width:24ch;margin-left:auto;margin-right:auto;}
-  .dp-voice .who{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:#8a8377;margin-top:20px;text-transform:uppercase;}
+  /* 무엇으로 만들었나 (실물 신뢰) */
+  .dp-material{background:#FBF9F4;}
+  .dp-material .frame{border-radius:14px;overflow:hidden;margin:20px 0 24px;border:1px solid rgba(23,21,15,.1);}
+  .dp-material .img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#e5e1d8;}
+  .dp-material .img-ph{aspect-ratio:4/3;}
+  .dp-mat-list{border-top:1px solid rgba(23,21,15,.1);}
+  .dp-mat{padding:17px 2px;border-bottom:1px solid rgba(23,21,15,.09);}
+  .dp-mat .top{display:flex;justify-content:space-between;gap:14px;align-items:baseline;}
+  .dp-mat .lab{font-size:15.5px;font-weight:800;letter-spacing:-.02em;}
+  .dp-mat .val{font-family:var(--mono);font-size:11.5px;color:var(--dp-accent-deep);letter-spacing:.02em;text-align:right;flex:none;}
+  .dp-mat .note{font-size:13px;color:#666157;margin-top:6px;line-height:1.6;}
+
+  /* 크기·스케일 */
+  .dp-size{margin-top:18px;font-size:13px;color:#5f5a50;display:flex;gap:9px;align-items:center;line-height:1.6;}
+  .dp-size .mono{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--dp-accent-deep);border:1px solid rgba(23,21,15,.18);padding:3px 6px;border-radius:5px;flex:none;}
+
+  /* 스펙 */
+  .dp-specsec{background:#F3EFE6;}
+
+  /* 적합성 (정직) */
+  .dp-fit{background:#FBF9F4;}
+  .dp-fit .cols{display:grid;gap:26px;margin-top:24px;}
+  .dp-fit .col h5{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;}
+  .dp-fit .good h5{color:var(--dp-accent-deep);}
+  .dp-fit .caution h5{color:#8a8377;}
+  .dp-fit .it{display:flex;gap:11px;align-items:flex-start;font-size:14.5px;padding:8px 0;line-height:1.5;color:#2b2721;}
+  .dp-fit .good .it .m{color:var(--dp-accent);font-weight:800;flex:none;}
+  .dp-fit .caution .it{color:#6b665c;}
+  .dp-fit .caution .it .m{color:#b4ad9f;flex:none;font-weight:700;}
+
+  /* 구성·가치 (다크 강조) */
+  .dp-offer{background:var(--char);color:#EDE8DD;}
+  .dp-offer .dp-eyebrow{color:#e6c485;}
+  .dp-offer .dp-h{color:#fff;}
+  .dp-offer .inc{margin-top:22px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;}
+  .dp-offer .inc .r{display:flex;gap:11px;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.09);font-size:14.5px;color:#DED9CE;}
+  .dp-offer .inc .r:last-child{border-bottom:none;}
+  .dp-offer .inc .r .c{color:var(--dp-accent);flex:none;font-weight:700;}
+  .dp-offer .reason{font-size:13.5px;color:#b7b1a4;margin-top:18px;line-height:1.8;}
+
+  /* 후기 (사회적 증거) */
+  .dp-reviews{background:#F3EFE6;}
+  .dp-reviews .note{font-family:var(--mono);font-size:10px;letter-spacing:.03em;color:#a49d8e;margin-top:12px;}
+  .dp-rev-list{margin-top:20px;display:grid;gap:13px;}
+  .dp-rev{background:#FBF9F4;border:1px solid rgba(23,21,15,.1);border-radius:14px;padding:19px;}
+  .dp-rev .stars{color:#E0A32A;letter-spacing:2px;font-size:13px;}
+  .dp-rev .q{font-size:14.5px;font-weight:600;line-height:1.62;margin-top:9px;letter-spacing:-.01em;}
+  .dp-rev .m{display:flex;gap:9px;margin-top:13px;font-family:var(--mono);font-size:10.5px;color:#8a8377;letter-spacing:.02em;align-items:center;}
+  .dp-rev .tag{background:var(--dp-accent);color:#1b1305;padding:3px 9px;border-radius:999px;font-weight:600;}
+
+  /* 안심 (리스크 제거) */
+  .dp-care{background:#FBF9F4;}
+  .dp-care .grid{margin-top:22px;border:1px solid rgba(23,21,15,.1);border-radius:14px;overflow:hidden;display:grid;gap:1px;background:rgba(23,21,15,.1);}
+  .dp-care .r{background:#FBF9F4;padding:16px 16px;display:flex;gap:13px;align-items:flex-start;}
+  .dp-care .r .ic{width:36px;height:24px;border-radius:6px;background:var(--dp-accent);color:#1b1305;display:grid;place-items:center;flex:none;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.02em;margin-top:1px;}
+  .dp-care .r .k{font-size:13.5px;font-weight:800;letter-spacing:-.01em;}
+  .dp-care .r .v{font-size:12.5px;color:#666157;margin-top:3px;line-height:1.6;}
 
   .dp-faq{background:#F3EFE6;}
   .dp-faq .list{margin-top:22px;}
@@ -437,7 +494,7 @@
 
   <div class="strip">
     <div class="strip-in">
-      <span>카피 <b>9개 섹션</b> 자동 작성</span><span class="sep">/</span>
+      <span>소비자 불안 <b>5가지</b> 해소</span><span class="sep">/</span>
       <span>감성 이미지 <b>3컷</b> 생성</span><span class="sep">/</span>
       <span>문구 <b>인라인 편집</b></span><span class="sep">/</span>
       <span><b>HTML</b> 그대로 내보내기</span>
@@ -475,6 +532,24 @@
     </div>
   </section>
 
+  <!-- 소비자 관점 -->
+  <section class="section tight" id="scrutiny">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">소비자의 눈</span>
+        <h2>결제 직전, 사람들은 이걸 확인합니다.</h2>
+        <p>예쁜 카피만으로는 지갑이 열리지 않아요. 구매를 막는 다섯 가지 불안을, 페이지가 순서대로 해소합니다.</p>
+      </div>
+      <div class="scrut reveal">
+        <div class="scrut-row"><span class="sn">01</span><div><h4>실물이 사진과 같을까</h4><p>크기·질감·소재·성분을 매크로 컷과 스케일 안내로 미리 보여줍니다.</p></div></div>
+        <div class="scrut-row"><span class="sn">02</span><div><h4>나한테 맞을까</h4><p>이런 분께 추천, 그리고 <b>정직한 비추천</b>까지. 솔직함이 신뢰를 만듭니다.</p></div></div>
+        <div class="scrut-row"><span class="sn">03</span><div><h4>이 값어치를 할까</h4><p>구성·포함 내역과 가치 근거로 가격을 납득시킵니다.</p></div></div>
+        <div class="scrut-row"><span class="sn">04</span><div><h4>남들도 만족했을까</h4><p>후기 톤과 태그로 사회적 증거의 자리를 잡아 둡니다(실제 후기로 교체).</p></div></div>
+        <div class="scrut-row"><span class="sn">05</span><div><h4>안 맞으면 어쩌지</h4><p>배송·교환·환불·보증 안내로 마지막 망설임을 걷어냅니다.</p></div></div>
+      </div>
+    </div>
+  </section>
+
   <!-- FEATURES -->
   <section class="section tight" id="features" style="background:var(--sand);">
     <div class="wrap">
@@ -487,7 +562,7 @@
         <div class="feat">
           <div class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
           <h3>구매 심리를 담은 카피</h3>
-          <p>후킹 헤드라인 · 문제–공감–해결 · 혜택 중심 서술 · 사회적 증거 · 명확한 CTA까지, 9개 섹션을 한 번에.</p>
+          <p>후킹·공감·혜택은 기본. 실물 신뢰·적합성·가치·후기·안심까지, 구매를 막는 불안을 정면으로 해소합니다.</p>
         </div>
         <div class="feat">
           <div class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.6-3.6a2 2 0 0 0-2.8 0L6 20"/></svg></div>
@@ -727,38 +802,48 @@ async function callGeminiImage(prompt, refImages){
 }
 
 /* ---------- 프롬프트 ---------- */
-const COPY_SYSTEM = `당신은 한국 이커머스·SNS 상세페이지 전문 카피라이터이자 퍼포먼스 마케터입니다.
-소비자 구매 심리(AIDA, 후킹, 문제-공감-해결, 혜택 중심 서술, 사회적 증거, 희소성, 명확한 CTA)를 능숙하게 활용합니다.
-사용자가 준 제품 정보를 바탕으로, 스크롤을 멈추게 하고 구매로 이어지는 상세페이지 카피를 작성하세요.
+const COPY_SYSTEM = `당신은 한국 이커머스·SNS 상세페이지 전문 카피라이터이자 전환율 최적화(CRO) 전문가입니다.
 
-작성 원칙:
-- 스펙이 아니라 "고객이 얻는 변화·이득"을 말한다.
-- 첫 헤드라인은 3초 안에 시선을 잡는 후킹 문장으로.
-- 과장·허위·의학적 효능 단정은 피하고, 매력적이되 신뢰가는 톤을 유지한다.
-- 한국어로 자연스럽고 세련되게. 군더더기·상투적 표현은 줄인다.
-- 정보가 부족하면 카테고리 관점에서 그럴듯하게 채우되, 구체적 수치·인증은 지어내지 않는다.
+■ 핵심 관점 — "소비자가 결제 직전 유심히 보는 것"
+온라인 구매자는 사기 전에 머릿속으로 다섯 가지 불안을 점검합니다. 좋은 상세페이지는 이 불안을 먼저 읽고 정면으로 해소합니다.
+1) 실물 신뢰 — "사진과 다르면? 크기·질감·소재·성분은 진짜?"
+2) 적합성 — "나(내 피부·사이즈·상황)에게 맞을까?"
+3) 가치 정당화 — "이 가격값을 하나? 뭐가 들어있지?"
+4) 사회적 증거 — "남들도 사서 만족했나?"
+5) 리스크 제거 — "안 맞으면 교환·환불 되나? 배송은?"
+카테고리에 맞는 불안을 구체적으로 짚으세요(화장품=핵심성분·피부적합성, 식품=원재료·함량·보관, 사물=소재·크기·내구성, 무형 서비스=효과·진행방식·자격).
+
+■ 작성 원칙
+- 스펙이 아니라 "고객이 얻는 변화·이득"을 말한다. 헤드라인은 3초 안에 시선을 잡는다.
+- 정직하라: 모두에게 맞는 척하지 말고, 맞지 않을 수 있는 경우(fit.caution)를 1~2개 솔직히 적는다. 정직한 비추천은 오히려 신뢰를 높인다.
+- 절대 지어내지 말 것: 판매량·별점 수치·재구매율·수상·인증번호 등 구체 수치·사실. reviews는 '예시 톤'으로만 쓴다(판매자가 실제 후기로 교체). guarantee는 업계 통상 수준의 제안일 뿐(판매자가 자기 정책으로 수정).
+- 과장·허위·의학적 효능 단정 금지. 한국어로 자연스럽고 세련되게.
+- 정보가 부족하면 카테고리 관점에서 합리적으로 채우되, 위 '지어내지 말 것'은 반드시 지킨다.
 
 반드시 아래 JSON 스키마 그대로, 다른 텍스트 없이 JSON만 출력:
 {
-  "tagline": "제품 상단 짧은 브랜드 슬로건 (영문 대문자 권장, 12자 내외)",
-  "heroHeadline": "메인 후킹 헤드라인 (한 줄, 강렬하게)",
-  "heroSub": "헤드라인 보조 설명 (한 문장)",
-  "hook": { "question": "고객의 고민을 찌르는 질문/공감 문장. 핵심 어구는 <hl>어구</hl>로 감쌈", "empathy": "공감을 확장하는 2~3문장" },
-  "solution": { "eyebrow": "짧은 라벨(영문 권장)", "title": "이 제품이 답이라는 선언형 제목", "body": "왜 이 제품이 해결책인지 2~3문장" },
-  "features": [ { "title": "핵심 혜택 제목", "desc": "1~2문장 설명" } ],
-  "lifestyle": { "eyebrow": "라벨(영문 권장)", "title": "사용 장면·라이프스타일 제목", "body": "제품이 일상에 스며드는 장면 묘사 2~3문장" },
+  "tagline": "상단 짧은 브랜드 슬로건(영문 대문자 권장, 12자 내외)",
+  "heroHeadline": "메인 후킹 헤드라인(한 줄, 강렬하게)",
+  "heroSub": "헤드라인 보조 설명(한 문장)",
+  "hook": { "question": "고객 고민을 찌르는 질문. 핵심 어구는 <hl>어구</hl>로 감쌈", "empathy": "공감을 확장하는 2~3문장" },
+  "solution": { "eyebrow": "짧은 라벨(영문 권장)", "title": "이 제품이 답이라는 선언형 제목", "body": "왜 해결책인지 2~3문장" },
+  "features": [ { "title": "핵심 혜택 제목", "desc": "1~2문장" } ],
+  "material": { "eyebrow": "라벨(영문 권장)", "title": "무엇으로 만들었는지 강조하는 제목", "items": [ { "label": "핵심 성분/원재료/소재 이름", "value": "함량·비율·산지 등 짧은 값", "note": "그게 왜 좋은지 1문장" } ] },
+  "scene": { "eyebrow": "라벨(영문 권장)", "title": "사용 장면·라이프스타일 제목", "body": "일상에 스며드는 장면 2~3문장", "sizeNote": "크기·용량·스케일을 실감나게 알려주는 한 문장(예: 한 손에 쏙 들어오는 500ml 크기)" },
   "specs": [ { "k": "항목", "v": "값" } ],
-  "trust": [ "신뢰·보장 요소 문장 (배송/환불/인증/원산지 등, 지어낸 수치 금지)" ],
-  "review": { "quote": "실제 후기 톤의 한 줄 인용", "author": "구매자 표기 (예: 김O영 · 30대)" },
-  "faq": [ { "q": "자주 묻는 질문", "a": "답변" } ],
-  "cta": { "headline": "구매를 부르는 마지막 한 방 문장", "button": "구매 버튼 문구", "fine": "부담을 더는 짧은 안심 문구" },
+  "fit": { "good": [ "이런 분께 추천(구체적으로) 3~4개" ], "caution": [ "이런 분께는 맞지 않을 수 있어요(정직하게) 1~2개" ] },
+  "value": { "eyebrow": "라벨(영문 권장)", "title": "구성·가치 제목", "included": [ "구성품/포함 내역 항목" ], "reason": "왜 이 값어치인지 1~2문장" },
+  "reviews": [ { "quote": "예시 후기 한 줄", "author": "구매자 표기(예: 김O영 · 30대)", "tag": "짧은 태그(예: 재구매, 선물용)" } ],
+  "guarantee": { "shipping": "배송 안내(통상 수준 제안)", "exchange": "교환·환불 안내", "extra": "보증·AS·유통기한·보관 등 추가 안심 안내" },
+  "faq": [ { "q": "질문", "a": "답변" } ],
+  "cta": { "headline": "구매를 부르는 마지막 문장", "button": "구매 버튼 문구", "fine": "부담을 더는 짧은 안심 문구" },
   "imagePrompts": {
-    "hero": "English prompt: a premium hero shot of THIS product for an e-commerce hero banner. describe scene, lighting, mood, background, composition. keep the product's real appearance if a reference photo is given.",
-    "lifestyle": "English prompt: the product used naturally in a real-life lifestyle scene matching the target customer.",
-    "detail": "English prompt: an artful close-up/detail shot highlighting texture, material, or a key feature of the product."
+    "hero": "English prompt: premium hero shot of THIS product for an e-commerce hero banner — scene, lighting, mood, background, composition. keep the product's real appearance if a reference photo is given.",
+    "lifestyle": "English prompt: the product used naturally in a real-life scene matching the target customer. IMPORTANT: include a human hand, a person, or a familiar everyday object beside the product so the viewer can judge its real size.",
+    "detail": "English prompt: an artful macro close-up revealing texture, material, finish, or a key ingredient of the product (a trust-building detail shot)."
   }
 }
-규칙: features는 3~4개, specs는 3~6개, trust는 2~4개, faq는 2~3개. icon 필드는 넣지 않는다.`;
+규칙: features 3~4개, material.items 3~4개, specs 3~6개, fit.good 3~4개, fit.caution 1~2개, value.included 2~5개, reviews 3개, faq 2~3개. icon 필드는 넣지 않는다.`;
 
 function buildCopyPrompt(){
   const i = state.input; const hasImg = i.images.length>0;
@@ -858,17 +943,46 @@ function render(){
   const c = state.result?.copy; if(!c) return;
   const [acc,accDeep] = accentFor(state.input.tone);
   const stage = $("stage"); stage.className="stage";
+  const E = (v,path)=>`<span contenteditable="true" spellcheck="false" data-edit="${path}">${esc(v)}</span>`;
 
   const features = (c.features||[]).map((f,i)=>`
     <div class="dp-feat"><span class="mk"></span><div>
       ${ed(esc(f.title),"features."+i+".title","","h4")}
       ${ed(esc(f.desc),"features."+i+".desc","","p")}
     </div></div>`).join("");
+
+  const mat = c.material||{};
+  const matItems = (mat.items||[]).map((m,i)=>`
+    <div class="dp-mat">
+      <div class="top">
+        <div class="lab" contenteditable="true" spellcheck="false" data-edit="material.items.${i}.label">${esc(m.label)}</div>
+        <div class="val" contenteditable="true" spellcheck="false" data-edit="material.items.${i}.value">${esc(m.value)}</div>
+      </div>
+      ${m.note?`<div class="note" contenteditable="true" spellcheck="false" data-edit="material.items.${i}.note">${esc(m.note)}</div>`:""}
+    </div>`).join("");
+
+  const scene = c.scene || c.lifestyle || {};
   const specs = (c.specs||[]).map((s,i)=>`
     <div class="r"><div class="k" contenteditable="true" spellcheck="false" data-edit="specs.${i}.k">${esc(s.k)}</div>
     <div class="v" contenteditable="true" spellcheck="false" data-edit="specs.${i}.v">${esc(s.v)}</div></div>`).join("");
-  const trust = (c.trust||[]).map((t,i)=>`
-    <div class="it"><span class="ck">✓</span><span contenteditable="true" spellcheck="false" data-edit="trust.${i}">${esc(t)}</span></div>`).join("");
+
+  const fit = c.fit||{};
+  const fitGood = (fit.good||[]).map((t,i)=>`<div class="it"><span class="m">✓</span>${E(t,"fit.good."+i)}</div>`).join("");
+  const fitCaution = (fit.caution||[]).map((t,i)=>`<div class="it"><span class="m">—</span>${E(t,"fit.caution."+i)}</div>`).join("");
+
+  const offer = c.value||{};
+  const inc = (offer.included||[]).map((t,i)=>`<div class="r"><span class="c">＋</span>${E(t,"value.included."+i)}</div>`).join("");
+
+  const reviews = (c.reviews||[]).map((r,i)=>`
+    <div class="dp-rev">
+      <div class="stars">★★★★★</div>
+      <div class="q" contenteditable="true" spellcheck="false" data-edit="reviews.${i}.quote">${esc(r.quote)}</div>
+      <div class="m">${r.tag?`<span class="tag" contenteditable="true" spellcheck="false" data-edit="reviews.${i}.tag">${esc(r.tag)}</span>`:""}${E(r.author,"reviews."+i+".author")}</div>
+    </div>`).join("");
+
+  const g = c.guarantee||{};
+  const careRow = (icon,key,path)=> g[path]?`<div class="r"><div class="ic">${icon}</div><div><div class="k">${key}</div><div class="v" contenteditable="true" spellcheck="false" data-edit="guarantee.${path}">${esc(g[path])}</div></div></div>`:"";
+
   const faq = (c.faq||[]).map((q,i)=>`
     <div class="qa">
       <div class="qq"><span contenteditable="true" spellcheck="false" data-edit="faq.${i}.q">${esc(q.q)}</span></div>
@@ -904,36 +1018,64 @@ function render(){
       <div class="dp-feats">${features}</div>
     </div>
 
+    <div class="dp-sec dp-material">
+      ${ed(esc(mat.eyebrow||"Material"),"material.eyebrow","dp-eyebrow")}
+      ${ed(esc(mat.title||"무엇으로 만들었나"),"material.title","dp-h")}
+      <div class="frame">${imgSlot("detail")}</div>
+      <div class="dp-mat-list">${matItems}</div>
+    </div>
+
     <div class="dp-scene">
       ${imgSlot("lifestyle")}
       <div class="body">
-        ${ed(esc(c.lifestyle?.eyebrow),"lifestyle.eyebrow","dp-eyebrow")}
-        ${ed(esc(c.lifestyle?.title),"lifestyle.title","dp-h")}
-        ${ed(esc(c.lifestyle?.body),"lifestyle.body","dp-b")}
+        ${ed(esc(scene.eyebrow||"Everyday"),"scene.eyebrow","dp-eyebrow")}
+        ${ed(esc(scene.title||""),"scene.title","dp-h")}
+        ${ed(esc(scene.body||""),"scene.body","dp-b")}
+        ${scene.sizeNote?`<div class="dp-size"><span class="mono">SIZE</span><span contenteditable="true" spellcheck="false" data-edit="scene.sizeNote">${esc(scene.sizeNote)}</span></div>`:""}
       </div>
     </div>
 
-    <div class="dp-sec dp-detail">
-      <div class="dp-eyebrow">Detail</div>
-      <div class="frame">${imgSlot("detail")}</div>
-      <div class="dp-specs">${specs}</div>
+    <div class="dp-sec dp-specsec">
+      <div class="dp-eyebrow">Spec</div>
+      <div class="dp-specs" style="margin-top:14px;">${specs}</div>
     </div>
 
-    <div class="dp-sec dp-assure">
-      <div class="dp-eyebrow">Why us</div>
-      <div class="dp-h">믿고 선택하세요</div>
-      <div class="items">${trust}</div>
+    <div class="dp-sec dp-fit">
+      <div class="dp-eyebrow">For you</div>
+      <div class="dp-h">이런 분께 딱 맞아요</div>
+      <div class="cols">
+        <div class="col good"><h5>이런 분께 추천</h5>${fitGood}</div>
+        ${fitCaution?`<div class="col caution"><h5>이런 분께는 잠깐</h5>${fitCaution}</div>`:""}
+      </div>
     </div>
 
-    <div class="dp-voice">
-      <div class="mark">“</div>
-      ${ed(esc(c.review?.quote),"review.quote","quote")}
-      ${ed(esc(c.review?.author),"review.author","who")}
+    <div class="dp-sec dp-offer">
+      ${ed(esc(offer.eyebrow||"What you get"),"value.eyebrow","dp-eyebrow")}
+      ${ed(esc(offer.title||"구성과 가치"),"value.title","dp-h")}
+      ${inc?`<div class="inc">${inc}</div>`:""}
+      ${offer.reason?`<div class="reason" contenteditable="true" spellcheck="false" data-edit="value.reason">${esc(offer.reason)}</div>`:""}
+    </div>
+
+    <div class="dp-sec dp-reviews">
+      <div class="dp-eyebrow">Reviews</div>
+      <div class="dp-h">고객의 목소리</div>
+      <div class="note">※ 예시 톤이에요 — 실제 구매 후기로 교체해 올리세요.</div>
+      <div class="dp-rev-list">${reviews}</div>
+    </div>
+
+    <div class="dp-sec dp-care">
+      <div class="dp-eyebrow">Assurance</div>
+      <div class="dp-h">안심하고 주문하세요</div>
+      <div class="grid">
+        ${careRow("배송","배송 안내","shipping")}
+        ${careRow("교환","교환·환불","exchange")}
+        ${careRow("보증","보증·안내","extra")}
+      </div>
     </div>
 
     <div class="dp-sec dp-faq">
       <div class="dp-eyebrow">FAQ</div>
-      <div class="dp-h" style="font-size:22px;font-weight:850;letter-spacing:-.03em;margin-top:12px;">자주 묻는 질문</div>
+      <div class="dp-h">자주 묻는 질문</div>
       <div class="list">${faq}</div>
     </div>
 
