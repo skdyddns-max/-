@@ -192,13 +192,13 @@ input[type=range]{
   -webkit-appearance:none; width:100%; height:26px; background:transparent;
 }
 input[type=range]::-webkit-slider-runnable-track{
-  height:5px; border-radius:3px; background:linear-gradient(90deg,var(--line2),var(--line2));
+  height:5px; border-radius:3px; background:var(--fill, linear-gradient(90deg,var(--line2),var(--line2)));
 }
 input[type=range]::-webkit-slider-thumb{
   -webkit-appearance:none; width:22px; height:22px; border-radius:50%; margin-top:-8.5px;
   background:var(--tx); border:3px solid var(--accent); box-shadow:0 2px 6px rgba(0,0,0,.5);
 }
-input[type=range]::-moz-range-track{height:5px; border-radius:3px; background:var(--line2);}
+input[type=range]::-moz-range-track{height:5px; border-radius:3px; background:var(--fill, var(--line2));}
 input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--tx);border:3px solid var(--accent);}
 .rowbtns{display:flex; gap:8px; flex-wrap:wrap;}
 .rowbtns .sbtn{flex:1; justify-content:center;}
@@ -438,9 +438,13 @@ details.adv .inner{padding-bottom:12px;}
             <input type="file" id="refInput" accept="image/*" hidden>
           </div>
           <div class="sec">
-            <h3>✂ AI 구도 제안</h3>
+            <h3>✂ 구도</h3>
             <div class="rowbtns" style="margin-bottom:9px;">
-              <button class="sbtn" id="btnCropAI">✂ 구도 제안 받기</button>
+              <button class="sbtn" id="btnRotate">⟳ 90° 회전</button>
+              <button class="sbtn" id="btnFlip">↔ 좌우 반전</button>
+            </div>
+            <div class="rowbtns" style="margin-bottom:9px;">
+              <button class="sbtn" id="btnCropAI">✂ AI 구도 제안</button>
               <button class="sbtn" id="btnCropReset" style="display:none;">⬜ 원본 구도로</button>
             </div>
             <p class="note" id="cropNote" style="display:none; margin-bottom:9px;"></p>
@@ -449,6 +453,10 @@ details.adv .inner{padding-bottom:12px;}
           <div class="sec">
             <h3>무드 카드</h3>
             <div class="moods" id="moods"></div>
+            <div class="knob" id="moodStrengthBox" style="display:none; margin-top:10px;">
+              <div class="lab"><span class="l">무드 강도</span><span class="val" id="moodStrengthVal">100%</span></div>
+              <input type="range" id="moodStrength" min="0" max="100" value="100">
+            </div>
           </div>
           <div class="sec">
             <h3>⭐ 내 프리셋</h3>
@@ -459,6 +467,9 @@ details.adv .inner{padding-bottom:12px;}
         <!-- 다듬기 -->
         <div class="tab" id="tab-tune" hidden>
           <div class="sec" id="basicKnobs"></div>
+          <div class="sec rowbtns">
+            <button class="sbtn" id="btnEyedrop">💧 스포이트 — 흰/회색 지점 탭으로 색 교정</button>
+          </div>
           <div class="sec">
             <h3>🧑 인물 · 피부 보정</h3>
             <p class="note" style="margin-bottom:8px;">피부색 영역을 자동으로 찾아 그 부분만 매끄럽게 다듬어요. 눈·머리카락·배경의 디테일은 그대로 유지됩니다.</p>
@@ -1253,6 +1264,29 @@ function toast(msg, ms=2600){
 }
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
+/* ---------- 슬라이더 채움 표시 / 더블클릭 리셋 ---------- */
+function paintRange(inp){
+  const min = Number(inp.min || 0), max = Number(inp.max || 100), v = Number(inp.value);
+  const span = max - min || 1;
+  const pct = ((v - min) / span) * 100;
+  let lo = 0, hi = pct;
+  if(min < 0){
+    const zero = ((0 - min) / span) * 100;
+    lo = Math.min(zero, pct); hi = Math.max(zero, pct);
+  }
+  inp.style.setProperty("--fill",
+    `linear-gradient(90deg, var(--line2) 0%, var(--line2) ${lo}%, var(--accent) ${lo}%, var(--accent) ${hi}%, var(--line2) ${hi}%, var(--line2) 100%)`);
+}
+function paintAllRanges(){ $$("input[type=range]").forEach(paintRange); }
+function rangeDefault(inp){
+  if(inp.dataset.key){ const d = RECIPE_DEFS.find(x=>x[0]===inp.dataset.key); return d ? d[4] : 0; }
+  if(inp.dataset.mkey) return ({ r:22, feather:50, pos:40 })[inp.dataset.mkey] ?? 0;
+  if(inp.id === "snowRange") return state.snowItem?.def ?? 0;
+  if(inp.id === "quality") return 92;
+  if(inp.id === "moodStrength") return 100;
+  return 0;
+}
+
 /* ============================================================
    상태 저장/복원
    ============================================================ */
@@ -1277,10 +1311,36 @@ let thumbEngine = null;   // 후보 썸네일용 (긴 변 320 제한)
 let renderQueued = false;
 
 function currentPhoto(){ return state.photos.find(p=>p.id===state.currentId) || null; }
-/* 소스 체인: 원본 → (크롭) → (생성형 리터치 스택) — 모두 비파괴 */
+/* 소스 체인: 원본 → (회전/반전) → (크롭) → (생성형 리터치 스택) — 모두 비파괴 */
+function baseBitmap(p){ return p.orientBitmap || p.bitmap; }
 function srcBitmap(p){
   if(p.retouchStack?.length) return p.retouchStack[p.retouchStack.length-1];
-  return p.cropBitmap || p.bitmap;
+  return p.cropBitmap || baseBitmap(p);
+}
+/* 90° 회전 / 좌우 반전 — 원본에서 매번 다시 계산 (비파괴) */
+async function setOrient(p, action){
+  if(!p.orient) p.orient = { rot:0, flipH:false };
+  if(action === "rotate") p.orient.rot = (p.orient.rot + (p.orient.flipH ? 270 : 90)) % 360;
+  else if(action === "flip") p.orient.flipH = !p.orient.flipH;
+  const hadEdits = p.cropBitmap || p.retouchStack?.length;
+  p.crop = null; p.cropBitmap = null; p.retouchStack = []; p.cropSuggestions = null;
+  const { rot, flipH } = p.orient;
+  if(!rot && !flipH){ p.orientBitmap = null; }
+  else{
+    const b = p.bitmap;
+    const swap = rot === 90 || rot === 270;
+    const c = document.createElement("canvas");
+    c.width = swap ? b.height : b.width;
+    c.height = swap ? b.width : b.height;
+    const x = c.getContext("2d");
+    x.translate(c.width/2, c.height/2);
+    if(flipH) x.scale(-1, 1);
+    x.rotate(rot*Math.PI/180);
+    x.drawImage(b, -b.width/2, -b.height/2);
+    p.orientBitmap = await createImageBitmap(c);
+  }
+  refreshPhotoDerived(p, false);
+  if(hadEdits) toast("방향이 바뀌어 크롭·리터치를 초기화했어요.");
 }
 
 /* 크롭 적용/해제 — 원본 비트맵은 절대 건드리지 않음 */
@@ -1291,7 +1351,8 @@ async function setCrop(p, s){
   }
   if(!s){ p.crop = null; p.cropBitmap = null; }
   else{
-    const W = p.bitmap.width, H = p.bitmap.height;
+    const src = baseBitmap(p);
+    const W = src.width, H = src.height;
     const x0 = Math.max(0, Math.min(90, s.x)), y0 = Math.max(0, Math.min(90, s.y));
     const wP = Math.max(10, Math.min(100 - x0, s.width)), hP = Math.max(10, Math.min(100 - y0, s.height));
     const cx = x0/100*W, cy = y0/100*H;
@@ -1305,7 +1366,7 @@ async function setCrop(p, s){
     x.translate(cw/2, ch/2);
     x.rotate(ang*Math.PI/180);
     x.scale(z, z);
-    x.drawImage(p.bitmap, -(cx + cw/2), -(cy + ch/2));
+    x.drawImage(src, -(cx + cw/2), -(cy + ch/2));
     p.crop = { x:x0, y:y0, width:wP, height:hP, angle:ang };
     p.cropBitmap = await createImageBitmap(c);
   }
@@ -1325,7 +1386,8 @@ async function setCrop(p, s){
 }
 /* 크롭 제안 미리보기 (2D, 톤 미적용) */
 function cropPreviewUrl(p, s, max=280){
-  const W = p.bitmap.width, H = p.bitmap.height;
+  const src = baseBitmap(p);
+  const W = src.width, H = src.height;
   const cw = Math.max(16, s.width/100*W), ch = Math.max(16, s.height/100*H);
   const sc = Math.min(1, max/Math.max(cw, ch));
   const c = document.createElement("canvas");
@@ -1334,7 +1396,7 @@ function cropPreviewUrl(p, s, max=280){
   x.scale(sc, sc);
   x.translate(cw/2, ch/2);
   x.rotate((s.angle || 0)*Math.PI/180);
-  x.drawImage(p.bitmap, -(s.x/100*W + cw/2), -(s.y/100*H + ch/2));
+  x.drawImage(src, -(s.x/100*W + cw/2), -(s.y/100*H + ch/2));
   return c.toDataURL("image/jpeg", 0.75);
 }
 
@@ -1457,11 +1519,12 @@ async function renderCandidates(){
   const items = (p.aiResult?.presets?.length)
     ? p.aiResult.presets.map(x=>({ name:x.name, comment:x.comment, recipe:clampRecipe(x.adjustments) }))
     : p.candidates;
+  const withOrig = [{ name:"원본", comment:"보정 없이 그대로", recipe: defaultRecipe() }, ...items];
   box.innerHTML = "";
   if(!thumbEngine) thumbEngine = new Engine(document.createElement("canvas"), 320);
   thumbEngine.setImage(srcBitmap(p));
   const curKey = JSON.stringify(p.recipe);
-  for(const it of items){
+  for(const it of withOrig){
     thumbEngine.render(it.recipe);
     const url = thumbEngine.canvas.toDataURL("image/jpeg", 0.75);
     const b = document.createElement("button");
@@ -1499,11 +1562,25 @@ function renderMoods(){
     box.appendChild(b);
   }
 }
-function applyMood(m){
+state.lastMood = null;
+function applyMood(m, strength = 100, opts = {}){
   const p = currentPhoto(); if(!p) return;
+  state.lastMood = { mood: m, strength };
   // 무드는 색감을 입히되, 현재 노출 계열은 유지 (직관적 기대에 부합)
   const keep = { exposure:p.recipe.exposure, highlights:p.recipe.highlights, shadows:p.recipe.shadows, sharpen:p.recipe.sharpen };
-  applyRecipe(clampRecipe(Object.assign(defaultRecipe(), m.recipe, keep)));
+  const scaled = {};
+  for(const [k, v] of Object.entries(m.recipe)){
+    // 색상각(hue)은 세기와 무관 — 물들임 강도(sat)와 나머지 값만 스케일
+    scaled[k] = (k === "splitShadowHue" || k === "splitHighHue") ? v : Math.round(v * strength / 100);
+  }
+  applyRecipe(clampRecipe(Object.assign(defaultRecipe(), scaled, keep)), { silent: !!opts.silent });
+  const box = $("#moodStrengthBox");
+  if(box){
+    box.style.display = "block";
+    $("#moodStrength").value = strength;
+    $("#moodStrengthVal").textContent = strength + "%";
+    paintRange($("#moodStrength"));
+  }
 }
 
 function applyRecipe(recipe, opts = {}){
@@ -1621,6 +1698,7 @@ function syncKnobs(exceptKey){
     if(v) v.textContent = p.recipe[exceptKey];
   }
   updateSnowLight();
+  paintAllRanges();
 }
 
 /* ============================================================
@@ -2012,7 +2090,7 @@ async function runCropAI(){
   busy = true; btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> 구도를 보는 중...`;
   try{
-    const b64 = await imageToB64(p.bitmap); // 크롭 제안은 항상 원본 기준
+    const b64 = await imageToB64(baseBitmap(p)); // 크롭 제안은 (방향 반영된) 원본 기준
     const res = await callClaudeVision(b64, cropPromptText(), CROP_SCHEMA);
     p.cropSuggestions = res;
     renderCropCards();
@@ -2255,6 +2333,41 @@ async function saveAll(){
 }
 
 /* ============================================================
+   💧 스포이트 화이트밸런스
+   ============================================================ */
+state.picking = false;
+function startEyedrop(){
+  if(!currentPhoto()) return;
+  state.picking = true;
+  $("#canvasbox").classList.add("placing");
+  toast("💧 사진에서 원래 흰색이나 회색이어야 할 지점을 탭하세요.");
+}
+function eyedropAt(p, ux, uy){
+  const bm = srcBitmap(p);
+  const S = 7, half = 3;
+  const px = Math.max(half, Math.min(bm.width - half - 1, Math.round(ux * bm.width)));
+  const py = Math.max(half, Math.min(bm.height - half - 1, Math.round(uy * bm.height)));
+  const c = document.createElement("canvas");
+  c.width = S; c.height = S;
+  const x = c.getContext("2d", { willReadFrequently:true });
+  x.drawImage(bm, px - half, py - half, S, S, 0, 0, S, S);
+  const d = x.getImageData(0, 0, S, S).data;
+  let r = 0, g = 0, b = 0;
+  for(let i = 0; i < d.length; i += 4){ r += d[i]; g += d[i+1]; b += d[i+2]; }
+  const n = S * S * 255;
+  r /= n; g /= n; b /= n;
+  if(r + g + b < 0.09){ toast("너무 어두운 지점이에요. 더 밝은 흰/회색 지점을 골라 주세요."); return; }
+  // 셰이더의 WB 공식(r·b ±12%, g ∓9%)을 역산해 중립으로 맞추는 값 계산
+  const t = (b - r) / (0.12 * Math.max(0.02, r + b));
+  const target = ((1 + 0.12*t)*r + (1 - 0.12*t)*b) / 2;
+  const ti = (1 - target / Math.max(0.02, g)) / 0.09;
+  p.recipe.temperature = Math.max(-100, Math.min(100, Math.round(t * 100)));
+  p.recipe.tint = Math.max(-100, Math.min(100, Math.round(ti * 100)));
+  requestRender(); syncKnobs(); markCand(null); commitHistory(p);
+  toast(`💧 화이트밸런스를 맞췄어요 (색온도 ${p.recipe.temperature}, 색조 ${p.recipe.tint})`);
+}
+
+/* ============================================================
    확대 / 팬 (디테일 확인용)
    ============================================================ */
 const view = { zoom: 1, x: 0, y: 0 };
@@ -2417,6 +2530,7 @@ function showSnowSlider(item){
   const r = $("#snowRange");
   r.min = item.min; r.max = item.max; r.value = item.get();
   $("#snowSliderVal").textContent = Math.round(item.get());
+  paintRange(r);
   $$("#snowItems .sitem").forEach(b=>b.classList.toggle("on", b.dataset.k === item.id));
 }
 function snowChip(label, opts={}){
@@ -2459,6 +2573,7 @@ function renderSnowItems(){
       }
     }
   } else if(cat === "adjust" || cat === "skin"){
+    if(cat === "adjust") box.appendChild(snowChip("💧 스포이트", { onclick: startEyedrop }));
     const list = cat === "adjust" ? SNOW_ADJUST : SNOW_SKIN;
     for(const [key,label] of list){
       const def = RECIPE_DEFS.find(d=>d[0]===key);
@@ -2469,7 +2584,16 @@ function renderSnowItems(){
       const b = document.createElement("button");
       b.className = "scard";
       b.innerHTML = `<span class="sw2" style="background:linear-gradient(135deg,${m.grad[0]},${m.grad[1]})"></span><div class="nm">${esc(m.name)}</div>`;
-      b.onclick = () => { applyMood(m); $$("#snowItems .scard").forEach(x=>x.classList.remove("on")); b.classList.add("on"); };
+      b.onclick = () => {
+        applyMood(m);
+        $$("#snowItems .scard").forEach(x=>x.classList.remove("on"));
+        b.classList.add("on");
+        showSnowSlider({
+          id:"moodStrength", label:"무드 강도", min:0, max:100, def:100,
+          get: () => state.lastMood?.strength ?? 100,
+          set: v => { if(state.lastMood) applyMood(state.lastMood.mood, Math.round(v), { silent:true }); },
+        });
+      };
       box.appendChild(b);
     }
   } else if(cat === "mask"){
@@ -2522,6 +2646,8 @@ function renderSnowItems(){
     box.appendChild(snowChip("⚡ 빠른 매칭", { onclick: () => state.refBitmap ? (refQuickMatch(), renderSnowItems()) : toast("먼저 참고 사진을 올려 주세요.") }));
     box.appendChild(snowChip("🤖 AI 정밀 매칭", { onclick: () => state.refBitmap ? refAIMatch() : toast("먼저 참고 사진을 올려 주세요.") }));
   } else if(cat === "crop"){
+    box.appendChild(snowChip("⟳ 90° 회전", { onclick: () => { if(p) setOrient(p, "rotate"); } }));
+    box.appendChild(snowChip("↔ 좌우 반전", { onclick: () => { if(p) setOrient(p, "flip"); } }));
     box.appendChild(snowChip("✂ 구도 제안 받기", { onclick: runCropAI }));
     if(p?.crop) box.appendChild(snowChip("⬜ 원본 구도", { onclick: async () => { await setCrop(p, null); renderSnowItems(); } }));
     for(const s of (p?.cropSuggestions?.suggestions || [])){
@@ -2566,6 +2692,30 @@ function init(){
   initZoomPan();
   renderSnowCats();
   renderRetouchPresets();
+
+  // 슬라이더 채움 표시 + 더블클릭 리셋 (모든 range 공통)
+  document.addEventListener("input", e => {
+    if(e.target.matches?.("input[type=range]")) paintRange(e.target);
+  }, true);
+  document.addEventListener("dblclick", e => {
+    const inp = e.target.closest?.("input[type=range]");
+    if(!inp) return;
+    inp.value = rangeDefault(inp);
+    inp.dispatchEvent(new Event("input", { bubbles:true }));
+    inp.dispatchEvent(new Event("change", { bubbles:true }));
+  });
+  paintAllRanges();
+
+  // 구도: 회전·반전 / 스포이트 / 무드 강도
+  $("#btnRotate").onclick = () => { const p = currentPhoto(); if(p) setOrient(p, "rotate"); };
+  $("#btnFlip").onclick = () => { const p = currentPhoto(); if(p) setOrient(p, "flip"); };
+  $("#btnEyedrop").onclick = startEyedrop;
+  $("#moodStrength").addEventListener("input", e => {
+    const v = Number(e.target.value);
+    $("#moodStrengthVal").textContent = v + "%";
+    if(state.lastMood) applyMood(state.lastMood.mood, v, { silent:true });
+  });
+  $("#moodStrength").addEventListener("change", () => commitHistory());
 
   // 실행 취소 / 다시 실행
   $("#btnUndo").onclick = undoEdit;
@@ -2658,6 +2808,12 @@ function init(){
     const rect = e.target.getBoundingClientRect();
     const ux = Math.max(0, Math.min(1, (e.clientX - rect.left)/rect.width));
     const uy = Math.max(0, Math.min(1, (e.clientY - rect.top)/rect.height));
+    if(state.picking){
+      state.picking = false;
+      $("#canvasbox").classList.remove("placing");
+      eyedropAt(p, ux, uy);
+      return;
+    }
     if(state.placing){
       state.placing = false;
       $("#canvasbox").classList.remove("placing");
