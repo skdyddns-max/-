@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#171513">
+<title>톤메이커 — AI 원탭 사진 보정</title>
+<style>
+/* ============================================================
+   톤메이커 — 디자인 토큰 (사진 판단을 위해 어두운 편집실 톤)
+   ============================================================ */
+:root{
+  --bg:#171513; --bg2:#201d1a; --bg3:#2a2622;
+  --line:#3a352f; --line2:#4a443c;
+  --tx:#f0ebe4; --tx2:#b8b0a4; --tx3:#847c70;
+  --accent:#e8927c; --accent2:#f2b8a6; --accent-dk:#c47260;
+  --good:#8fbf9f; --warn:#e6c477; --bad:#e08080;
+  --r:14px; --r-s:9px;
+  --shadow:0 8px 28px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  background:var(--bg); color:var(--tx); font-size:15px; line-height:1.55;
+  overscroll-behavior:none;
+}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+input,textarea,select{font-family:inherit; font-size:inherit; color:inherit;}
+::-webkit-scrollbar{width:8px; height:8px;} ::-webkit-scrollbar-thumb{background:var(--line2); border-radius:4px;}
+
+/* ---------- 헤더 ---------- */
+header{
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  border-bottom:1px solid var(--line); position:sticky; top:0; z-index:40; background:var(--bg);
+}
+.logo{display:flex; align-items:center; gap:8px; font-weight:800; font-size:17px; letter-spacing:-.3px;}
+.logo .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#d4a24e);display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+.logo small{font-weight:500;color:var(--tx3);font-size:11.5px;margin-left:2px;}
+header .sp{flex:1;}
+.hbtn{padding:7px 12px;border-radius:10px;background:var(--bg3);border:1px solid var(--line);font-size:13px;color:var(--tx2);}
+.hbtn:hover{border-color:var(--line2);color:var(--tx);}
+.hbtn.on{border-color:var(--accent-dk); color:var(--accent2);}
+
+/* ---------- 빈 화면(드롭존) ---------- */
+#emptyView{max-width:660px;margin:0 auto;padding:38px 20px 60px;}
+.drop{
+  border:2px dashed var(--line2); border-radius:20px; padding:52px 24px; text-align:center;
+  background:var(--bg2); transition:.15s; cursor:pointer;
+}
+.drop:hover,.drop.over{border-color:var(--accent); background:#262019;}
+.drop .big{font-size:44px; margin-bottom:14px;}
+.drop h2{font-size:20px; font-weight:800; margin-bottom:8px; letter-spacing:-.3px;}
+.drop p{color:var(--tx2); font-size:14px;}
+.drop .hint{margin-top:18px; font-size:12.5px; color:var(--tx3);}
+.feat{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:22px;}
+.feat div{background:var(--bg2); border:1px solid var(--line); border-radius:var(--r); padding:14px 12px; font-size:12.5px; color:var(--tx2); text-align:center;}
+.feat b{display:block; color:var(--tx); font-size:13px; margin-bottom:4px;}
+.privacy{margin-top:20px; text-align:center; font-size:12px; color:var(--tx3); line-height:1.7;}
+
+/* ---------- 에디터 레이아웃 ---------- */
+#editorView{display:none; height:calc(100dvh - 53px);}
+#editorView.on{display:flex; flex-direction:column;}
+.workarea{flex:1; display:flex; min-height:0;}
+.stage{flex:1; display:flex; flex-direction:column; min-width:0; padding:14px;}
+.canvasbox{
+  flex:1; min-height:0; display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r); background:
+    repeating-conic-gradient(#1d1a17 0% 25%, #211e1a 0% 50%) 0 0/22px 22px;
+  border:1px solid var(--line); position:relative; overflow:hidden;
+}
+.compare{position:relative; max-width:100%; max-height:100%; line-height:0;}
+.compare canvas{max-width:100%; max-height:100%; display:block; border-radius:6px;}
+.compare img.orig{
+  position:absolute; inset:0; width:100%; height:100%; border-radius:6px;
+  pointer-events:none; display:none;
+}
+.compare .divider{
+  position:absolute; top:0; bottom:0; width:2px; background:#fff; display:none;
+  box-shadow:0 0 8px rgba(0,0,0,.6); cursor:ew-resize;
+}
+.compare .divider::after{
+  content:"◀ ▶"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:#fff; color:#222; font-size:10px; padding:5px 7px; border-radius:20px; white-space:nowrap; font-weight:700;
+}
+.tag-orig,.tag-edit{
+  position:absolute; top:10px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px;
+  background:rgba(0,0,0,.55); color:#fff; display:none; pointer-events:none;
+}
+.tag-orig{left:10px;} .tag-edit{right:10px;}
+.stagebar{display:flex; gap:8px; align-items:center; padding-top:10px; flex-wrap:wrap;}
+.sbtn{
+  padding:8px 13px; border-radius:10px; background:var(--bg3); border:1px solid var(--line);
+  font-size:13px; color:var(--tx2); display:inline-flex; align-items:center; gap:6px;
+}
+.sbtn:active{transform:scale(.97);}
+.sbtn.on{border-color:var(--accent-dk); color:var(--accent2); background:#2d221d;}
+.scene-chip{font-size:12px; color:var(--tx3); margin-left:auto; max-width:46%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+/* ---------- 필름스트립 ---------- */
+.strip{display:flex; gap:8px; padding:10px 14px 4px; overflow-x:auto; align-items:center;}
+.thumb{
+  position:relative; width:58px; height:58px; border-radius:10px; overflow:hidden; flex:0 0 auto;
+  border:2px solid transparent; cursor:pointer; background:var(--bg3);
+}
+.thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+.thumb.on{border-color:var(--accent);}
+.thumb .x{
+  position:absolute; top:2px; right:2px; width:17px; height:17px; border-radius:50%;
+  background:rgba(0,0,0,.65); color:#fff; font-size:10px; line-height:17px; text-align:center;
+}
+.thumb .tonedot{position:absolute; left:4px; bottom:3px; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 4px rgba(0,0,0,.8); display:none;}
+.thumb.toned .tonedot{display:block;}
+.addtile{
+  width:58px; height:58px; border-radius:10px; border:1.5px dashed var(--line2); color:var(--tx3);
+  font-size:22px; flex:0 0 auto;
+}
+.addtile:hover{color:var(--accent); border-color:var(--accent);}
+
+/* ---------- 우측 패널 ---------- */
+.panel{
+  width:372px; flex:0 0 auto; border-left:1px solid var(--line); display:flex; flex-direction:column;
+  background:var(--bg2); min-height:0;
+}
+.tabs{display:flex; border-bottom:1px solid var(--line);}
+.tabs button{
+  flex:1; padding:11px 4px; font-size:12.5px; font-weight:700; color:var(--tx3);
+  border-bottom:2px solid transparent;
+}
+.tabs button.on{color:var(--accent2); border-bottom-color:var(--accent);}
+.tabbody{flex:1; overflow-y:auto; padding:14px; min-height:0;}
+.sec{margin-bottom:18px;}
+.sec h3{font-size:12px; font-weight:800; color:var(--tx3); letter-spacing:.4px; margin-bottom:9px; text-transform:uppercase;}
+.note{font-size:12.5px; color:var(--tx2); line-height:1.65;}
+
+/* 후보 카드 */
+.cands{display:grid; grid-template-columns:1fr 1fr; gap:9px;}
+.cand{
+  border-radius:var(--r-s); overflow:hidden; border:2px solid var(--line); background:var(--bg3);
+  text-align:left; transition:.12s; position:relative;
+}
+.cand:hover{border-color:var(--line2);}
+.cand.on{border-color:var(--accent);}
+.cand img{width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#111;}
+.cand .nm{padding:7px 9px 8px; font-size:12.5px; font-weight:700;}
+.cand .cm{padding:0 9px 8px; font-size:11px; color:var(--tx3); line-height:1.45;}
+.aibtn{
+  width:100%; padding:12px; border-radius:var(--r-s); font-weight:800; font-size:14px;
+  background:linear-gradient(135deg,var(--accent-dk),var(--accent)); color:#fff;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.aibtn:disabled{opacity:.55; cursor:default;}
+.aibtn.sub{background:var(--bg3); border:1px solid var(--line2); color:var(--tx2); font-weight:600; font-size:13px;}
+.diag{
+  margin-top:10px; background:var(--bg3); border:1px solid var(--line); border-radius:var(--r-s);
+  padding:10px 12px; font-size:12.5px; color:var(--tx2); line-height:1.6; display:none;
+}
+.diag b{color:var(--accent2);}
+
+/* 무드 카드 */
+.moods{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;}
+.mood{
+  flex:0 0 auto; width:86px; border-radius:var(--r-s); overflow:hidden; border:2px solid var(--line);
+  background:var(--bg3); text-align:center;
+}
+.mood.on{border-color:var(--accent);}
+.mood .sw{height:42px; display:block;}
+.mood .nm{font-size:11px; font-weight:700; padding:6px 4px; color:var(--tx2);}
+
+/* 슬라이더(직관 손잡이) */
+.knob{margin-bottom:14px;}
+.knob .lab{display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;}
+.knob .lab .l{font-weight:700;}
+.knob .lab .ends{color:var(--tx3); font-size:11px;}
+.knob .val{color:var(--accent2); font-variant-numeric:tabular-nums; font-size:12px;}
+input[type=range]{
+  -webkit-appearance:none; width:100%; height:26px; background:transparent;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:5px; border-radius:3px; background:linear-gradient(90deg,var(--line2),var(--line2));
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:22px; height:22px; border-radius:50%; margin-top:-8.5px;
+  background:var(--tx); border:3px solid var(--accent); box-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+input[type=range]::-moz-range-track{height:5px; border-radius:3px; background:var(--line2);}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--tx);border:3px solid var(--accent);}
+.rowbtns{display:flex; gap:8px; flex-wrap:wrap;}
+.rowbtns .sbtn{flex:1; justify-content:center;}
+details.adv{border:1px solid var(--line); border-radius:var(--r-s); background:var(--bg3); padding:0 12px;}
+details.adv summary{padding:11px 0; font-size:13px; font-weight:700; color:var(--tx2); cursor:pointer; list-style:none;}
+details.adv summary::before{content:"▸ "; color:var(--tx3);}
+details.adv[open] summary::before{content:"▾ ";}
+details.adv .inner{padding-bottom:12px;}
+#histo{width:100%; height:64px; background:#141210; border-radius:7px; border:1px solid var(--line); margin-bottom:12px;}
+
+/* 대화 */
+.chatlog{display:flex; flex-direction:column; gap:9px; margin-bottom:12px;}
+.msg{max-width:88%; padding:9px 12px; border-radius:13px; font-size:13px; line-height:1.55; white-space:pre-wrap;}
+.msg.me{align-self:flex-end; background:var(--accent-dk); color:#fff; border-bottom-right-radius:4px;}
+.msg.ai{align-self:flex-start; background:var(--bg3); border:1px solid var(--line); border-bottom-left-radius:4px; color:var(--tx2);}
+.msg.ai b{color:var(--accent2);}
+.chatin{display:flex; gap:8px;}
+.chatin textarea{
+  flex:1; background:var(--bg3); border:1px solid var(--line2); border-radius:11px; padding:9px 12px;
+  font-size:13px; resize:none; height:44px; color:var(--tx); outline:none;
+}
+.chatin textarea:focus{border-color:var(--accent-dk);}
+.chatin button{
+  width:44px; height:44px; border-radius:11px; background:var(--accent); color:#fff; font-size:17px; flex:0 0 auto;
+}
+.chatin button:disabled{opacity:.5;}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+.chip{font-size:11.5px; padding:5px 10px; border-radius:20px; background:var(--bg3); border:1px solid var(--line); color:var(--tx2);}
+.chip:hover{border-color:var(--accent-dk); color:var(--accent2);}
+.chip.on{border-color:var(--accent); color:var(--accent2); background:#2d221d;}
+
+/* 레퍼런스 톤 매칭 */
+.refrow{display:flex; gap:10px; align-items:stretch;}
+.refadd{
+  width:76px; height:76px; border-radius:10px; border:1.5px dashed var(--line2);
+  color:var(--tx3); font-size:16px; line-height:1.25; flex:0 0 auto; overflow:hidden; padding:0;
+}
+.refadd span{font-size:10.5px; display:block;}
+.refadd img{width:100%; height:100%; object-fit:cover; display:block;}
+.refadd:hover{border-color:var(--accent); color:var(--accent);}
+.refbtns{display:flex; flex-direction:column; gap:8px; flex:1; justify-content:center;}
+
+/* 부분 보정 오버레이 */
+.maskring{
+  position:absolute; border:2px dashed rgba(255,255,255,.95); border-radius:50%;
+  box-shadow:0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.45);
+  pointer-events:none; display:none;
+}
+.maskline{
+  position:absolute; left:0; right:0; border-top:2px dashed rgba(255,255,255,.95);
+  box-shadow:0 1px 0 rgba(0,0,0,.45); pointer-events:none; display:none;
+}
+#maskEditor{margin-top:4px;}
+#maskEditor .mbox{background:var(--bg3); border:1px solid var(--line); border-radius:var(--r-s); padding:12px 12px 4px; margin-top:4px;}
+#maskEditor .knob{margin-bottom:10px;}
+.canvasbox.placing{cursor:crosshair; outline:2px dashed var(--accent); outline-offset:-2px;}
+
+/* 프리셋 / 내보내기 */
+.plist{display:flex; flex-direction:column; gap:8px;}
+.pitem{
+  display:flex; align-items:center; gap:10px; background:var(--bg3); border:1px solid var(--line);
+  border-radius:var(--r-s); padding:9px 12px;
+}
+.pitem .nm{flex:1; font-size:13px; font-weight:700;}
+.pitem button{font-size:12px; color:var(--tx3); padding:4px 8px; border-radius:7px; border:1px solid var(--line);}
+.pitem button.ap{color:var(--accent2); border-color:var(--accent-dk);}
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:12.5px; font-weight:700; color:var(--tx2); margin-bottom:5px;}
+.field input[type=text],.field input[type=password],.field select,.field textarea{
+  width:100%; background:var(--bg3); border:1px solid var(--line2); border-radius:9px; padding:9px 11px; font-size:13px; outline:none; color:var(--tx);
+}
+.field input:focus,.field textarea:focus{border-color:var(--accent-dk);}
+.switch{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--tx2); cursor:pointer; user-select:none;}
+.switch input{width:17px; height:17px; accent-color:var(--accent);}
+
+/* 모달 / 토스트 */
+.modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:90; display:none; align-items:flex-end; justify-content:center;}
+.modal-bg.on{display:flex;}
+.modal{
+  background:var(--bg2); border:1px solid var(--line2); border-radius:18px 18px 0 0; width:100%; max-width:560px;
+  max-height:86dvh; overflow-y:auto; padding:20px 18px 26px; box-shadow:var(--shadow);
+}
+@media(min-width:700px){ .modal-bg{align-items:center;} .modal{border-radius:18px;} }
+.modal h2{font-size:16px; font-weight:800; margin-bottom:14px; display:flex; align-items:center; gap:8px;}
+.modal h2 .sp{flex:1;}
+.modal .close{font-size:13px; color:var(--tx3); padding:5px 9px;}
+#toast{
+  position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:99;
+  background:#2e2a25; border:1px solid var(--line2); color:var(--tx); font-size:13px;
+  padding:10px 18px; border-radius:30px; box-shadow:var(--shadow); display:none; max-width:88vw; text-align:center;
+}
+.spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ---------- 모바일 ---------- */
+@media(max-width:860px){
+  .workarea{flex-direction:column; overflow-y:auto;}
+  .stage{padding:10px; min-height:46dvh; flex:0 0 auto;}
+  .canvasbox{min-height:38dvh;}
+  .panel{width:100%; border-left:none; border-top:1px solid var(--line); flex:1 0 auto;}
+  .tabbody{overflow:visible;}
+  #editorView{height:auto;}
+  #editorView.on{display:block;}
+  .feat{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="dot">🎞</span>톤메이커 <small>AI 원탭 사진 보정</small></div>
+  <div class="sp"></div>
+  <button class="hbtn" id="btnHelp">도움말</button>
+  <button class="hbtn" id="btnSettings">⚙ 설정</button>
+</header>
+
+<!-- ============ 빈 화면 ============ -->
+<div id="emptyView">
+  <div class="drop" id="dropzone">
+    <div class="big">📸</div>
+    <h2>사진을 올려 보세요</h2>
+    <p>클릭해서 선택하거나, 이 곳에 사진을 끌어다 놓으세요.<br>여러 장을 한 번에 올릴 수 있어요.</p>
+    <div class="hint">JPG · PNG · WebP · HEIC(브라우저 지원 시) — 사진은 이 브라우저 안에서만 처리됩니다</div>
+  </div>
+  <div class="feat">
+    <div><b>✨ 원탭 자동 톤</b>AI가 사진을 보고 어울리는 톤 후보를 골라줘요</div>
+    <div><b>💬 말로 보정</b>"얼굴만 밝게, 하늘은 살려줘" — 말하면 바뀌어요</div>
+    <div><b>📦 일괄 보정</b>마음에 든 톤을 전체 사진에 똑같이 입혀요</div>
+  </div>
+  <p class="privacy">보정은 전부 내 기기(브라우저)에서 처리되고, AI 분석을 누를 때만 축소본이 AI에 전송됩니다.<br>저장 시 위치정보 등 개인 EXIF 데이터는 자동으로 제거됩니다.</p>
+  <input type="file" id="fileInput" accept="image/*" multiple hidden>
+</div>
+
+<!-- ============ 에디터 ============ -->
+<div id="editorView">
+  <div class="strip" id="strip"></div>
+  <div class="workarea">
+    <div class="stage">
+      <div class="canvasbox" id="canvasbox">
+        <div class="compare" id="compare">
+          <canvas id="glcanvas"></canvas>
+          <img class="orig" id="origImg" alt="원본">
+          <div class="divider" id="divider"></div>
+          <div class="maskring" id="maskRing"></div>
+          <div class="maskline" id="maskLine"></div>
+          <span class="tag-orig" id="tagOrig">원본</span>
+          <span class="tag-edit" id="tagEdit">보정</span>
+        </div>
+      </div>
+      <div class="stagebar">
+        <button class="sbtn" id="btnHold">👁 원본 보기 (꾹)</button>
+        <button class="sbtn" id="btnCompare">◧ 비교 슬라이더</button>
+        <button class="sbtn" id="btnReset">↺ 원본으로</button>
+        <span class="scene-chip" id="sceneChip"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs">
+        <button data-tab="tone" class="on">✨ 자동 톤</button>
+        <button data-tab="tune">🎛 다듬기</button>
+        <button data-tab="chat">💬 대화</button>
+        <button data-tab="export">📦 내보내기</button>
+      </div>
+      <div class="tabbody">
+
+        <!-- 자동 톤 -->
+        <div class="tab" id="tab-tone">
+          <div class="sec">
+            <button class="aibtn" id="btnAnalyze">🤖 AI에게 톤 추천받기</button>
+            <div class="diag" id="diagBox"></div>
+          </div>
+          <div class="sec">
+            <h3>톤 후보 — 탭 한 번으로 적용</h3>
+            <div class="cands" id="cands"></div>
+          </div>
+          <div class="sec">
+            <h3>🖼 레퍼런스 톤 매칭</h3>
+            <p class="note" style="margin-bottom:8px;">따라하고 싶은 감성의 사진(인스타·영화 스틸컷 등)을 올리면 그 톤을 내 사진에 입혀요.</p>
+            <div class="refrow">
+              <button class="refadd" id="btnRefAdd">＋<br><span>참고 사진</span></button>
+              <div class="refbtns">
+                <button class="sbtn" id="btnRefQuick" disabled>⚡ 빠른 매칭 (내 기기에서)</button>
+                <button class="sbtn" id="btnRefAI" disabled>🤖 AI 정밀 매칭</button>
+              </div>
+            </div>
+            <input type="file" id="refInput" accept="image/*" hidden>
+          </div>
+          <div class="sec">
+            <h3>✂ AI 구도 제안</h3>
+            <div class="rowbtns" style="margin-bottom:9px;">
+              <button class="sbtn" id="btnCropAI">✂ 구도 제안 받기</button>
+              <button class="sbtn" id="btnCropReset" style="display:none;">⬜ 원본 구도로</button>
+            </div>
+            <p class="note" id="cropNote" style="display:none; margin-bottom:9px;"></p>
+            <div class="cands" id="cropCards"></div>
+          </div>
+          <div class="sec">
+            <h3>무드 카드</h3>
+            <div class="moods" id="moods"></div>
+          </div>
+          <div class="sec">
+            <h3>⭐ 내 프리셋</h3>
+            <div class="plist" id="presetList"><p class="note">다듬기 탭에서 마음에 든 톤을 저장하면 여기에 모여요.</p></div>
+          </div>
+        </div>
+
+        <!-- 다듬기 -->
+        <div class="tab" id="tab-tune" hidden>
+          <div class="sec" id="basicKnobs"></div>
+          <div class="sec">
+            <h3>🎯 부분 보정</h3>
+            <p class="note" style="margin-bottom:8px;">사진의 일부만 골라서 보정해요. (최대 3개)</p>
+            <div class="chips" id="maskAdd">
+              <button class="chip" data-mask="radial">◯ 지점 선택</button>
+              <button class="chip" data-mask="linear-top">▽ 위(하늘)</button>
+              <button class="chip" data-mask="linear-bottom">△ 아래(땅)</button>
+              <button class="chip" data-mask="lumBright">☀ 밝은 곳</button>
+              <button class="chip" data-mask="lumDark">🌙 어두운 곳</button>
+            </div>
+            <div class="chips" id="maskChips"></div>
+            <div id="maskEditor"></div>
+          </div>
+          <div class="sec rowbtns">
+            <button class="sbtn" id="btnSavePreset">⭐ 이 톤을 프리셋으로</button>
+            <button class="sbtn" id="btnCopyTone">📋 이 톤 복사</button>
+          </div>
+          <div class="sec">
+            <details class="adv" id="advBox">
+              <summary>전문가 모드 (숫자로 보기)</summary>
+              <div class="inner">
+                <canvas id="histo"></canvas>
+                <div id="advKnobs"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- 대화 -->
+        <div class="tab" id="tab-chat" hidden>
+          <div class="sec">
+            <p class="note" style="margin-bottom:10px;">말로 보정을 부탁해 보세요. AI가 사진과 현재 톤을 보고 값을 다듬고, <b>왜 그렇게 했는지</b>도 알려줘요.</p>
+            <div class="chips" id="chatChips"></div>
+            <div class="chatlog" id="chatlog"></div>
+            <div class="chatin">
+              <textarea id="chatText" placeholder='예: "좀 더 따뜻한 필름 느낌으로"'></textarea>
+              <button id="btnChatSend">➤</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 내보내기 -->
+        <div class="tab" id="tab-export" hidden>
+          <div class="sec">
+            <h3>일괄 보정</h3>
+            <p class="note" style="margin-bottom:10px;">지금 보고 있는 톤을 올린 사진 전체에 똑같이 입힙니다.</p>
+            <label class="switch" style="margin-bottom:10px;"><input type="checkbox" id="autoBright" checked> 사진마다 밝기 자동 맞춤 (원본 밝기 편차 보정)</label>
+            <button class="aibtn" id="btnBatch">📦 전체 사진에 이 톤 적용</button>
+          </div>
+          <div class="sec">
+            <h3>저장</h3>
+            <div class="knob">
+              <div class="lab"><span class="l">저장 품질</span><span class="val" id="qualVal">높음 (92%)</span></div>
+              <input type="range" id="quality" min="60" max="100" value="92">
+            </div>
+            <div class="rowbtns">
+              <button class="sbtn" id="btnSaveOne">💾 이 사진 저장</button>
+              <button class="sbtn" id="btnSaveAll">💾 전체 저장</button>
+            </div>
+            <p class="note" style="margin-top:10px;">저장 시 원본은 그대로 두고 새 파일(JPG)로 내려받습니다. 위치정보 등 EXIF는 자동 제거됩니다.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 설정 모달 ============ -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h2>⚙ 설정 <span class="sp"></span><button class="close" data-close>닫기 ✕</button></h2>
+    <div class="field">
+      <label>AI 생성 방식</label>
+      <select id="setMode">
+        <option value="api">Claude API 키로 자동 생성</option>
+        <option value="copy">키 없이 — 프롬프트 복사 모드</option>
+      </select>
+    </div>
+    <div class="field" id="apiKeyField">
+      <label>Claude API 키 <span style="font-weight:400;color:var(--tx3)">(console.anthropic.com에서 발급, 내 브라우저에만 저장)</span></label>
+      <input type="password" id="setApiKey" placeholder="sk-ant-...">
+    </div>
+    <div class="field" id="modelField">
+      <label>모델</label>
+      <select id="setModel">
+        <option value="claude-sonnet-5">Claude Sonnet 5 — 빠르고 경제적 (추천)</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8 — 가장 정밀</option>
+      </select>
+    </div>
+    <p class="note">사진은 AI 분석을 누를 때만 축소본(최대 1024px)으로 전송됩니다. 복사 모드에서는 아무것도 전송되지 않아요.</p>
+    <div style="margin-top:16px;"><button class="aibtn" id="btnSaveSettings">저장</button></div>
+  </div>
+</div>
+
+<!-- ============ 복사 모드 모달 ============ -->
+<div class="modal-bg" id="copyModal">
+  <div class="modal">
+    <h2>📋 프롬프트 복사 모드 <span class="sp"></span><button class="close" data-close>닫기 ✕</button></h2>
+    <p class="note" id="copyInstr" style="margin-bottom:10px;"></p>
+    <div class="field">
+      <textarea id="copyPromptBox" rows="6" readonly style="font-size:11.5px;"></textarea>
+    </div>
+    <div class="rowbtns" style="margin-bottom:14px;">
+      <button class="sbtn" id="btnCopyPrompt">프롬프트 복사</button>
+    </div>
+    <div class="field">
+      <label>결과 JSON 붙여넣기</label>
+      <textarea id="copyResultBox" rows="5" placeholder='{"scene": ...}'></textarea>
+    </div>
+    <button class="aibtn" id="btnApplyPasted">적용</button>
+  </div>
+</div>
+
+<!-- ============ 도움말 모달 ============ -->
+<div class="modal-bg" id="helpModal">
+  <div class="modal">
+    <h2>🎞 톤메이커 사용법 <span class="sp"></span><button class="close" data-close>닫기 ✕</button></h2>
+    <div class="note">
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">1. 올리기</b> — 사진을 여러 장 올리면 아래 필름스트립에 나란히 놓여요.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">2. 원탭 톤</b> — 올리자마자 즉시 톤 후보가 만들어져요. <b>AI에게 톤 추천받기</b>를 누르면 Claude가 사진을 직접 보고 장면 진단과 함께 더 정교한 후보를 제안합니다.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">3. 다듬기</b> — 숫자 없이 손잡이 몇 개로 직관적으로. 원하면 전문가 모드에서 세부 값·히스토그램도 볼 수 있어요.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">4. 말로 보정</b> — 대화 탭에서 "새벽 감성으로", "인물 얼굴만 밝게" 라고 말해 보세요. 부분 보정까지 알아서 만들어 줘요.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">5. 레퍼런스 톤 매칭</b> — 따라하고 싶은 감성 사진을 올리면 그 톤을 내 사진에 입혀요. (⚡빠른 매칭은 내 기기에서, 🤖AI 정밀 매칭은 색 물들임·필름 질감까지)</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">6. AI 구도 제안</b> — AI가 3분할·수평·주제 강조 관점으로 크롭을 제안해요. 원본 구도로 언제든 복귀.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">7. 부분 보정</b> — 다듬기 탭에서 ◯지점(사진 탭해서 위치 지정)·▽하늘·☀밝은 곳 등을 골라 그 부분만 밝기·채도·온도를 조정. "영역 바깥에 적용"을 켜면 배경만 어둡게도 가능해요.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">8. 일괄 적용</b> — 마음에 든 톤을 ⭐프리셋으로 저장하고, 전체 사진에 한 번에 입혀서 저장하세요.</p>
+      <p style="color:var(--tx3)">원본은 절대 건드리지 않아요. 언제든 ↺ 원본으로 되돌릴 수 있습니다.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="fileInput2" accept="image/*" multiple hidden>
+
+<script>
+"use strict";
+/* ============================================================
+   톤메이커 — 상태
+   ============================================================ */
+const LS_SET = "tonemaker_settings_v1";
+const LS_PRE = "tonemaker_presets_v1";
+
+const state = {
+  photos: [],          // {id, name, bitmap, thumbUrl, recipe, stats, candidates, aiResult}
+  currentId: null,
+  settings: { mode: "api", apiKey: "", model: "claude-sonnet-5" },
+  userPresets: [],     // {id, name, recipe}
+  chat: [],            // {role:"me"|"ai", text}
+  compare: false,
+  selMask: -1,         // 선택된 부분 보정 인덱스
+  placing: false,      // 원형 마스크 배치 모드
+  refBitmap: null,     // 레퍼런스 사진
+};
+
+/* 보정 레시피 — 모든 값의 단일 원천 */
+const RECIPE_DEFS = [
+  // key, 한글명, min, max, 기본값
+  ["exposure",      "노출",        -100, 100, 0],
+  ["contrast",      "대비",        -100, 100, 0],
+  ["highlights",    "밝은 영역",   -100, 100, 0],
+  ["shadows",       "어두운 영역", -100, 100, 0],
+  ["temperature",   "색온도",      -100, 100, 0],
+  ["tint",          "색조",        -100, 100, 0],
+  ["saturation",    "채도",        -100, 100, 0],
+  ["vibrance",      "생동감",      -100, 100, 0],
+  ["clarity",       "질감",        -100, 100, 0],
+  ["sharpen",       "선명도",         0, 100, 0],
+  ["fade",          "페이드",         0, 100, 0],
+  ["grain",         "필름 그레인",    0, 100, 0],
+  ["halation",      "빛 번짐",        0, 100, 0],
+  ["vignette",      "비네트",      -100, 100, 0],
+  ["splitShadowHue","그림자 색상",    0, 360, 200],
+  ["splitShadowSat","그림자 물들임",  0, 100, 0],
+  ["splitHighHue",  "하이라이트 색상",0, 360, 45],
+  ["splitHighSat",  "하이라이트 물들임",0,100, 0],
+  ["hslRed",        "빨강 채도",   -100, 100, 0],
+  ["hslOrange",     "주황(피부) 채도",-100,100, 0],
+  ["hslYellow",     "노랑 채도",   -100, 100, 0],
+  ["hslGreen",      "초록 채도",   -100, 100, 0],
+  ["hslBlue",       "파랑(하늘) 채도",-100,100, 0],
+  ["hslMagenta",    "자홍 채도",   -100, 100, 0],
+];
+function defaultRecipe(){ const r={}; for(const d of RECIPE_DEFS) r[d[0]]=d[4]; r.masks=[]; return r; }
+const MASK_TYPES = ["radial","linear","lumDark","lumBright"];
+function clampMasks(list){
+  if(!Array.isArray(list)) return [];
+  const cl = (v,a,b,d) => (typeof v==="number" && isFinite(v)) ? Math.max(a, Math.min(b, v)) : d;
+  return list.slice(0,3).map(m => ({
+    type: MASK_TYPES.includes(m?.type) ? m.type : "radial",
+    cx: cl(m?.cx, 0, 1, 0.5), cy: cl(m?.cy, 0, 1, 0.5),
+    r: cl(m?.r, 0.03, 1.2, 0.22), feather: cl(m?.feather, 0, 1, 0.5),
+    dir: m?.dir === "bottom" ? "bottom" : "top", pos: cl(m?.pos, 0, 1, 0.4),
+    invert: !!m?.invert,
+    exposure: Math.round(cl(m?.exposure, -100, 100, 0)),
+    contrast: Math.round(cl(m?.contrast, -100, 100, 0)),
+    saturation: Math.round(cl(m?.saturation, -100, 100, 0)),
+    temperature: Math.round(cl(m?.temperature, -100, 100, 0)),
+  }));
+}
+function clampRecipe(r){
+  const out = defaultRecipe();
+  for(const [k,,mn,mx] of RECIPE_DEFS){
+    if(r && typeof r[k] === "number" && isFinite(r[k])) out[k] = Math.max(mn, Math.min(mx, Math.round(r[k])));
+  }
+  out.masks = clampMasks(r?.masks);
+  return out;
+}
+function isDefaultRecipe(r){
+  const d = defaultRecipe();
+  return RECIPE_DEFS.every(([k])=>r[k]===d[k]) && !(r.masks||[]).length;
+}
+
+/* ============================================================
+   WebGL 보정 엔진
+   ============================================================ */
+const VERT = `
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main(){
+  v_uv = vec2(a_pos.x*0.5+0.5, 0.5-a_pos.y*0.5);
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+const FRAG = `
+precision highp float;
+varying vec2 v_uv;
+uniform sampler2D u_tex, u_blurS, u_blurL;
+uniform vec2 u_size;
+uniform float u_exposure,u_contrast,u_highlights,u_shadows,u_temp,u_tint;
+uniform float u_sat,u_vib,u_clarity,u_sharpen,u_fade,u_grain,u_halation,u_vignette;
+uniform vec3 u_shadowTint,u_highTint; /* 색상 벡터 * 강도, JS에서 계산 */
+uniform float u_hsl[6];
+/* 부분 보정 마스크 (최대 3개) */
+uniform float u_maskN;
+uniform vec4 u_maskGeo[3];  /* radial: cx,cy,r,feather | linear: dir,pos,feather,- */
+uniform vec4 u_maskAdj[3];  /* exposure, contrast, saturation, temperature */
+uniform vec2 u_maskMeta[3]; /* type(0 radial,1 linear,2 lumDark,3 lumBright), invert */
+
+float luma(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
+vec3 rgb2hsv(vec3 c){
+  vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  float e = 1.0e-10;
+  return vec3(abs(q.z + (q.w - q.y)/(6.0*d+e)), d/(q.x+e), q.x);
+}
+float hueDist(float a, float b){
+  float d = abs(a-b);
+  return min(d, 360.0-d);
+}
+void main(){
+  vec3 raw = texture2D(u_tex, v_uv).rgb;
+  vec3 bS  = texture2D(u_blurS, v_uv).rgb;
+  vec3 bL  = texture2D(u_blurL, v_uv).rgb;
+  vec3 detS = raw - bS;   /* 작은 디테일(선명도) */
+  vec3 detL = raw - bL;   /* 중간 디테일(질감) */
+
+  vec3 c = raw;
+  /* 화이트밸런스 */
+  float t = u_temp*0.01, ti = u_tint*0.01;
+  c.r *= 1.0 + 0.12*t;  c.b *= 1.0 - 0.12*t;
+  c.g *= 1.0 - 0.09*ti;
+  /* 노출 (±100 = ±2스톱) */
+  c *= pow(2.0, u_exposure*0.02);
+  /* 대비 */
+  c = (c - 0.5)*(1.0 + u_contrast*0.009) + 0.5;
+  /* 밝은/어두운 영역 */
+  float lum = clamp(luma(c), 0.0, 1.0);
+  c += u_shadows*0.01*0.32*pow(1.0-lum, 2.0);
+  c += u_highlights*0.01*0.32*pow(lum, 2.0);
+  /* 질감(클래리티: 중간톤 위주) + 선명도 */
+  lum = clamp(luma(c), 0.0, 1.0);
+  float midW = clamp(1.0 - abs(lum-0.5)*1.5, 0.0, 1.0);
+  c += detL * u_clarity*0.01*0.85 * (0.35+0.65*midW);
+  c += detS * u_sharpen*0.01*0.9;
+  /* 색상별 채도 (HSL 밴드) */
+  vec3 hsv = rgb2hsv(clamp(c,0.0,1.0));
+  float h = hsv.x*360.0;
+  float bandAdj =
+      u_hsl[0]*exp(-pow(hueDist(h,  0.0)/22.0,2.0))
+    + u_hsl[1]*exp(-pow(hueDist(h, 32.0)/20.0,2.0))
+    + u_hsl[2]*exp(-pow(hueDist(h, 60.0)/26.0,2.0))
+    + u_hsl[3]*exp(-pow(hueDist(h,120.0)/40.0,2.0))
+    + u_hsl[4]*exp(-pow(hueDist(h,222.0)/45.0,2.0))
+    + u_hsl[5]*exp(-pow(hueDist(h,305.0)/35.0,2.0));
+  bandAdj *= 0.01 * clamp(hsv.y*3.0, 0.0, 1.0); /* 무채색 보호 */
+  float g0 = luma(c);
+  c = mix(vec3(g0), c, 1.0 + bandAdj);
+  /* 생동감(저채도 위주) + 채도 */
+  float mx = max(c.r, max(c.g,c.b)), mn = min(c.r, min(c.g,c.b));
+  float satNow = clamp(mx-mn, 0.0, 1.0);
+  float g1 = luma(c);
+  c = mix(vec3(g1), c, 1.0 + u_vib*0.01*(1.0-satNow)*1.15);
+  float g2 = luma(c);
+  c = mix(vec3(g2), c, 1.0 + u_sat*0.01);
+  /* 스플릿 토닝 (밝기 보존형 색 물들임) */
+  float lum2 = clamp(luma(c), 0.0, 1.0);
+  c += u_shadowTint * pow(1.0-lum2, 1.6);
+  c += u_highTint * pow(lum2, 1.6);
+  /* 페이드 (블랙 들어올림 + 살짝 바랜 느낌) */
+  float f = u_fade*0.01;
+  c = c + f*0.14*(1.0-c);
+  c = mix(c, vec3(luma(c)), f*0.13);
+  /* 할레이션(하이라이트 빛 번짐) */
+  c += max(bL - 0.62, 0.0) * u_halation*0.01*0.95;
+  /* 부분 보정 마스크 */
+  float aspect = u_size.x / max(u_size.y, 1.0);
+  for(int i=0; i<3; i++){
+    if(i >= int(u_maskN + 0.5)) break;
+    vec4 geo = u_maskGeo[i];
+    vec4 adj = u_maskAdj[i];
+    vec2 meta = u_maskMeta[i];
+    float w = 0.0;
+    if(meta.x < 0.5){                 /* 원형 */
+      vec2 dd = (v_uv - geo.xy) * vec2(aspect, 1.0);
+      float inner = geo.z * (1.0 - clamp(geo.w, 0.08, 1.0));
+      w = 1.0 - smoothstep(inner, geo.z, length(dd));
+    } else if(meta.x < 1.5){          /* 그라데이션 */
+      float fe = max(geo.z, 0.02);
+      w = geo.x > 0.5
+        ? 1.0 - smoothstep(geo.y - fe, geo.y + fe, v_uv.y)
+        : smoothstep(geo.y - fe, geo.y + fe, v_uv.y);
+    } else {                          /* 밝기 기반 */
+      float lm = clamp(luma(c), 0.0, 1.0);
+      w = meta.x < 2.5 ? pow(1.0 - lm, 2.0) : pow(lm, 2.0);
+    }
+    if(meta.y > 0.5) w = 1.0 - w;
+    w = clamp(w, 0.0, 1.0);
+    c *= pow(2.0, adj.x*0.02*w);
+    c = (c - 0.5)*(1.0 + adj.y*0.009*w) + 0.5;
+    float gm = luma(c);
+    c = mix(c, mix(vec3(gm), c, 1.0 + adj.z*0.01), w);
+    c.r *= 1.0 + 0.12*adj.w*0.01*w;
+    c.b *= 1.0 - 0.12*adj.w*0.01*w;
+  }
+  /* 비네트 */
+  vec2 p = v_uv - 0.5;
+  float d = length(p)*1.4142;
+  c *= 1.0 - u_vignette*0.01*0.62*smoothstep(0.35, 1.05, d);
+  /* 그레인 */
+  float n = fract(sin(dot(floor(v_uv*u_size), vec2(12.9898,78.233)))*43758.5453);
+  float lg = clamp(luma(c),0.0,1.0);
+  c += (n-0.5)*u_grain*0.01*0.2*(1.0-lg*0.55);
+  gl_FragColor = vec4(clamp(c,0.0,1.0), 1.0);
+}`;
+
+function hueToRgb(h){ // HSV(h,1,1)
+  h = ((h%360)+360)%360;
+  const f = n => { const k=(n+h/60)%6; return 1 - Math.max(0, Math.min(k, 4-k, 1)); };
+  return [f(5), f(3), f(1)];
+}
+
+class Engine {
+  constructor(canvas, maxSize){
+    this.canvas = canvas;
+    this.maxSize = maxSize;
+    const gl = canvas.getContext("webgl", { preserveDrawingBuffer:true, premultipliedAlpha:false });
+    if(!gl) throw new Error("이 브라우저는 WebGL을 지원하지 않아 보정 엔진을 켤 수 없습니다.");
+    this.gl = gl;
+    const compile = (type, src) => {
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error("Shader: "+gl.getShaderInfoLog(s));
+      return s;
+    };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error("Link: "+gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    this.prog = prog;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "a_pos");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    this.u = {};
+    const names = ["u_tex","u_blurS","u_blurL","u_size","u_exposure","u_contrast","u_highlights","u_shadows",
+      "u_temp","u_tint","u_sat","u_vib","u_clarity","u_sharpen","u_fade","u_grain","u_halation","u_vignette",
+      "u_shadowTint","u_highTint"];
+    for(const n of names) this.u[n] = gl.getUniformLocation(prog, n);
+    this.u.u_hsl = gl.getUniformLocation(prog, "u_hsl[0]");
+    this.u.u_maskN = gl.getUniformLocation(prog, "u_maskN");
+    this.u.u_maskGeo = gl.getUniformLocation(prog, "u_maskGeo[0]");
+    this.u.u_maskAdj = gl.getUniformLocation(prog, "u_maskAdj[0]");
+    this.u.u_maskMeta = gl.getUniformLocation(prog, "u_maskMeta[0]");
+    this.tex = this._mkTex(); this.texS = this._mkTex(); this.texL = this._mkTex();
+    this.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+  }
+  _mkTex(){
+    const gl = this.gl;
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return t;
+  }
+  _upload(tex, source){
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  }
+  setImage(bitmap){
+    const cap = Math.min(this.maxSize, this.maxTex);
+    const scale = Math.min(1, cap / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width*scale));
+    const h = Math.max(1, Math.round(bitmap.height*scale));
+    const main = document.createElement("canvas");
+    main.width = w; main.height = h;
+    main.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+    // 블러 텍스처: 축소본을 그대로 업로드 → 선형 필터 확대가 곧 블러
+    const mk = (div) => {
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w/div)); c.height = Math.max(1, Math.round(h/div));
+      const x = c.getContext("2d");
+      x.drawImage(main, 0, 0, c.width, c.height);
+      return c;
+    };
+    const s1 = mk(2);                       // 선명도용 (작은 반경)
+    const l0 = mk(6);                       // 질감/할레이션용 (큰 반경, 2단계)
+    const l1 = document.createElement("canvas");
+    l1.width = Math.max(1, Math.round(w/14)); l1.height = Math.max(1, Math.round(h/14));
+    l1.getContext("2d").drawImage(l0, 0, 0, l1.width, l1.height);
+    this._upload(this.tex, main);
+    this._upload(this.texS, s1);
+    this._upload(this.texL, l1);
+    this.canvas.width = w; this.canvas.height = h;
+    this.gl.viewport(0, 0, w, h);
+    this.w = w; this.h = h;
+  }
+  render(recipe){
+    const gl = this.gl, u = this.u, r = recipe;
+    gl.useProgram(this.prog);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex);  gl.uniform1i(u.u_tex, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.texS); gl.uniform1i(u.u_blurS, 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.texL); gl.uniform1i(u.u_blurL, 2);
+    gl.uniform2f(u.u_size, this.w, this.h);
+    gl.uniform1f(u.u_exposure, r.exposure);   gl.uniform1f(u.u_contrast, r.contrast);
+    gl.uniform1f(u.u_highlights, r.highlights); gl.uniform1f(u.u_shadows, r.shadows);
+    gl.uniform1f(u.u_temp, r.temperature);    gl.uniform1f(u.u_tint, r.tint);
+    gl.uniform1f(u.u_sat, r.saturation);      gl.uniform1f(u.u_vib, r.vibrance);
+    gl.uniform1f(u.u_clarity, r.clarity);     gl.uniform1f(u.u_sharpen, r.sharpen);
+    gl.uniform1f(u.u_fade, r.fade);           gl.uniform1f(u.u_grain, r.grain);
+    gl.uniform1f(u.u_halation, r.halation);   gl.uniform1f(u.u_vignette, r.vignette);
+    const mkTint = (hue, sat, k) => {
+      const [cr,cg,cb] = hueToRgb(hue);
+      const l = 0.299*cr + 0.587*cg + 0.114*cb;
+      const a = sat*0.01*k;
+      return [(cr-l)*a, (cg-l)*a, (cb-l)*a];
+    };
+    gl.uniform3fv(u.u_shadowTint, mkTint(r.splitShadowHue, r.splitShadowSat, 0.30));
+    gl.uniform3fv(u.u_highTint,  mkTint(r.splitHighHue,  r.splitHighSat,  0.24));
+    gl.uniform1fv(u.u_hsl, [r.hslRed, r.hslOrange, r.hslYellow, r.hslGreen, r.hslBlue, r.hslMagenta]);
+    // 부분 보정 마스크
+    const masks = r.masks || [];
+    const n = Math.min(3, masks.length);
+    const geo = new Float32Array(12), adj = new Float32Array(12), meta = new Float32Array(6);
+    const TYPE_IDX = { radial:0, linear:1, lumDark:2, lumBright:3 };
+    for(let i=0; i<n; i++){
+      const m = masks[i];
+      meta[i*2] = TYPE_IDX[m.type] ?? 0;
+      meta[i*2+1] = m.invert ? 1 : 0;
+      if(m.type === "linear") geo.set([m.dir === "top" ? 1 : 0, m.pos, 0.04 + m.feather*0.45, 0], i*4);
+      else geo.set([m.cx, m.cy, m.r, m.feather], i*4);
+      adj.set([m.exposure, m.contrast, m.saturation, m.temperature], i*4);
+    }
+    gl.uniform1f(u.u_maskN, n);
+    gl.uniform4fv(u.u_maskGeo, geo);
+    gl.uniform4fv(u.u_maskAdj, adj);
+    gl.uniform2fv(u.u_maskMeta, meta);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+}
+
+/* ============================================================
+   이미지 분석 (로컬 휴리스틱 — API 없이도 즉시 후보 생성)
+   ============================================================ */
+function computeStats(bitmap){
+  const c = document.createElement("canvas");
+  const s = Math.min(1, 220/Math.max(bitmap.width, bitmap.height));
+  c.width = Math.max(1, Math.round(bitmap.width*s));
+  c.height = Math.max(1, Math.round(bitmap.height*s));
+  const x = c.getContext("2d", { willReadFrequently:true });
+  x.drawImage(bitmap, 0, 0, c.width, c.height);
+  const d = x.getImageData(0, 0, c.width, c.height).data;
+  let sum=0, satSum=0, warm=0; const lumas=[];
+  for(let i=0; i<d.length; i+=4){
+    const r=d[i]/255, g=d[i+1]/255, b=d[i+2]/255;
+    const l = 0.299*r+0.587*g+0.114*b;
+    lumas.push(l); sum+=l;
+    satSum += Math.max(r,g,b)-Math.min(r,g,b);
+    warm += r-b;
+  }
+  const n = lumas.length;
+  lumas.sort((a,b)=>a-b);
+  return {
+    mean: sum/n,
+    p05: lumas[Math.floor(n*0.05)],
+    p95: lumas[Math.floor(n*0.95)],
+    sat: satSum/n,
+    warm: warm/n,
+  };
+}
+function buildLocalCandidates(stats){
+  const clampV=(v,a,b)=>Math.max(a,Math.min(b,Math.round(v)));
+  const baseExp = clampV(60*Math.log2(0.47/Math.max(0.05, stats.mean)), -35, 35);
+  const shad = stats.p05 < 0.06 ? 18 : 8;
+  const high = stats.p95 > 0.96 ? -18 : -6;
+  const tempFix = clampV(-stats.warm*120, -12, 12);
+  const satBoost = stats.sat < 0.12 ? 10 : 0;
+  const mk = (name, comment, over) => ({ name, comment, recipe: clampRecipe(Object.assign(defaultRecipe(), over)) });
+  return [
+    mk("자연스럽게","원본 느낌을 살리며 정돈",{
+      exposure: Math.round(baseExp*0.7), contrast:6, shadows:shad, highlights:high,
+      temperature:tempFix, vibrance:10+satBoost, sharpen:10 }),
+    mk("화사하게","밝고 부드러운 인물·일상 톤",{
+      exposure: baseExp+10, contrast:2, shadows:shad+12, highlights:high-6,
+      temperature: clampV(tempFix+7,-100,100), vibrance:20+satBoost, saturation:4, sharpen:8, fade:6 }),
+    mk("필름 감성","그레인·페이드가 있는 아날로그 룩",{
+      exposure: baseExp, contrast:-4, shadows:shad, highlights:high,
+      temperature: clampV(tempFix+5,-100,100), saturation:-8, vibrance:4,
+      fade:28, grain:24, halation:14, vignette:12,
+      splitShadowHue:195, splitShadowSat:22, splitHighHue:45, splitHighSat:16 }),
+    mk("쨍하게","대비·디테일을 살린 SNS 톤",{
+      exposure: baseExp+4, contrast:16, shadows:shad-2, highlights:high,
+      temperature:tempFix, vibrance:26+satBoost, saturation:6, clarity:22, sharpen:24 }),
+  ];
+}
+
+/* 무드 카드 (컬러 그레이딩 프리셋) */
+const MOODS = [
+  { name:"시네마틱", grad:["#0e2a33","#e8a35c"], recipe:{ contrast:10, saturation:-10, vibrance:8, shadows:10, highlights:-14,
+      splitShadowHue:200, splitShadowSat:32, splitHighHue:38, splitHighSat:22, fade:8, vignette:16, hslOrange:10 } },
+  { name:"새벽 감성", grad:["#31406b","#b8c4e0"], recipe:{ exposure:6, contrast:-6, temperature:-16, tint:4, saturation:-14,
+      fade:22, splitShadowHue:225, splitShadowSat:26, splitHighHue:210, splitHighSat:10, grain:10, vignette:8 } },
+  { name:"여름 쨍함", grad:["#2e9ccc","#f2e28a"], recipe:{ exposure:8, contrast:14, temperature:6, vibrance:28, clarity:18,
+      hslBlue:22, hslGreen:12, sharpen:18, highlights:-10 } },
+  { name:"빈티지 필름", grad:["#6b5a3e","#d9c49a"], recipe:{ contrast:-8, temperature:12, saturation:-12, fade:34, grain:34,
+      halation:20, vignette:20, splitShadowHue:160, splitShadowSat:16, splitHighHue:50, splitHighSat:24, hslYellow:8 } },
+  { name:"가을 노을", grad:["#7a3b2e","#e8a35c"], recipe:{ exposure:2, contrast:8, temperature:22, tint:6, vibrance:14,
+      splitShadowHue:15, splitShadowSat:14, splitHighHue:35, splitHighSat:28, hslOrange:16, hslRed:10, vignette:10, halation:12 } },
+  { name:"흑백 무드", grad:["#1a1a1a","#cfcfcf"], recipe:{ saturation:-100, contrast:16, clarity:14, grain:22, vignette:18, shadows:8, highlights:-8 } },
+];
+
+/* ============================================================
+   Claude API (studio.html과 동일 패턴)
+   ============================================================ */
+let sdkPromise = null;
+function loadSDK(){
+  if(!sdkPromise) sdkPromise = import("https://esm.sh/@anthropic-ai/sdk@latest");
+  return sdkPromise;
+}
+const ADJ_PROPS = (() => {
+  const p = {};
+  for(const [k,label,mn,mx] of RECIPE_DEFS) p[k] = { type:"integer", minimum:mn, maximum:mx, description:label };
+  return p;
+})();
+const ADJ_REQUIRED = RECIPE_DEFS.map(d=>d[0]);
+const ANALYZE_SCHEMA = {
+  type:"object",
+  properties:{
+    scene:{ type:"string", description:"장면 한 줄 요약 (한국어, 20자 내외)" },
+    diagnosis:{ type:"string", description:"사진작가 관점의 진단과 보정 방향 (한국어, 2~3문장)" },
+    presets:{
+      type:"array", minItems:3, maxItems:4,
+      items:{
+        type:"object",
+        properties:{
+          name:{ type:"string", description:"톤 이름 (한국어, 6자 내외)" },
+          comment:{ type:"string", description:"이 톤의 느낌 한 줄 (한국어)" },
+          adjustments:{ type:"object", properties:ADJ_PROPS, required:ADJ_REQUIRED, additionalProperties:false },
+        },
+        required:["name","comment","adjustments"], additionalProperties:false,
+      },
+    },
+  },
+  required:["scene","diagnosis","presets"], additionalProperties:false,
+};
+const MASK_ITEM_SCHEMA = {
+  type:"object",
+  properties:{
+    type:{ type:"string", enum:["radial","linear","lumDark","lumBright"], description:"radial=원형 영역, linear=상하 그라데이션, lumDark=어두운 영역만, lumBright=밝은 영역만" },
+    cx:{ type:"number", minimum:0, maximum:1, description:"원형 중심 x (0=왼쪽)" },
+    cy:{ type:"number", minimum:0, maximum:1, description:"원형 중심 y (0=위)" },
+    r:{ type:"number", minimum:0.03, maximum:1.2, description:"원형 반지름 (세로 기준 비율)" },
+    feather:{ type:"number", minimum:0, maximum:1, description:"가장자리 부드러움" },
+    dir:{ type:"string", enum:["top","bottom"], description:"linear: top=위(하늘)부터, bottom=아래부터" },
+    pos:{ type:"number", minimum:0, maximum:1, description:"linear 경계 위치 (0=위)" },
+    invert:{ type:"boolean", description:"true면 영역 바깥에 적용 (배경 등)" },
+    exposure:{ type:"integer", minimum:-100, maximum:100 },
+    contrast:{ type:"integer", minimum:-100, maximum:100 },
+    saturation:{ type:"integer", minimum:-100, maximum:100 },
+    temperature:{ type:"integer", minimum:-100, maximum:100 },
+  },
+  required:["type","cx","cy","r","feather","dir","pos","invert","exposure","contrast","saturation","temperature"],
+  additionalProperties:false,
+};
+const CHAT_SCHEMA = {
+  type:"object",
+  properties:{
+    explanation:{ type:"string", description:"무엇을 왜 바꿨는지 사진작가처럼 친근하게 설명 (한국어, 2~3문장)" },
+    adjustments:{ type:"object", properties:ADJ_PROPS, required:ADJ_REQUIRED, additionalProperties:false },
+    masks:{ type:"array", maxItems:3, items:MASK_ITEM_SCHEMA, description:"부분 보정이 필요할 때만. 전역 보정으로 충분하면 빈 배열" },
+  },
+  required:["explanation","adjustments","masks"], additionalProperties:false,
+};
+const CROP_SCHEMA = {
+  type:"object",
+  properties:{
+    note:{ type:"string", description:"현재 구도에 대한 사진작가의 총평 (한국어 1~2문장)" },
+    suggestions:{
+      type:"array", minItems:1, maxItems:3,
+      items:{
+        type:"object",
+        properties:{
+          name:{ type:"string", description:"구도 이름 (한국어, 8자 내외)" },
+          reason:{ type:"string", description:"이 구도를 추천하는 이유 (한국어 1~2문장)" },
+          x:{ type:"number", minimum:0, maximum:90, description:"크롭 왼쪽 위 x (원본 대비 %)" },
+          y:{ type:"number", minimum:0, maximum:90 },
+          width:{ type:"number", minimum:10, maximum:100 },
+          height:{ type:"number", minimum:10, maximum:100 },
+          angle:{ type:"number", minimum:-15, maximum:15, description:"수평 보정 회전 (도, 시계방향 +). 필요 없으면 0" },
+        },
+        required:["name","reason","x","y","width","height","angle"], additionalProperties:false,
+      },
+    },
+  },
+  required:["note","suggestions"], additionalProperties:false,
+};
+const SYSTEM_PROMPT = `당신은 숙련된 사진 컬러리스트이자 리터처입니다. 사용자의 사진을 보고 톤 보정 레시피(수치)를 만듭니다.
+
+값 규칙:
+- exposure ±100 = ±2스톱. contrast/highlights/shadows/temperature/tint/saturation/vibrance/clarity: -100~100. sharpen/fade/grain/halation: 0~100. vignette: -100~100.
+- splitShadowHue/splitHighHue: 0~360 색상각(예: 200=청록, 45=따뜻한 주황). splitShadowSat/splitHighSat: 0~100 물들임 강도(0이면 스플릿 토닝 없음).
+- hslRed~hslMagenta: 해당 색상 계열만의 채도 조정(-100~100). 피부톤은 hslOrange, 하늘은 hslBlue.
+- 과보정 금지: 자연스러운 사진은 대부분의 값이 ±30 안에 들어옵니다. 인물 피부를 존중하고, 하이라이트 클리핑을 피하세요.
+- 쓰지 않는 값은 반드시 0(스플릿 색상각은 기본값 그대로)으로 두세요.
+- 모든 설명은 전문용어를 풀어 친근한 한국어로.
+
+부분 보정(masks, 최대 3개): 사진 일부에만 보정이 필요할 때만 사용.
+- radial: 사진에서 그 대상의 실제 위치를 보고 cx,cy(0~1)와 r을 정하세요. 예: "얼굴만 밝게" → 얼굴 위치에 radial + exposure.
+- linear: 하늘/땅처럼 위·아래 영역. 예: "하늘만 진하게" → dir "top" + pos를 지평선쯤에.
+- lumDark/lumBright: 어두운 곳/밝은 곳 전체.
+- invert true = 영역 바깥에 적용. 예: "배경만 어둡게" → 주인공 위치 radial + invert + exposure 음수.
+- 마스크마다 exposure/contrast/saturation/temperature만 조정. 쓰지 않는 마스크 필드는 기본값(cx 0.5, cy 0.5, r 0.25, feather 0.5, dir "top", pos 0.5, invert false)으로.`;
+
+function analyzePromptText(){
+  return `이 사진을 분석해 주세요.
+1) 장면을 파악하고 (인물/음식/풍경/야경/제품/문서 등, 조명 상태)
+2) 사진작가 관점의 진단을 쓰고
+3) 서로 개성이 다른 톤 프리셋 3~4개를 만들어 주세요. (예: 자연스러운 정돈 / 밝고 화사 / 필름·시네마틱 감성 / 쨍한 SNS 톤)
+각 프리셋은 이 사진의 실제 상태(노출·색온도·대비)에 맞춘 값이어야 합니다.`;
+}
+function chatPromptText(userText, recipe){
+  return `사용자가 사진을 보정 중입니다. 현재 적용된 레시피:
+${JSON.stringify(recipe)}
+
+사용자 요청: "${userText}"
+
+사진과 현재 레시피를 고려해 요청을 반영한 **전체 레시피**(모든 필드 포함)를 돌려주고, 무엇을 왜 바꿨는지 설명해 주세요. 요청과 무관한 값은 최대한 유지하세요. "~만", "~부분만" 같은 부분 보정 요청이면 masks를 활용하세요.`;
+}
+function refPromptText(recipe){
+  return `사진이 두 장 첨부되어 있습니다. **사진 1 = 보정할 사진**, **사진 2 = 레퍼런스(따라하고 싶은 톤의 참고 사진)** 입니다.
+
+레퍼런스의 색감·무드를 분석하세요: 전체 밝기와 대비, 색온도, 채도 수준, 그림자/하이라이트에 물든 색(스플릿 토닝), 페이드·그레인 같은 필름 질감, 특정 색 계열의 강조 여부.
+
+그 느낌을 사진 1에 옮기는 전체 레시피를 만들어 주세요. 사진 1의 현재 상태(노출·색온도)를 고려해서, 결과물이 레퍼런스의 무드와 닮게 만드는 것이 목표입니다. 레퍼런스를 픽셀 단위로 복사하는 게 아니라 "같은 감성"으로 보정하는 것입니다.
+
+참고로 사진 1의 현재 레시피: ${JSON.stringify(recipe)}
+explanation에는 레퍼런스에서 읽어낸 톤의 특징과 어떻게 옮겼는지 설명해 주세요.`;
+}
+function cropPromptText(){
+  return `이 사진의 구도를 사진작가 관점에서 평가하고, 더 좋은 크롭(잘라내기)을 1~3개 제안해 주세요.
+
+고려할 것: 3분할 구도, 주제(피사체) 강조, 불필요한 여백·방해 요소 제거, 수평선/기둥의 기울어짐(angle로 보정), 소셜미디어용 정방형(1:1) 등 다양한 비율.
+좌표는 원본 사진 대비 %입니다 (x+width ≤ 100, y+height ≤ 100). 회전(angle)을 쓸 때는 모서리가 잘려도 어색하지 않게 크롭을 약간 안쪽으로 잡으세요.
+각 제안의 reason에는 왜 이 구도가 나은지 설명해 주세요.`;
+}
+
+async function callClaudeVision(imageB64, promptText, schema){
+  const { default: Anthropic } = await loadSDK();
+  const client = new Anthropic({
+    apiKey: state.settings.apiKey,
+    dangerouslyAllowBrowser: true, // 개인용 도구: 키는 사용자 본인 브라우저에만 저장됨
+  });
+  const content = [];
+  const images = Array.isArray(imageB64) ? imageB64 : (imageB64 ? [imageB64] : []);
+  for(const b64 of images) content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } });
+  content.push({ type:"text", text: promptText });
+  const response = await client.messages.create({
+    model: state.settings.model || "claude-sonnet-5",
+    max_tokens: 8000,
+    thinking: { type:"adaptive" },
+    system: SYSTEM_PROMPT,
+    output_config: { format: { type:"json_schema", schema } },
+    messages: [{ role:"user", content }],
+  });
+  if(response.stop_reason === "refusal") throw new Error("모델이 이 요청을 거절했습니다. 다른 사진이나 표현으로 시도해 주세요.");
+  if(response.stop_reason === "max_tokens") throw new Error("출력이 너무 길어 잘렸습니다. 다시 시도해 주세요.");
+  const text = response.content.find(b=>b.type==="text")?.text ?? "";
+  return JSON.parse(text);
+}
+
+async function imageToB64(bitmap, max=1024){
+  const s = Math.min(1, max/Math.max(bitmap.width, bitmap.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(bitmap.width*s));
+  c.height = Math.max(1, Math.round(bitmap.height*s));
+  c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
+  const dataUrl = c.toDataURL("image/jpeg", 0.85);
+  return dataUrl.split(",")[1];
+}
+
+/* ============================================================
+   DOM 헬퍼 / 토스트
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let toastTimer = null;
+function toast(msg, ms=2600){
+  const t = $("#toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display="none"; }, ms);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ============================================================
+   상태 저장/복원
+   ============================================================ */
+function loadSettings(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_SET));
+    if(s) Object.assign(state.settings, s);
+  }catch(e){}
+  try{
+    const p = JSON.parse(localStorage.getItem(LS_PRE));
+    if(Array.isArray(p)) state.userPresets = p;
+  }catch(e){}
+}
+function saveSettings(){ localStorage.setItem(LS_SET, JSON.stringify(state.settings)); }
+function savePresets(){ try{ localStorage.setItem(LS_PRE, JSON.stringify(state.userPresets)); }catch(e){ toast("저장 공간이 부족해 프리셋을 저장하지 못했어요."); } }
+
+/* ============================================================
+   메인 엔진 / 사진 관리
+   ============================================================ */
+let engine = null;        // 화면 표시용 (긴 변 1920 제한)
+let thumbEngine = null;   // 후보 썸네일용 (긴 변 320 제한)
+let renderQueued = false;
+
+function currentPhoto(){ return state.photos.find(p=>p.id===state.currentId) || null; }
+function srcBitmap(p){ return p.cropBitmap || p.bitmap; }
+
+/* 크롭 적용/해제 — 원본 비트맵은 절대 건드리지 않음 */
+async function setCrop(p, s){
+  if(!s){ p.crop = null; p.cropBitmap = null; }
+  else{
+    const W = p.bitmap.width, H = p.bitmap.height;
+    const x0 = Math.max(0, Math.min(90, s.x)), y0 = Math.max(0, Math.min(90, s.y));
+    const wP = Math.max(10, Math.min(100 - x0, s.width)), hP = Math.max(10, Math.min(100 - y0, s.height));
+    const cx = x0/100*W, cy = y0/100*H;
+    const cw = Math.max(16, Math.round(wP/100*W)), ch = Math.max(16, Math.round(hP/100*H));
+    const ang = Math.max(-15, Math.min(15, s.angle || 0));
+    const c = document.createElement("canvas");
+    c.width = cw; c.height = ch;
+    const x = c.getContext("2d");
+    const th = Math.abs(ang)*Math.PI/180, co = Math.cos(th), si = Math.sin(th);
+    const z = Math.max((cw*co + ch*si)/cw, (cw*si + ch*co)/ch); // 회전 시 모서리 빈틈 방지 줌
+    x.translate(cw/2, ch/2);
+    x.rotate(ang*Math.PI/180);
+    x.scale(z, z);
+    x.drawImage(p.bitmap, -(cx + cw/2), -(cy + ch/2));
+    p.crop = { x:x0, y:y0, width:wP, height:hP, angle:ang };
+    p.cropBitmap = await createImageBitmap(c);
+  }
+  // 프레임이 바뀌었으니 파생 데이터 재계산
+  p.origUrl = null;
+  p.stats = computeStats(srcBitmap(p));
+  p.candidates = null;
+  const bm = srcBitmap(p);
+  const tc = document.createElement("canvas");
+  const ts = Math.min(1, 120/Math.max(bm.width, bm.height));
+  tc.width = Math.max(1, Math.round(bm.width*ts));
+  tc.height = Math.max(1, Math.round(bm.height*ts));
+  tc.getContext("2d").drawImage(bm, 0, 0, tc.width, tc.height);
+  p.thumbUrl = tc.toDataURL("image/jpeg", 0.8);
+  if(p.id === state.currentId) selectPhoto(p.id);
+  else renderStrip();
+}
+/* 크롭 제안 미리보기 (2D, 톤 미적용) */
+function cropPreviewUrl(p, s, max=280){
+  const W = p.bitmap.width, H = p.bitmap.height;
+  const cw = Math.max(16, s.width/100*W), ch = Math.max(16, s.height/100*H);
+  const sc = Math.min(1, max/Math.max(cw, ch));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(cw*sc)); c.height = Math.max(1, Math.round(ch*sc));
+  const x = c.getContext("2d");
+  x.scale(sc, sc);
+  x.translate(cw/2, ch/2);
+  x.rotate((s.angle || 0)*Math.PI/180);
+  x.drawImage(p.bitmap, -(s.x/100*W + cw/2), -(s.y/100*H + ch/2));
+  return c.toDataURL("image/jpeg", 0.75);
+}
+
+function requestRender(){
+  if(renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(()=>{
+    renderQueued = false;
+    const p = currentPhoto();
+    if(p && engine){ engine.render(p.recipe); scheduleHisto(); }
+  });
+}
+
+let photoSeq = 0;
+async function addFiles(files){
+  const list = [...files].filter(f=>f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name));
+  if(!list.length){ toast("이미지 파일을 올려 주세요."); return; }
+  let added = 0;
+  for(const f of list){
+    try{
+      const bitmap = await createImageBitmap(f, { imageOrientation:"from-image" });
+      const id = "p" + (++photoSeq);
+      const tc = document.createElement("canvas");
+      const ts = Math.min(1, 120/Math.max(bitmap.width, bitmap.height));
+      tc.width = Math.max(1, Math.round(bitmap.width*ts));
+      tc.height = Math.max(1, Math.round(bitmap.height*ts));
+      tc.getContext("2d").drawImage(bitmap, 0, 0, tc.width, tc.height);
+      state.photos.push({
+        id, name: f.name.replace(/\.[^.]+$/, ""), bitmap,
+        thumbUrl: tc.toDataURL("image/jpeg", 0.8),
+        recipe: defaultRecipe(),
+        stats: computeStats(bitmap),
+        candidates: null, aiResult: null, origUrl: null,
+      });
+      added++;
+    }catch(e){
+      console.error(e);
+      toast(`"${f.name}" 파일을 열 수 없어요. (HEIC은 브라우저에 따라 미지원)`);
+    }
+  }
+  if(!added) return;
+  $("#emptyView").style.display = "none";
+  $("#editorView").classList.add("on");
+  if(!state.currentId) selectPhoto(state.photos[0].id);
+  renderStrip();
+  if(added > 1) toast(`${added}장을 올렸어요. 한 장에서 톤을 잡고 전체에 적용해 보세요!`);
+}
+
+function selectPhoto(id){
+  const p = state.photos.find(x=>x.id===id);
+  if(!p) return;
+  state.currentId = id;
+  state.selMask = -1;
+  state.placing = false;
+  if(!engine) engine = new Engine($("#glcanvas"), 1920);
+  engine.setImage(srcBitmap(p));
+  // 원본 비교용 이미지
+  if(!p.origUrl){
+    const c = document.createElement("canvas");
+    c.width = engine.w; c.height = engine.h;
+    c.getContext("2d").drawImage(srcBitmap(p), 0, 0, c.width, c.height);
+    p.origUrl = c.toDataURL("image/jpeg", 0.85);
+  }
+  $("#origImg").src = p.origUrl;
+  requestRender();
+  renderStrip();
+  renderCandidates();
+  renderDiag();
+  renderCropCards();
+  syncKnobs();
+  renderMaskUI();
+}
+
+function removePhoto(id){
+  const i = state.photos.findIndex(p=>p.id===id);
+  if(i < 0) return;
+  state.photos.splice(i, 1);
+  if(state.currentId === id){
+    state.currentId = null;
+    if(state.photos.length) selectPhoto(state.photos[Math.max(0, i-1)].id);
+  }
+  renderStrip();
+  if(!state.photos.length){
+    $("#editorView").classList.remove("on");
+    $("#emptyView").style.display = "block";
+  }
+}
+
+function renderStrip(){
+  const el = $("#strip");
+  el.innerHTML = "";
+  for(const p of state.photos){
+    const d = document.createElement("div");
+    d.className = "thumb" + (p.id===state.currentId ? " on" : "") + (isDefaultRecipe(p.recipe) ? "" : " toned");
+    d.innerHTML = `<img src="${p.thumbUrl}" alt=""><span class="x">✕</span><span class="tonedot"></span>`;
+    d.querySelector(".x").onclick = e => { e.stopPropagation(); removePhoto(p.id); };
+    d.onclick = () => selectPhoto(p.id);
+    el.appendChild(d);
+  }
+  const add = document.createElement("button");
+  add.className = "addtile"; add.textContent = "＋";
+  add.onclick = () => $("#fileInput2").click();
+  el.appendChild(add);
+}
+
+/* ============================================================
+   톤 후보 (로컬 즉시 + AI 정밀)
+   ============================================================ */
+async function renderCandidates(){
+  const p = currentPhoto();
+  const box = $("#cands");
+  if(!p){ box.innerHTML=""; return; }
+  if(!p.candidates) p.candidates = buildLocalCandidates(p.stats);
+  const items = (p.aiResult?.presets?.length)
+    ? p.aiResult.presets.map(x=>({ name:x.name, comment:x.comment, recipe:clampRecipe(x.adjustments) }))
+    : p.candidates;
+  box.innerHTML = "";
+  if(!thumbEngine) thumbEngine = new Engine(document.createElement("canvas"), 320);
+  thumbEngine.setImage(srcBitmap(p));
+  const curKey = JSON.stringify(p.recipe);
+  for(const it of items){
+    thumbEngine.render(it.recipe);
+    const url = thumbEngine.canvas.toDataURL("image/jpeg", 0.75);
+    const b = document.createElement("button");
+    b.className = "cand" + (JSON.stringify(it.recipe)===curKey ? " on" : "");
+    b.innerHTML = `<img src="${url}" alt=""><div class="nm">${esc(it.name)}</div>` + (it.comment ? `<div class="cm">${esc(it.comment)}</div>` : "");
+    b.onclick = () => { applyRecipe(it.recipe); markCand(b); };
+    box.appendChild(b);
+  }
+}
+function markCand(btn){
+  $$("#cands .cand, #moods .mood").forEach(x=>x.classList.remove("on"));
+  if(btn) btn.classList.add("on");
+}
+function renderDiag(){
+  const p = currentPhoto();
+  const d = $("#diagBox");
+  if(p?.aiResult){
+    d.style.display = "block";
+    d.innerHTML = `<b>${esc(p.aiResult.scene || "")}</b><br>${esc(p.aiResult.diagnosis || "")}`;
+    $("#sceneChip").textContent = p.aiResult.scene || "";
+  }else{
+    d.style.display = "none";
+    $("#sceneChip").textContent = "";
+  }
+}
+function renderMoods(){
+  const box = $("#moods");
+  box.innerHTML = "";
+  for(const m of MOODS){
+    const b = document.createElement("button");
+    b.className = "mood";
+    b.innerHTML = `<span class="sw" style="background:linear-gradient(135deg,${m.grad[0]},${m.grad[1]})"></span><div class="nm">${esc(m.name)}</div>`;
+    b.onclick = () => {
+      const p = currentPhoto(); if(!p) return;
+      // 무드는 색감을 입히되, 현재 노출 계열은 유지 (직관적 기대에 부합)
+      const keep = { exposure:p.recipe.exposure, highlights:p.recipe.highlights, shadows:p.recipe.shadows, sharpen:p.recipe.sharpen };
+      applyRecipe(clampRecipe(Object.assign(defaultRecipe(), m.recipe, keep)));
+      markCand(b);
+    };
+    box.appendChild(b);
+  }
+}
+
+function applyRecipe(recipe){
+  const p = currentPhoto(); if(!p) return;
+  p.recipe = clampRecipe(recipe);
+  if(state.selMask >= p.recipe.masks.length) state.selMask = p.recipe.masks.length - 1;
+  requestRender();
+  syncKnobs();
+  renderStrip();
+  renderMaskUI();
+}
+
+/* ============================================================
+   손잡이(슬라이더)
+   ============================================================ */
+const BASIC_KNOBS = [
+  // key, 라벨, 왼쪽끝, 오른쪽끝
+  ["exposure",   "밝기",     "어둡게", "밝게"],
+  ["contrast",   "대비",     "부드럽게", "또렷하게"],
+  ["temperature","온도감",   "차갑게", "따뜻하게"],
+  ["vibrance",   "화사함",   "차분하게", "화사하게"],
+  ["sharpen",    "선명하게", "그대로", "쨍하게"],
+  ["vignette",   "가장자리", "밝게", "어둡게"],
+];
+function buildKnobs(){
+  const basic = $("#basicKnobs");
+  basic.innerHTML = "";
+  for(const [key,label,l,r] of BASIC_KNOBS){
+    const def = RECIPE_DEFS.find(d=>d[0]===key);
+    const div = document.createElement("div");
+    div.className = "knob";
+    div.innerHTML = `
+      <div class="lab"><span class="l">${label}</span><span class="ends">${l} ↔ ${r}</span></div>
+      <input type="range" data-key="${key}" min="${def[2]}" max="${def[3]}" value="0">`;
+    basic.appendChild(div);
+  }
+  const adv = $("#advKnobs");
+  adv.innerHTML = "";
+  for(const [key,label,mn,mx] of RECIPE_DEFS){
+    if(key.startsWith("split")) continue; // 스플릿 토닝은 무드/AI 전용
+    const div = document.createElement("div");
+    div.className = "knob";
+    div.innerHTML = `
+      <div class="lab"><span class="l" style="font-weight:500;font-size:12.5px;">${label}</span><span class="val" data-val="${key}">0</span></div>
+      <input type="range" data-key="${key}" min="${mn}" max="${mx}" value="0">`;
+    adv.appendChild(div);
+  }
+  document.querySelectorAll('input[type=range][data-key]').forEach(inp => {
+    inp.addEventListener("input", () => {
+      const p = currentPhoto(); if(!p) return;
+      p.recipe[inp.dataset.key] = Number(inp.value);
+      requestRender();
+      syncKnobs(inp.dataset.key);
+      markCand(null);
+    });
+    inp.addEventListener("change", () => renderStrip());
+  });
+}
+function syncKnobs(exceptKey){
+  const p = currentPhoto(); if(!p) return;
+  document.querySelectorAll('input[type=range][data-key]').forEach(inp => {
+    const k = inp.dataset.key;
+    if(k !== exceptKey && p.recipe[k] !== undefined) inp.value = p.recipe[k];
+    const v = document.querySelector(`[data-val="${k}"]`);
+    if(v) v.textContent = p.recipe[k];
+  });
+  // exceptKey의 값 표시도 갱신
+  if(exceptKey){
+    const v = document.querySelector(`[data-val="${exceptKey}"]`);
+    if(v) v.textContent = p.recipe[exceptKey];
+  }
+}
+
+/* ============================================================
+   히스토그램
+   ============================================================ */
+let histoTimer = null;
+function scheduleHisto(){
+  if(!$("#advBox").open) return;
+  clearTimeout(histoTimer);
+  histoTimer = setTimeout(drawHisto, 220);
+}
+function drawHisto(){
+  const p = currentPhoto(); if(!p || !engine) return;
+  const hc = $("#histo");
+  const w = hc.width = hc.clientWidth || 320, h = hc.height = 64;
+  const x = hc.getContext("2d");
+  const sc = document.createElement("canvas");
+  sc.width = 160; sc.height = Math.max(1, Math.round(160*engine.h/engine.w));
+  const sx = sc.getContext("2d", { willReadFrequently:true });
+  sx.drawImage(engine.canvas, 0, 0, sc.width, sc.height);
+  const d = sx.getImageData(0, 0, sc.width, sc.height).data;
+  const bins = new Array(64).fill(0);
+  let clipHi = 0, clipLo = 0, n = 0;
+  for(let i=0; i<d.length; i+=4){
+    const l = (0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255;
+    bins[Math.min(63, Math.floor(l*64))]++;
+    if(l > 0.985) clipHi++; if(l < 0.015) clipLo++;
+    n++;
+  }
+  const mx = Math.max(...bins) || 1;
+  x.clearRect(0,0,w,h);
+  x.fillStyle = "#5a544b";
+  const bw = w/64;
+  for(let i=0; i<64; i++){
+    const bh = (bins[i]/mx)*(h-6);
+    x.fillRect(i*bw, h-bh, bw-0.5, bh);
+  }
+  if(clipHi/n > 0.01){ x.fillStyle = "#e08080"; x.fillRect(w-5, 0, 5, h); }
+  if(clipLo/n > 0.02){ x.fillStyle = "#7d9fd4"; x.fillRect(0, 0, 5, h); }
+}
+
+/* ============================================================
+   AI 분석 / 대화
+   ============================================================ */
+let busy = false;
+async function runAnalyze(){
+  const p = currentPhoto(); if(!p || busy) return;
+  if(state.settings.mode === "copy" || !state.settings.apiKey){
+    if(state.settings.mode === "api" && !state.settings.apiKey){
+      openSettings(); toast("먼저 Claude API 키를 넣거나, 복사 모드를 선택해 주세요."); return;
+    }
+    openCopyModal("analyze");
+    return;
+  }
+  const btn = $("#btnAnalyze");
+  busy = true;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> 사진을 읽고 있어요...`;
+  try{
+    const b64 = await imageToB64(srcBitmap(p));
+    const res = await callClaudeVision(b64, analyzePromptText(), ANALYZE_SCHEMA);
+    p.aiResult = res;
+    renderDiag();
+    await renderCandidates();
+    if(res.presets?.[0]) applyRecipe(clampRecipe(res.presets[0].adjustments));
+    toast("AI가 이 사진에 맞는 톤 후보를 만들었어요. 마음에 드는 카드를 골라 보세요!");
+  }catch(e){
+    console.error(e);
+    toast("AI 분석 실패: " + (e?.message || e), 4000);
+  }finally{
+    busy = false;
+    btn.disabled = false;
+    btn.innerHTML = "🤖 AI에게 톤 추천받기";
+  }
+}
+
+const CHAT_SUGGESTIONS = ["좀 더 따뜻하게", "필름 카메라 감성으로", "하늘을 더 파랗게", "인물 얼굴만 밝게", "배경만 어둡게 해서 주인공 강조", "새벽 감성으로"];
+function renderChatChips(){
+  const box = $("#chatChips");
+  box.innerHTML = "";
+  for(const s of CHAT_SUGGESTIONS){
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = s;
+    b.onclick = () => { $("#chatText").value = s; sendChat(); };
+    box.appendChild(b);
+  }
+}
+function pushMsg(role, text){
+  state.chat.push({ role, text });
+  const log = $("#chatlog");
+  const d = document.createElement("div");
+  d.className = "msg " + role;
+  if(role === "ai") d.innerHTML = text; else d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+async function sendChat(){
+  const p = currentPhoto(); if(!p || busy) return;
+  const text = $("#chatText").value.trim();
+  if(!text) return;
+  $("#chatText").value = "";
+  pushMsg("me", text);
+  if(state.settings.mode === "copy" || !state.settings.apiKey){
+    if(state.settings.mode === "api" && !state.settings.apiKey){
+      openSettings(); toast("먼저 Claude API 키를 넣거나, 복사 모드를 선택해 주세요."); return;
+    }
+    openCopyModal("chat", text);
+    return;
+  }
+  busy = true;
+  const sendBtn = $("#btnChatSend");
+  sendBtn.disabled = true;
+  pushMsg("ai", `<span class="spinner"></span> 사진을 보며 다듬는 중...`);
+  const loadingEl = $("#chatlog").lastElementChild;
+  try{
+    const b64 = await imageToB64(srcBitmap(p));
+    const res = await callClaudeVision(b64, chatPromptText(text, p.recipe), CHAT_SCHEMA);
+    loadingEl.remove(); state.chat.pop();
+    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }));
+    pushMsg("ai", `<b>적용했어요.</b> ${esc(res.explanation || "")}`);
+  }catch(e){
+    console.error(e);
+    loadingEl.remove(); state.chat.pop();
+    pushMsg("ai", `문제가 생겼어요: ${esc(e?.message || e)}`);
+  }finally{
+    busy = false;
+    sendBtn.disabled = false;
+  }
+}
+
+/* ---------- 복사 모드 ---------- */
+let copyContext = { kind:"analyze" };
+const COPY_KINDS = {
+  analyze: { schema: () => ANALYZE_SCHEMA, body: (c) => analyzePromptText(),
+    instr: "① 아래 프롬프트를 복사해 <b>claude.ai</b>에 붙여넣고, <b>지금 보정 중인 사진도 함께 첨부</b>하세요.<br>② 답변으로 받은 JSON을 아래 칸에 붙여넣고 적용을 누르세요." },
+  chat:    { schema: () => CHAT_SCHEMA, body: (c) => chatPromptText(c.userText, currentPhoto().recipe),
+    instr: "① 아래 프롬프트를 복사해 <b>claude.ai</b>에 붙여넣고, <b>지금 보정 중인 사진도 함께 첨부</b>하세요.<br>② 답변으로 받은 JSON을 아래 칸에 붙여넣고 적용을 누르세요." },
+  ref:     { schema: () => CHAT_SCHEMA, body: (c) => refPromptText(currentPhoto().recipe),
+    instr: "① 아래 프롬프트를 복사해 <b>claude.ai</b>에 붙여넣고, <b>사진을 두 장 첨부</b>하세요 — <b>첫 번째 = 보정할 사진, 두 번째 = 참고(레퍼런스) 사진</b> 순서가 중요해요.<br>② 답변으로 받은 JSON을 아래 칸에 붙여넣고 적용을 누르세요." },
+  crop:    { schema: () => CROP_SCHEMA, body: (c) => cropPromptText(),
+    instr: "① 아래 프롬프트를 복사해 <b>claude.ai</b>에 붙여넣고, <b>지금 보정 중인 사진(원본)을 함께 첨부</b>하세요.<br>② 답변으로 받은 JSON을 아래 칸에 붙여넣고 적용을 누르세요." },
+};
+function buildCopyPrompt(kind, ctx){
+  const k = COPY_KINDS[kind];
+  return `${SYSTEM_PROMPT}
+
+${k.body(ctx)}
+
+응답은 반드시 아래 JSON 스키마에 맞는 **JSON만** 출력하세요 (설명·코드펜스 없이):
+${JSON.stringify(k.schema())}`;
+}
+function openCopyModal(kind, userText){
+  copyContext = { kind, userText };
+  $("#copyInstr").innerHTML = COPY_KINDS[kind].instr;
+  $("#copyPromptBox").value = buildCopyPrompt(kind, copyContext);
+  $("#copyResultBox").value = "";
+  $("#copyModal").classList.add("on");
+}
+function applyPasted(){
+  const raw = $("#copyResultBox").value.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  let data;
+  try{ data = JSON.parse(raw); }catch(e){ toast("JSON을 읽을 수 없어요. 답변에서 JSON 부분만 붙여넣어 주세요."); return; }
+  const p = currentPhoto(); if(!p) return;
+  if(copyContext.kind === "analyze"){
+    if(!data.presets?.length){ toast("presets가 없는 JSON이에요."); return; }
+    p.aiResult = data;
+    renderDiag(); renderCandidates();
+    applyRecipe(clampRecipe(data.presets[0].adjustments));
+  }else if(copyContext.kind === "crop"){
+    if(!data.suggestions?.length){ toast("suggestions가 없는 JSON이에요."); return; }
+    p.cropSuggestions = data;
+    renderCropCards();
+  }else{ // chat / ref
+    if(!data.adjustments){ toast("adjustments가 없는 JSON이에요."); return; }
+    applyRecipe(clampRecipe({ ...data.adjustments, masks: data.masks }));
+    pushMsg("ai", `<b>적용했어요.</b> ${esc(data.explanation || "")}`);
+  }
+  $("#copyModal").classList.remove("on");
+  toast("적용했어요!");
+}
+
+/* ============================================================
+   🖼 레퍼런스 톤 매칭
+   ============================================================ */
+async function setReference(file){
+  try{
+    state.refBitmap = await createImageBitmap(file, { imageOrientation:"from-image" });
+  }catch(e){ toast("참고 사진을 열 수 없어요."); return; }
+  const c = document.createElement("canvas");
+  const s = Math.min(1, 152/Math.max(state.refBitmap.width, state.refBitmap.height));
+  c.width = Math.max(1, Math.round(state.refBitmap.width*s));
+  c.height = Math.max(1, Math.round(state.refBitmap.height*s));
+  c.getContext("2d").drawImage(state.refBitmap, 0, 0, c.width, c.height);
+  $("#btnRefAdd").innerHTML = `<img src="${c.toDataURL("image/jpeg",0.8)}" alt="레퍼런스">`;
+  $("#btnRefQuick").disabled = $("#btnRefAI").disabled = false;
+  toast("참고 사진을 올렸어요. 빠른 매칭 또는 AI 정밀 매칭을 눌러 보세요!");
+}
+/* 로컬 통계 매칭 — 밝기·대비·채도·색온도를 레퍼런스에 근사 */
+function refQuickMatch(){
+  const p = currentPhoto(); if(!p || !state.refBitmap) return;
+  const s1 = p.stats, s2 = computeStats(state.refBitmap);
+  const cl = (v,a,b)=>Math.max(a,Math.min(b,Math.round(v)));
+  const r = Object.assign(defaultRecipe(), {
+    exposure:    cl(50*Math.log2(Math.max(0.03,s2.mean)/Math.max(0.03,s1.mean)), -60, 60),
+    contrast:    cl(((s2.p95-s2.p05)/Math.max(0.06, s1.p95-s1.p05) - 1)*80, -50, 50),
+    saturation:  cl((s2.sat/Math.max(0.015, s1.sat) - 1)*70, -60, 60),
+    temperature: cl((s2.warm - s1.warm)*260, -50, 50),
+    fade:        s2.p05 > 0.06 ? cl((s2.p05-0.04)*260, 0, 40) : 0, // 레퍼런스 블랙이 떠 있으면 페이드
+  });
+  applyRecipe(r);
+  markCand(null);
+  toast("⚡ 밝기·대비·채도·색온도를 참고 사진에 맞췄어요. 색 물들임까지 원하면 AI 정밀 매칭을!");
+}
+async function refAIMatch(){
+  const p = currentPhoto(); if(!p || !state.refBitmap || busy) return;
+  if(state.settings.mode === "copy" || !state.settings.apiKey){
+    if(state.settings.mode === "api" && !state.settings.apiKey){
+      openSettings(); toast("먼저 Claude API 키를 넣거나, 복사 모드를 선택해 주세요."); return;
+    }
+    openCopyModal("ref");
+    return;
+  }
+  const btn = $("#btnRefAI");
+  busy = true; btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> 두 사진을 비교 중...`;
+  try{
+    const [curB64, refB64] = await Promise.all([imageToB64(srcBitmap(p)), imageToB64(state.refBitmap, 768)]);
+    const res = await callClaudeVision([curB64, refB64], refPromptText(p.recipe), CHAT_SCHEMA);
+    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }));
+    markCand(null);
+    pushMsg("ai", `<b>🖼 레퍼런스 톤을 입혔어요.</b> ${esc(res.explanation || "")}`);
+    toast("🖼 레퍼런스 톤을 입혔어요. 자세한 설명은 대화 탭에!", 3600);
+  }catch(e){
+    console.error(e);
+    toast("레퍼런스 매칭 실패: " + (e?.message || e), 4000);
+  }finally{
+    busy = false; btn.disabled = false;
+    btn.textContent = "🤖 AI 정밀 매칭";
+  }
+}
+
+/* ============================================================
+   ✂ AI 구도 제안
+   ============================================================ */
+async function runCropAI(){
+  const p = currentPhoto(); if(!p || busy) return;
+  if(state.settings.mode === "copy" || !state.settings.apiKey){
+    if(state.settings.mode === "api" && !state.settings.apiKey){
+      openSettings(); toast("먼저 Claude API 키를 넣거나, 복사 모드를 선택해 주세요."); return;
+    }
+    openCopyModal("crop");
+    return;
+  }
+  const btn = $("#btnCropAI");
+  busy = true; btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> 구도를 보는 중...`;
+  try{
+    const b64 = await imageToB64(p.bitmap); // 크롭 제안은 항상 원본 기준
+    const res = await callClaudeVision(b64, cropPromptText(), CROP_SCHEMA);
+    p.cropSuggestions = res;
+    renderCropCards();
+    toast("✂ 구도 제안이 도착했어요. 카드를 눌러 적용해 보세요!");
+  }catch(e){
+    console.error(e);
+    toast("구도 제안 실패: " + (e?.message || e), 4000);
+  }finally{
+    busy = false; btn.disabled = false;
+    btn.textContent = "✂ 구도 제안 받기";
+  }
+}
+function renderCropCards(){
+  const p = currentPhoto();
+  const box = $("#cropCards"), note = $("#cropNote");
+  $("#btnCropReset").style.display = p?.crop ? "inline-flex" : "none";
+  if(!p?.cropSuggestions){ box.innerHTML = ""; note.style.display = "none"; return; }
+  note.style.display = "block";
+  note.textContent = p.cropSuggestions.note || "";
+  box.innerHTML = "";
+  for(const s of (p.cropSuggestions.suggestions || [])){
+    const b = document.createElement("button");
+    b.className = "cand";
+    b.innerHTML = `<img src="${cropPreviewUrl(p, s)}" alt=""><div class="nm">✂ ${esc(s.name)}</div><div class="cm">${esc(s.reason || "")}</div>`;
+    b.onclick = async () => {
+      await setCrop(p, s);
+      markCand(null);
+      toast(`✂ "${s.name}" 구도를 적용했어요. 원본 구도로 언제든 되돌릴 수 있어요.`);
+    };
+    box.appendChild(b);
+  }
+}
+
+/* ============================================================
+   🎯 부분 보정 (마스크) UI
+   ============================================================ */
+const MASK_LABELS = { radial:"◯ 지점", linear:"그라데이션", lumDark:"🌙 어두운 곳", lumBright:"☀ 밝은 곳" };
+function maskLabel(m){
+  if(m.type === "linear") return m.dir === "top" ? "▽ 위(하늘)" : "△ 아래(땅)";
+  return MASK_LABELS[m.type] || m.type;
+}
+function addMask(kind){
+  const p = currentPhoto(); if(!p) return;
+  if(p.recipe.masks.length >= 3){ toast("부분 보정은 최대 3개까지예요. 기존 것을 삭제하고 추가해 주세요."); return; }
+  if(kind === "radial"){
+    state.placing = true;
+    $("#canvasbox").classList.add("placing");
+    toast("사진에서 보정하고 싶은 지점을 탭하세요!");
+    return;
+  }
+  const base = { exposure: kind === "lumBright" ? -15 : 15 };
+  if(kind === "linear-top")    Object.assign(base, { type:"linear", dir:"top", pos:0.4 });
+  else if(kind === "linear-bottom") Object.assign(base, { type:"linear", dir:"bottom", pos:0.6 });
+  else Object.assign(base, { type:kind });
+  p.recipe.masks.push(clampMasks([base])[0]);
+  state.selMask = p.recipe.masks.length - 1;
+  requestRender(); renderMaskUI(); markCand(null); renderStrip();
+}
+function renderMaskUI(){
+  const p = currentPhoto();
+  const chips = $("#maskChips");
+  if(!p){ chips.innerHTML=""; $("#maskEditor").innerHTML=""; updateMaskOverlay(); return; }
+  chips.innerHTML = "";
+  p.recipe.masks.forEach((m, i) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (i === state.selMask ? " on" : "");
+    b.textContent = `${maskLabel(m)} ${i+1} ✎`;
+    b.onclick = () => { state.selMask = (state.selMask === i ? -1 : i); renderMaskUI(); };
+    chips.appendChild(b);
+  });
+  renderMaskEditor();
+  updateMaskOverlay();
+}
+function renderMaskEditor(){
+  const p = currentPhoto();
+  const box = $("#maskEditor");
+  const m = p?.recipe.masks[state.selMask];
+  if(!m){ box.innerHTML = ""; return; }
+  const geoRows = m.type === "radial"
+    ? [["r","크기",3,80,Math.round(m.r*100)],["feather","부드러움",0,100,Math.round(m.feather*100)]]
+    : m.type === "linear"
+      ? [["pos","경계 위치",0,100,Math.round(m.pos*100)],["feather","부드러움",0,100,Math.round(m.feather*100)]]
+      : [];
+  const adjRows = [["exposure","밝기",-100,100,m.exposure],["contrast","대비",-100,100,m.contrast],
+                   ["saturation","채도",-100,100,m.saturation],["temperature","온도감",-100,100,m.temperature]];
+  const knob = ([k,label,mn,mx,val]) => `
+    <div class="knob"><div class="lab"><span class="l" style="font-size:12.5px;">${label}</span></div>
+    <input type="range" data-mkey="${k}" min="${mn}" max="${mx}" value="${val}"></div>`;
+  box.innerHTML = `<div class="mbox">
+    ${m.type === "radial" ? `<p class="note" style="margin-bottom:8px;">사진을 탭하면 위치가 옮겨져요.</p>` : ""}
+    ${geoRows.map(knob).join("")}
+    ${adjRows.map(knob).join("")}
+    ${m.type === "radial" || m.type === "linear" ? `
+      <label class="switch" style="margin-bottom:10px;"><input type="checkbox" id="maskInvert" ${m.invert?"checked":""}> 영역 바깥에 적용 (배경 등)</label>` : ""}
+    <div class="rowbtns" style="padding-bottom:10px;"><button class="sbtn" id="maskDelete">🗑 이 부분 보정 삭제</button></div>
+  </div>`;
+  box.querySelectorAll("input[data-mkey]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const k = inp.dataset.mkey;
+      const v = Number(inp.value);
+      m[k] = (k === "r" || k === "feather" || k === "pos") ? v/100 : v;
+      requestRender(); updateMaskOverlay(); markCand(null);
+    });
+  });
+  const inv = box.querySelector("#maskInvert");
+  if(inv) inv.onchange = () => { m.invert = inv.checked; requestRender(); };
+  box.querySelector("#maskDelete").onclick = () => {
+    p.recipe.masks.splice(state.selMask, 1);
+    state.selMask = -1;
+    requestRender(); renderMaskUI(); renderStrip();
+  };
+}
+function updateMaskOverlay(){
+  const ring = $("#maskRing"), line = $("#maskLine");
+  ring.style.display = line.style.display = "none";
+  const p = currentPhoto();
+  const m = p?.recipe.masks[state.selMask];
+  if(!m || $("#tab-tune").hidden || state.compare) return;
+  const cv = $("#glcanvas");
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if(!W || !H) return;
+  if(m.type === "radial"){
+    const R = m.r * H; // 셰이더와 동일: 반지름은 세로 기준
+    ring.style.display = "block";
+    ring.style.left = (m.cx*W - R) + "px";
+    ring.style.top = (m.cy*H - R) + "px";
+    ring.style.width = ring.style.height = (R*2) + "px";
+  }else if(m.type === "linear"){
+    line.style.display = "block";
+    line.style.top = (m.pos*H) + "px";
+  }
+}
+
+/* ============================================================
+   프리셋 / 일괄 보정
+   ============================================================ */
+function renderPresetList(){
+  const box = $("#presetList");
+  if(!state.userPresets.length){
+    box.innerHTML = `<p class="note">다듬기 탭에서 마음에 든 톤을 저장하면 여기에 모여요.</p>`;
+    return;
+  }
+  box.innerHTML = "";
+  for(const pr of state.userPresets){
+    const d = document.createElement("div");
+    d.className = "pitem";
+    d.innerHTML = `<span class="nm">⭐ ${esc(pr.name)}</span>
+      <button class="ap">적용</button><button class="all">전체 적용</button><button class="del">삭제</button>`;
+    d.querySelector(".ap").onclick = () => { applyRecipe(pr.recipe); markCand(null); toast(`"${pr.name}" 톤을 적용했어요.`); };
+    d.querySelector(".all").onclick = () => batchApply(pr.recipe, pr.name);
+    d.querySelector(".del").onclick = () => {
+      state.userPresets = state.userPresets.filter(x=>x.id!==pr.id);
+      savePresets(); renderPresetList();
+    };
+    box.appendChild(d);
+  }
+}
+function savePresetFlow(){
+  const p = currentPhoto(); if(!p) return;
+  if(isDefaultRecipe(p.recipe)){ toast("아직 보정한 내용이 없어요. 톤을 잡은 뒤 저장해 주세요."); return; }
+  const name = prompt("이 톤의 이름을 지어 주세요:", "내 톤 " + (state.userPresets.length+1));
+  if(!name) return;
+  state.userPresets.push({ id:"u"+Date.now(), name: name.trim().slice(0,20), recipe: structuredClone(p.recipe) });
+  savePresets(); renderPresetList();
+  toast(`⭐ "${name.trim()}" 프리셋으로 저장했어요. 자동 톤 탭과 내보내기에서 쓸 수 있어요.`);
+}
+function batchApply(recipe, label){
+  const ref = currentPhoto(); if(!ref) return;
+  const auto = $("#autoBright").checked;
+  const refMean = ref.stats.mean;
+  let cnt = 0;
+  for(const p of state.photos){
+    const r = { ...clampRecipe(recipe) };
+    if(auto && p.id !== ref.id){
+      const off = Math.max(-40, Math.min(40, Math.round(50*Math.log2(Math.max(0.03,refMean)/Math.max(0.03,p.stats.mean)))));
+      r.exposure = Math.max(-100, Math.min(100, r.exposure + off));
+    }
+    p.recipe = r;
+    cnt++;
+  }
+  requestRender(); syncKnobs(); renderStrip();
+  toast(`📦 ${cnt}장 전체에 ${label ? `"${label}" ` : "현재 "}톤을 입혔어요. 내보내기에서 전체 저장하세요!`);
+}
+
+/* ============================================================
+   내보내기
+   ============================================================ */
+let exportEngine = null;
+function exportPhotoBlob(photo, quality){
+  return new Promise((resolve, reject) => {
+    try{
+      if(!exportEngine) exportEngine = new Engine(document.createElement("canvas"), 4096);
+      exportEngine.setImage(srcBitmap(photo));
+      exportEngine.render(photo.recipe);
+      exportEngine.canvas.toBlob(b => b ? resolve(b) : reject(new Error("인코딩 실패")), "image/jpeg", quality);
+    }catch(e){ reject(e); }
+  });
+}
+function downloadBlob(blob, name){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+async function saveOne(){
+  const p = currentPhoto(); if(!p) return;
+  toast("저장 파일을 만드는 중...");
+  try{
+    const blob = await exportPhotoBlob(p, Number($("#quality").value)/100);
+    downloadBlob(blob, `${p.name}_tonemaker.jpg`);
+    toast("💾 저장했어요! (EXIF 위치정보 자동 제거됨)");
+  }catch(e){ toast("저장 실패: " + (e?.message||e)); }
+}
+async function saveAll(){
+  if(!state.photos.length) return;
+  const q = Number($("#quality").value)/100;
+  toast(`전체 ${state.photos.length}장을 차례로 저장합니다...`);
+  let ok = 0;
+  for(const p of state.photos){
+    try{
+      const blob = await exportPhotoBlob(p, q);
+      downloadBlob(blob, `${p.name}_tonemaker.jpg`);
+      ok++;
+      await new Promise(r=>setTimeout(r, 450)); // 브라우저 다중 다운로드 간격
+    }catch(e){ console.error(e); }
+  }
+  toast(`💾 ${ok}/${state.photos.length}장 저장 완료!`);
+}
+
+/* ============================================================
+   비교 (Before/After)
+   ============================================================ */
+function setCompare(on){
+  state.compare = on;
+  const img = $("#origImg"), div = $("#divider");
+  $("#btnCompare").classList.toggle("on", on);
+  $("#tagOrig").style.display = $("#tagEdit").style.display = on ? "block" : "none";
+  if(on){
+    img.style.display = "block"; div.style.display = "block";
+    setDividerPos(0.5);
+  }else{
+    img.style.display = "none"; div.style.display = "none";
+  }
+  updateMaskOverlay();
+}
+function setDividerPos(ratio){
+  ratio = Math.max(0.02, Math.min(0.98, ratio));
+  $("#origImg").style.clipPath = `inset(0 ${(1-ratio)*100}% 0 0)`;
+  $("#divider").style.left = `calc(${ratio*100}% - 1px)`;
+}
+function initCompareDrag(){
+  const wrap = $("#compare");
+  let dragging = false;
+  const move = e => {
+    if(!dragging || !state.compare) return;
+    const rect = wrap.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    setDividerPos(x/rect.width);
+  };
+  const start = e => { if(state.compare){ dragging = true; move(e); } };
+  wrap.addEventListener("mousedown", start);
+  wrap.addEventListener("touchstart", start, { passive:true });
+  window.addEventListener("mousemove", move);
+  window.addEventListener("touchmove", move, { passive:true });
+  window.addEventListener("mouseup", ()=>dragging=false);
+  window.addEventListener("touchend", ()=>dragging=false);
+}
+
+/* ============================================================
+   초기화 / 이벤트
+   ============================================================ */
+function openSettings(){
+  $("#setMode").value = state.settings.mode;
+  $("#setApiKey").value = state.settings.apiKey;
+  $("#setModel").value = state.settings.model;
+  $("#settingsModal").classList.add("on");
+}
+
+function init(){
+  loadSettings();
+  buildKnobs();
+  renderMoods();
+  renderChatChips();
+  renderPresetList();
+  initCompareDrag();
+
+  // 파일 올리기
+  const dz = $("#dropzone");
+  dz.onclick = () => $("#fileInput").click();
+  $("#fileInput").onchange = e => { addFiles(e.target.files); e.target.value=""; };
+  $("#fileInput2").onchange = e => { addFiles(e.target.files); e.target.value=""; };
+  document.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
+  document.addEventListener("dragleave", () => dz.classList.remove("over"));
+  document.addEventListener("drop", e => {
+    e.preventDefault(); dz.classList.remove("over");
+    if(e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+  });
+  document.addEventListener("paste", e => {
+    const files = [...(e.clipboardData?.files || [])];
+    if(files.length) addFiles(files);
+  });
+
+  // 탭
+  $$(".tabs button").forEach(b => b.onclick = () => {
+    $$(".tabs button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    $$(".tab").forEach(t=>t.hidden = true);
+    $("#tab-"+b.dataset.tab).hidden = false;
+    if(b.dataset.tab === "tune") scheduleHisto();
+    updateMaskOverlay();
+  });
+
+  // 🖼 레퍼런스 톤 매칭
+  $("#btnRefAdd").onclick = () => $("#refInput").click();
+  $("#refInput").onchange = e => { if(e.target.files[0]) setReference(e.target.files[0]); e.target.value=""; };
+  $("#btnRefQuick").onclick = refQuickMatch;
+  $("#btnRefAI").onclick = refAIMatch;
+
+  // ✂ AI 구도 제안
+  $("#btnCropAI").onclick = runCropAI;
+  $("#btnCropReset").onclick = async () => {
+    const p = currentPhoto(); if(!p) return;
+    await setCrop(p, null);
+    toast("⬜ 원본 구도로 되돌렸어요.");
+  };
+
+  // 🎯 부분 보정
+  $$("#maskAdd .chip").forEach(b => b.onclick = () => addMask(b.dataset.mask));
+  $("#glcanvas").addEventListener("click", e => {
+    const p = currentPhoto(); if(!p) return;
+    const rect = e.target.getBoundingClientRect();
+    const ux = Math.max(0, Math.min(1, (e.clientX - rect.left)/rect.width));
+    const uy = Math.max(0, Math.min(1, (e.clientY - rect.top)/rect.height));
+    if(state.placing){
+      state.placing = false;
+      $("#canvasbox").classList.remove("placing");
+      if(p.recipe.masks.length >= 3){ toast("부분 보정은 최대 3개까지예요."); return; }
+      p.recipe.masks.push(clampMasks([{ type:"radial", cx:ux, cy:uy, exposure:20 }])[0]);
+      state.selMask = p.recipe.masks.length - 1;
+      requestRender(); renderMaskUI(); markCand(null); renderStrip();
+      toast("◯ 지점을 만들었어요. 아래 손잡이로 이 부분만 다듬어 보세요.");
+    }else if(state.selMask >= 0 && p.recipe.masks[state.selMask]?.type === "radial" && !$("#tab-tune").hidden && !state.compare){
+      const m = p.recipe.masks[state.selMask];
+      m.cx = ux; m.cy = uy;
+      requestRender(); updateMaskOverlay();
+    }
+  });
+  window.addEventListener("resize", updateMaskOverlay);
+
+  // 스테이지 버튼
+  const hold = $("#btnHold");
+  const showOrig = on => {
+    const img = $("#origImg");
+    if(state.compare) return;
+    img.style.display = on ? "block" : "none";
+    img.style.clipPath = "none";
+  };
+  hold.addEventListener("mousedown", ()=>showOrig(true));
+  hold.addEventListener("touchstart", e=>{ e.preventDefault(); showOrig(true); });
+  window.addEventListener("mouseup", ()=>showOrig(false));
+  window.addEventListener("touchend", ()=>showOrig(false));
+  $("#btnCompare").onclick = () => setCompare(!state.compare);
+  $("#btnReset").onclick = () => {
+    const p = currentPhoto(); if(!p) return;
+    applyRecipe(defaultRecipe()); markCand(null);
+    toast("↺ 원본 상태로 되돌렸어요.");
+  };
+
+  // AI
+  $("#btnAnalyze").onclick = runAnalyze;
+  $("#btnChatSend").onclick = sendChat;
+  $("#chatText").addEventListener("keydown", e => {
+    if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChat(); }
+  });
+
+  // 다듬기
+  $("#btnSavePreset").onclick = savePresetFlow;
+  $("#btnCopyTone").onclick = async () => {
+    const p = currentPhoto(); if(!p) return;
+    try{ await navigator.clipboard.writeText(JSON.stringify(p.recipe)); toast("📋 톤 레시피를 복사했어요."); }
+    catch(e){ toast("클립보드 접근이 막혀 있어요."); }
+  };
+  $("#advBox").addEventListener("toggle", scheduleHisto);
+
+  // 내보내기
+  $("#btnBatch").onclick = () => { const p=currentPhoto(); if(p) batchApply(p.recipe); };
+  $("#btnSaveOne").onclick = saveOne;
+  $("#btnSaveAll").onclick = saveAll;
+  $("#quality").oninput = e => {
+    const v = Number(e.target.value);
+    $("#qualVal").textContent = (v>=90?"높음":v>=75?"보통":"가벼움") + ` (${v}%)`;
+  };
+
+  // 모달
+  $("#btnSettings").onclick = openSettings;
+  $("#btnHelp").onclick = () => $("#helpModal").classList.add("on");
+  $$("[data-close]").forEach(b => b.onclick = () => b.closest(".modal-bg").classList.remove("on"));
+  $$(".modal-bg").forEach(m => m.addEventListener("click", e => { if(e.target===m) m.classList.remove("on"); }));
+  $("#setMode").onchange = e => {
+    const api = e.target.value === "api";
+    $("#apiKeyField").style.display = api ? "block" : "none";
+    $("#modelField").style.display = api ? "block" : "none";
+  };
+  $("#btnSaveSettings").onclick = () => {
+    state.settings.mode = $("#setMode").value;
+    state.settings.apiKey = $("#setApiKey").value.trim();
+    state.settings.model = $("#setModel").value;
+    saveSettings();
+    $("#settingsModal").classList.remove("on");
+    toast("설정을 저장했어요.");
+  };
+  $("#btnCopyPrompt").onclick = async () => {
+    try{ await navigator.clipboard.writeText($("#copyPromptBox").value); toast("프롬프트를 복사했어요. claude.ai에 사진과 함께 붙여넣으세요!"); }
+    catch(e){ $("#copyPromptBox").select(); document.execCommand("copy"); toast("복사했어요."); }
+  };
+  $("#btnApplyPasted").onclick = applyPasted;
+}
+init();
+</script>
+</body>
+</html>
