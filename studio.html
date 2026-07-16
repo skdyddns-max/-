@@ -197,6 +197,28 @@
   .mind-card .flip-hint { font-size: 12px; color: var(--rose-deep); font-weight: 700; margin-top: 8px; }
   .mind-card .ref { font-size: 12px; color: var(--sub); margin-top: 8px; }
 
+  /* ---------- 어떻게 할까? 카드 ---------- */
+  .solve-card {
+    border: 1.5px solid var(--line); border-radius: 14px; padding: 15px 16px;
+    margin-bottom: 12px; background: #FFFDFB; cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .solve-card:hover { border-color: var(--rose); box-shadow: var(--shadow-sm); }
+  .solve-card .situation { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .solve-card .q { font-size: 13px; color: var(--sub); }
+  .solve-card .choices { display: none; margin-top: 10px; }
+  .solve-card.open .choices { display: block; animation: rise .18s ease-out; }
+  .solve-card .choice { border-radius: 10px; padding: 9px 12px; margin: 7px 0; font-size: 13.5px; }
+  .solve-card .choice.good { background: var(--sage-soft); border-left: 3px solid var(--sage); }
+  .solve-card .choice.soso { background: #FBF3E7; border-left: 3px solid #D9A441; }
+  .solve-card .choice.bad  { background: var(--rose-soft); border-left: 3px solid var(--rose); }
+  .solve-card .choice .conseq { color: var(--sub); font-size: 12.5px; margin-top: 3px; }
+  .solve-card .flip-hint { font-size: 12px; color: var(--rose-deep); font-weight: 700; margin-top: 8px; }
+  .rate-badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-right: 5px; }
+  .rate-badge.good { background: var(--sage); color: #fff; }
+  .rate-badge.soso { background: #D9A441; color: #fff; }
+  .rate-badge.bad  { background: var(--rose); color: #fff; }
+
   @media (max-width: 420px) {
     main { padding: 16px 12px 80px; }
     .card { padding: 16px; border-radius: 14px; }
@@ -220,6 +242,7 @@
   <button data-step="5" onclick="app.go(5)">⑤ 내보내기</button>
   <button data-step="7" onclick="app.go(7)">🃏 감정 카드</button>
   <button data-step="8" onclick="app.go(8)">🫧 마음 읽기</button>
+  <button data-step="9" onclick="app.go(9)">🧭 어떻게 할까?</button>
   <button data-step="6" onclick="app.go(6)">⚙ 설정</button>
 </nav>
 
@@ -423,6 +446,51 @@
     <div id="mind-grid" style="margin-top:12px;"></div>
     <button class="btn btn-sage" id="mind-sheet-btn" onclick="app.exportMindSheet()" style="display:none;">🖨 인쇄용 카드 시트 다운로드</button>
     <p class="muted" id="mind-embed-note" style="margin-top:10px; display:none;">✅ 이 카드는 ⑤에서 플레이어를 내보낼 때 <b>마음 읽기 게임 모드</b>로 함께 담깁니다.</p>
+  </div>
+</section>
+
+<!-- 🧭 어떻게 할까? -->
+<section class="step" id="step9">
+  <div class="card">
+    <h2>🧭 어떻게 할까? (상황 선택)</h2>
+    <p class="muted"><b>사회적 문제 해결</b> 영역 활동입니다. 곤란한 상황을 주고 여러 대처 방법 중 하나를 고르면, 그 선택이 어떤 결과로 이어지는지 보여줍니다.</p>
+    <p class="muted">💡 활용법: 상황을 읽어주고 <b>"너라면 어떻게 할래?"</b> 묻기 → 선택 → 결과 확인 → "다른 방법은 어떤 결과일까?" 비교 → 가장 좋은 방법 함께 찾기.</p>
+
+    <div class="row">
+      <div>
+        <label>대상 연령</label>
+        <select id="solve-age">
+          <option>4~5세</option><option selected>5~7세</option>
+          <option>초등 저학년(8~10세)</option><option>초등 고학년(11~13세)</option>
+        </select>
+      </div>
+      <div>
+        <label>카드 수</label>
+        <select id="solve-count">
+          <option value="3">3장</option><option value="4" selected>4장</option>
+          <option value="5">5장</option><option value="6">6장</option>
+        </select>
+      </div>
+    </div>
+
+    <label>상황 소재 <span class="hint">(선택 — 비우면 일상 상황에서 자유롭게)</span></label>
+    <input type="text" id="solve-topic" placeholder="예: 친구와 다툼, 규칙 지키기, 놀이 순서, 물건 빌리기">
+
+    <button class="btn btn-primary" id="solve-btn" onclick="app.generateSolve()">🪄 상황 카드 만들기</button>
+    <div class="status" id="solve-status"></div>
+
+    <div id="solve-copy-box" style="display:none;">
+      <hr class="divider">
+      <p class="muted">아래 프롬프트를 claude.ai 또는 ChatGPT에 붙여넣고, 결과 JSON을 아래 칸에 붙여넣어 주세요.</p>
+      <div class="promptbox" id="solve-copy-prompt"></div>
+      <button class="btn btn-ghost btn-sm" onclick="app.copyText('solve-copy-prompt')">📋 프롬프트 복사</button>
+      <textarea id="solve-paste" placeholder='{"cards": ...}' style="min-height:100px;"></textarea>
+      <button class="btn btn-sage btn-sm" onclick="app.applySolvePasted()">✅ 결과 적용하기</button>
+    </div>
+
+    <div id="solve-grid" style="margin-top:12px;"></div>
+    <button class="btn btn-sage" id="solve-sheet-btn" onclick="app.exportSolveSheet()" style="display:none;">🖨 인쇄용 카드 시트 다운로드</button>
+    <p class="muted" id="solve-embed-note" style="margin-top:10px; display:none;">✅ 이 카드는 ⑤에서 플레이어를 내보낼 때 <b>어떻게 할까? 게임 모드</b>로 함께 담깁니다.</p>
   </div>
 </section>
 
@@ -1312,12 +1380,13 @@ const app = {
     if (!state.project) { setStatus("export-status", "error", "먼저 시나리오를 생성해 주세요."); return; }
     const cards = EMOTIONS.filter(e => emoCards[e.ko])
       .map(e => ({ ko: e.ko, mime: emoCards[e.ko].mime, data: emoCards[e.ko].data }));
-    const html = buildPlayerHTML(state.project, cards, mindCards);
+    const html = buildPlayerHTML(state.project, cards, mindCards, solveCards);
     const blob = new Blob([html], { type: "text/html" });
     downloadBlob(blob, sanitizeName(state.project.title) + "_플레이어.html");
     const extras = [];
     if (cards.length) extras.push(`감정 놀이(${cards.length}장)`);
     if (mindCards.length) extras.push(`마음 읽기(${mindCards.length}장)`);
+    if (solveCards.length) extras.push(`어떻게 할까?(${solveCards.length}장)`);
     setStatus("export-status", "info", "✅ 플레이어를 저장했습니다. 파일을 열고 장면별 영상 파일을 지정한 뒤 '시작하기'를 누르세요." +
       (extras.length ? ` (${extras.join(" · ")} 모드가 함께 담겼어요)` : " 🃏 감정 카드 · 🫧 마음 읽기 탭에서 카드를 만들어 두면 플레이어에 게임 모드로 함께 담깁니다."));
   },
@@ -1611,6 +1680,105 @@ ${cardsHTML}
     setStatus("mind-status", "info", "✅ 카드 시트를 저장했습니다. 상황·겉말을 보여주고 속마음 칸은 가린 채 물어보세요.");
   },
 
+  /* ---------- 어떻게 할까? (사회적 문제 해결) ---------- */
+  async generateSolve() {
+    const n = parseInt($("solve-count").value, 10);
+    const age = $("solve-age").value;
+    const topic = $("solve-topic").value.trim();
+    const prompt = buildSolvePrompt(n, age, topic);
+
+    const engine = state.settings.mode;
+    const hasKey = engine === "api" ? !!state.settings.apiKey
+                 : engine === "gemini" ? !!state.settings.geminiKey
+                 : false;
+
+    if (engine === "copy" || !hasKey) {
+      $("solve-copy-box").style.display = "block";
+      $("solve-copy-prompt").textContent = prompt + "\n\n" + SOLVE_GUIDE;
+      setStatus("solve-status", "info", engine !== "copy" && !hasKey
+        ? "API 키가 없어 <b>프롬프트 복사 모드</b>로 전환했습니다. 아래 프롬프트를 복사해 claude.ai에 붙여넣고 결과를 되붙여 주세요."
+        : "아래 프롬프트를 복사해 claude.ai 또는 ChatGPT에 붙여넣고, 결과 JSON을 붙여넣기 칸에 넣어 주세요.");
+      return;
+    }
+
+    const btn = $("solve-btn");
+    btn.disabled = true;
+    setStatus("solve-status", "info", '<span class="spinner"></span>상황 카드를 만들고 있습니다…');
+    try {
+      const data = engine === "gemini"
+        ? await callGemini(prompt + "\n\n" + SOLVE_GUIDE)
+        : await callClaude(prompt, SOLVE_SCHEMA);
+      if (!data.cards || !data.cards.length) throw new Error("생성 결과가 비어 있습니다. 다시 시도해 주세요.");
+      solveCards = data.cards;
+      this.renderSolveCards();
+      setStatus("solve-status", "info", `✅ 카드 ${solveCards.length}장이 완성되었습니다! 카드를 눌러 방법·결과를 확인하세요.`);
+    } catch (err) {
+      setStatus("solve-status", "error", "⚠️ " + esc(engine === "gemini" ? (err.message || String(err)) : apiErrorMessage(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  applySolvePasted() {
+    let raw = $("solve-paste").value.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    if (!raw) { setStatus("solve-status", "error", "JSON을 붙여넣어 주세요."); return; }
+    try {
+      const data = JSON.parse(raw);
+      if (!data.cards || !data.cards.length) throw new Error("cards 항목이 없습니다");
+      solveCards = data.cards;
+      this.renderSolveCards();
+      setStatus("solve-status", "info", `✅ 카드 ${solveCards.length}장을 불러왔습니다!`);
+    } catch (e) {
+      setStatus("solve-status", "error", "JSON 해석 실패: " + esc(e.message));
+    }
+  },
+
+  renderSolveCards() {
+    const grid = $("solve-grid");
+    if (!grid) return;
+    grid.innerHTML = solveCards.map(c => solveCardHTML(c)).join("");
+    $("solve-sheet-btn").style.display = solveCards.length ? "inline-block" : "none";
+    $("solve-embed-note").style.display = solveCards.length ? "block" : "none";
+  },
+
+  exportSolveSheet() {
+    if (!solveCards.length) return;
+    const rateKo = { good: "좋은 방법", soso: "애매해요", bad: "안 좋아요" };
+    const cardsHTML = solveCards.map((c, i) => `
+      <div class="cardp">
+        <div class="no">${i + 1}</div>
+        <p class="situation">🧭 ${esc(c.situation)}</p>
+        <p class="q">${esc(c.question || "어떻게 하면 좋을까요?")}</p>
+        ${c.choices.map(ch => `<div class="choice ${ch.rating}"><b>[${rateKo[ch.rating] || ch.rating}]</b> ${esc(ch.text)}<br><span>→ ${esc(ch.consequence)}</span></div>`).join("")}
+      </div>`).join("\n");
+    const html = `<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>어떻게 할까? 카드</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:#eee; color:#222; }
+  .sheet { background:#fff; max-width:190mm; margin:10px auto; padding:12mm; display:grid; grid-template-columns:1fr 1fr; gap:6mm; }
+  .cardp { border:1.5px solid #999; border-radius:12px; padding:6mm; page-break-inside:avoid; position:relative; }
+  .cardp .no { position:absolute; top:5mm; right:6mm; font-weight:800; color:#C4817E; }
+  .cardp .situation { font-size:15px; font-weight:700; }
+  .cardp .q { font-size:12.5px; color:#666; margin-bottom:4mm; }
+  .cardp .choice { border-radius:8px; padding:3mm 4mm; margin:3mm 0; font-size:13px; }
+  .cardp .choice.good { background:#EDF2EB; border-left:3px solid #8CA888; }
+  .cardp .choice.soso { background:#FBF3E7; border-left:3px solid #D9A441; }
+  .cardp .choice.bad  { background:#F7ECEA; border-left:3px solid #C4817E; }
+  .cardp .choice span { color:#666; font-size:12px; }
+  .noprint { position:sticky; top:0; background:#3d3835; color:#fff; text-align:center; padding:12px; font-size:14px; }
+  .noprint button { border:none; border-radius:8px; background:#C4817E; color:#fff; font-family:inherit; font-size:14px; font-weight:700; padding:9px 20px; cursor:pointer; margin-left:10px; }
+  @media print { .noprint { display:none; } body { background:#fff; } .sheet { margin:0; max-width:none; } }
+</style></head>
+<body>
+<div class="noprint">상황과 방법을 함께 보며 "어떤 게 제일 좋을까?" 이야기 나누세요 <button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>
+<div class="sheet">
+${cardsHTML}
+</div></body></html>`;
+    downloadBlob(new Blob([html], { type: "text/html" }), "어떻게할까_카드.html");
+    setStatus("solve-status", "info", "✅ 카드 시트를 저장했습니다.");
+  },
+
   /* ---------- 감정 카드 ---------- */
   renderEmotionUI() {
     const sel = $("emo-char");
@@ -1872,6 +2040,86 @@ function mindCardHTML(c, i) {
   </div>`;
 }
 
+/* ---------- 어떻게 할까? (사회적 문제 해결) ---------- */
+let solveCards = [];   // [{situation, question, choices:[{text,rating,consequence}]}] (세션 중에만 유지)
+const RATE_KO = { good: "좋은 방법", soso: "애매해요", bad: "안 좋아요" };
+
+const SOLVE_SCHEMA = {
+  type: "object",
+  properties: {
+    cards: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          situation: { type: "string", description: "아동이 겪을 법한 사회적 문제 상황 (한국어)" },
+          question: { type: "string", description: "'어떻게 하면 좋을까요?' 형태 질문" },
+          choices: {
+            type: "array",
+            description: "대처 방법 3개 (좋은 방법 1 · 애매한 방법 1 · 안 좋은 방법 1, 순서는 섞어서)",
+            items: {
+              type: "object",
+              properties: {
+                text: { type: "string", description: "대처 방법 (한국어, 아동 눈높이)" },
+                rating: { type: "string", enum: ["good", "soso", "bad"], description: "good=바람직 soso=애매 bad=바람직하지않음" },
+                consequence: { type: "string", description: "그 선택을 하면 생기는 결과 (한국어)" }
+              },
+              required: ["text", "rating", "consequence"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["situation", "question", "choices"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["cards"],
+  additionalProperties: false
+};
+
+function buildSolvePrompt(n, age, topic) {
+  return `화용언어치료의 '사회적 문제 해결' 영역 활동인 '어떻게 할까?' 카드를 ${n}장 만들어 주세요.
+각 카드는 아동이 실제 겪을 법한 사회적 문제 상황이고, 3가지 대처 방법(choices)과 각 방법의 결과(consequence)를 담습니다.
+
+- 대상 연령: ${age}
+- 상황 소재: ${topic || "일상(친구 관계·놀이·교실·가정 등)에서 자유롭게"}
+
+원칙:
+- choices는 정확히 3개: 바람직한 방법(good) 1개, 애매한 방법(soso) 1개, 바람직하지 않은 방법(bad) 1개. 순서는 섞을 것.
+- consequence는 그 선택을 하면 어떤 일이 생기는지 아동 눈높이로 짧고 구체적으로.
+- 정답을 외우게 하기보다, 각 선택이 서로 다른 결과로 이어짐을 느끼게 할 것.
+- bad 선택도 폭력적이거나 과격하지 않게, 아동이 실제로 할 법한 미숙한 대처로.`;
+}
+
+const SOLVE_GUIDE = `결과는 아래 구조의 JSON **하나만** 출력하세요. JSON 외의 설명 문장은 쓰지 마세요.
+
+{
+  "cards": [
+    {
+      "situation": "문제 상황",
+      "question": "어떻게 하면 좋을까요?",
+      "choices": [
+        { "text": "대처 방법", "rating": "good | soso | bad", "consequence": "그 결과" }
+      ]
+    }
+  ]
+}`;
+
+function solveCardHTML(c) {
+  return `<div class="solve-card" onclick="this.classList.toggle('open')">
+    <div class="situation">🧭 ${esc(c.situation)}</div>
+    <div class="q">${esc(c.question || "어떻게 하면 좋을까요?")}</div>
+    <div class="flip-hint">👇 눌러서 방법·결과 보기</div>
+    <div class="choices">
+      ${c.choices.map(ch => `<div class="choice ${ch.rating}">
+        <span class="rate-badge ${ch.rating}">${RATE_KO[ch.rating] || ch.rating}</span>${esc(ch.text)}
+        <div class="conseq">→ ${esc(ch.consequence)}</div>
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
+
 /* ---------- Gemini TTS 보조 ---------- */
 const ttsResults = {};   // sceneNo -> { blob, url }  (세션 중에만 유지)
 
@@ -2014,10 +2262,11 @@ ${quizPage}
    치료용 인터랙티브 플레이어 HTML 생성
    (독립 실행형 — 영상 파일은 사용자가 열어서 지정)
    ============================================================ */
-function buildPlayerHTML(project, emotionCards = [], mindReadingCards = []) {
+function buildPlayerHTML(project, emotionCards = [], mindReadingCards = [], solvingCards = []) {
   const data = JSON.stringify(project).replace(/</g, "\\u003c");
   const cardsData = JSON.stringify(emotionCards).replace(/</g, "\\u003c");
   const mindData = JSON.stringify(mindReadingCards).replace(/</g, "\\u003c");
+  const solveData = JSON.stringify(solvingCards).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2095,6 +2344,7 @@ function buildPlayerHTML(project, emotionCards = [], mindReadingCards = []) {
   <button class="big" id="start" disabled>▶ 시작하기</button>
   <button class="big" id="emo-start" style="background:#8CA888; display:none;">🃏 감정 놀이 (영상 없이 가능)</button>
   <button class="big" id="mind-start" style="background:#8CA888; display:none;">🫧 마음 읽기 (영상 없이 가능)</button>
+  <button class="big" id="solve-start" style="background:#8CA888; display:none;">🧭 어떻게 할까? (영상 없이 가능)</button>
   <h3>📊 지난 기록</h3>
   <div id="log-area"></div>
 </div>
@@ -2114,6 +2364,8 @@ function buildPlayerHTML(project, emotionCards = [], mindReadingCards = []) {
 var PROJECT = ${data};
 var CARDS = ${cardsData};   // 감정 카드 [{ko, mime, data}]
 var MINDCARDS = ${mindData};   // 마음 읽기 카드 [{situation, surface, ...}]
+var SOLVECARDS = ${solveData};   // 어떻게 할까? 카드 [{situation, question, choices}]
+var RATE_KO = { good: "좋은 방법", soso: "애매해요", bad: "안 좋아요" };
 var EMO_WORDS = ["기쁨", "슬픔", "화남", "놀람", "무서움", "부끄러움", "신남", "피곤함"];
 var LOGKEY = "화용플레이어기록::" + PROJECT.title;
 var files = {};   // sceneNo -> objectURL
@@ -2236,6 +2488,12 @@ document.getElementById("emo-start").addEventListener("click", function(){
 if (MINDCARDS.length) document.getElementById("mind-start").style.display = "block";
 document.getElementById("mind-start").addEventListener("click", function(){
   startMindQuiz(false);
+});
+
+// ----- 어떻게 할까? (카드가 담겨 있을 때만) -----
+if (SOLVECARDS.length) document.getElementById("solve-start").style.display = "block";
+document.getElementById("solve-start").addEventListener("click", function(){
+  startSolveQuiz(false);
 });
 
 var emoOrder = [], emoPos = -1, emoAttempts = 0;
@@ -2395,6 +2653,93 @@ function mindFinish() {
       h += "<div class='result'>" + (r.firstTry
         ? "<span class='good'>✓ 한 번에 정답!</span>"
         : "<span class='retry'>↻ " + r.attempts + "번 만에 정답</span>") + " — " + escText(r.question) + "</div>";
+    });
+  }
+  h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
+  inner.innerHTML = h;
+  showOverlay();
+}
+
+// ----- 어떻게 할까? 게임 -----
+var solveOrder = [], solvePos = -1, solveAttempts = 0, solveGoodDone = false;
+
+function startSolveQuiz(fromStory) {
+  if (!session.startedAt) {
+    session.child = (document.getElementById("child-name").value || "").trim();
+    session.startedAt = new Date().toISOString();
+  }
+  document.getElementById("setup").style.display = "none";
+  solveOrder = SOLVECARDS.map(function(_, i){ return i; });
+  for (var i = solveOrder.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = solveOrder[i]; solveOrder[i] = solveOrder[j]; solveOrder[j] = t;
+  }
+  solvePos = -1;
+  nextSolve();
+}
+
+function nextSolve() {
+  solvePos++;
+  if (solvePos >= solveOrder.length) { solveFinish(); return; }
+  solveAttempts = 0; solveGoodDone = false;
+  var c = SOLVECARDS[solveOrder[solvePos]];
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🧭 어떻게 할까? <span style='font-size:14px;color:#C7BCB1;'>(" + (solvePos + 1) + " / " + solveOrder.length + ")</span></h2>";
+  h += "<div class='talk' style='font-size:17px;'>" + escText(c.situation) + "</div>";
+  h += "<p style='margin:14px 0 6px;'>" + escText(c.question || "어떻게 하면 좋을까요?") + "</p>";
+  c.choices.forEach(function(ch, i){
+    h += "<button class='opt solve-opt' data-i='" + i + "'>" + escText(ch.text) + "</button>";
+  });
+  h += "<div id='feedback'></div>";
+  inner.innerHTML = h;
+  showOverlay();
+  inner.querySelectorAll(".solve-opt").forEach(function(btn){
+    btn.addEventListener("click", function(){ answerSolve(c, parseInt(btn.dataset.i, 10), btn); });
+  });
+}
+
+function answerSolve(c, i, btn) {
+  var ch = c.choices[i];
+  var fb = document.getElementById("feedback");
+  if (btn.dataset.done) return;
+  btn.dataset.done = "1";
+  solveAttempts++;
+
+  // 결과를 버튼 아래에 표시 (평가별 색)
+  var color = ch.rating === "good" ? "#8CA888" : ch.rating === "soso" ? "#D9A441" : "#C4817E";
+  if (ch.rating === "good") btn.classList.add("correct"); else btn.classList.add("wrong");
+  var line = document.createElement("div");
+  line.className = "result";
+  line.style.borderLeft = "3px solid " + color;
+  line.innerHTML = "<b style='color:" + color + ";'>" + (RATE_KO[ch.rating] || "") + "</b> — " + escText(ch.consequence);
+  btn.insertAdjacentElement("afterend", line);
+
+  if (ch.rating === "good") {
+    if (!solveGoodDone) {
+      solveGoodDone = true;
+      if (!session.quizLog["solve-" + solvePos]) {
+        session.quizLog["solve-" + solvePos] = { question: "문제 해결: " + c.situation, attempts: solveAttempts, firstTry: solveAttempts === 1 };
+      }
+    }
+    fb.innerHTML = "🎉 좋은 방법을 찾았어요!<br><button class='big' style='display:inline-block;width:auto;padding:12px 28px;' onclick='nextSolve()'>다음 ▶</button>";
+  } else {
+    fb.textContent = "다른 방법이면 어떻게 될까요? 하나씩 눌러 보고, 제일 좋은 방법을 찾아보세요. 🙂";
+  }
+}
+
+function solveFinish() {
+  saveSession();
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🌟 어떻게 할까? 끝!</h2>";
+  var results = [];
+  for (var k in session.quizLog) if (k.indexOf("solve-") === 0) results.push(session.quizLog[k]);
+  if (results.length) {
+    var first = results.filter(function(r){ return r.firstTry; }).length;
+    h += "<div class='result'><b>" + escText(session.child || "우리 친구") + "</b>의 문제 해결 — 한 번에 좋은 방법 <b>" + first + " / " + results.length + "</b></div>";
+    results.forEach(function(r){
+      h += "<div class='result'>" + (r.firstTry
+        ? "<span class='good'>✓ 바로 좋은 방법!</span>"
+        : "<span class='retry'>↻ " + r.attempts + "번째에 찾음</span>") + " — " + escText(r.question) + "</div>";
     });
   }
   h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
@@ -2595,6 +2940,9 @@ function finish() {
   }
   if (MINDCARDS.length) {
     h += "<button class='big' style='background:#8CA888;' onclick='startMindQuiz(true)'>🫧 이어서 마음 읽기 하기</button>";
+  }
+  if (SOLVECARDS.length) {
+    h += "<button class='big' style='background:#8CA888;' onclick='startSolveQuiz(true)'>🧭 이어서 어떻게 할까? 하기</button>";
   }
   h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
   inner.innerHTML = h;
