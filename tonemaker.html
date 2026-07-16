@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#171513">
+<link rel="manifest" href="tonemaker.webmanifest">
+<link rel="icon" href="tonemaker-icon.svg" type="image/svg+xml">
 <title>톤메이커 — AI 원탭 사진 보정</title>
 <style>
 /* ============================================================
@@ -68,7 +70,11 @@ header .sp{flex:1;}
   border-radius:var(--r); background:
     repeating-conic-gradient(#1d1a17 0% 25%, #211e1a 0% 50%) 0 0/22px 22px;
   border:1px solid var(--line); position:relative; overflow:hidden;
+  touch-action:none;
 }
+.canvasbox.zoomed{cursor:grab;}
+.canvasbox.zoomed:active{cursor:grabbing;}
+.sbtn:disabled{opacity:.4; cursor:default;}
 .compare{position:relative; max-width:100%; max-height:100%; line-height:0;}
 .compare canvas{max-width:100%; max-height:100%; display:block; border-radius:6px;}
 .compare img.orig{
@@ -336,6 +342,7 @@ details.adv .inner{padding-bottom:12px;}
     box-shadow:0 -14px 44px rgba(0,0,0,.55);
   }
   #snowBar{display:flex;}
+  #toast{bottom:calc(158px + env(safe-area-inset-bottom));}
 }
 </style>
 </head>
@@ -361,6 +368,9 @@ details.adv .inner{padding-bottom:12px;}
     <div><b>✨ 원탭 자동 톤</b>AI가 사진을 보고 어울리는 톤 후보를 골라줘요</div>
     <div><b>💬 말로 보정</b>"얼굴만 밝게, 하늘은 살려줘" — 말하면 바뀌어요</div>
     <div><b>📦 일괄 보정</b>마음에 든 톤을 전체 사진에 똑같이 입혀요</div>
+    <div><b>🪄 AI 리터치</b>잡티 제거·배경 흐림·방해물 지우기까지</div>
+    <div><b>🖼 레퍼런스 매칭</b>따라하고 싶은 사진의 감성을 그대로 이식</div>
+    <div><b>🧑 피부 보정</b>피부만 자동으로 찾아 결·모공을 매끈하게</div>
   </div>
   <p class="privacy">보정은 전부 내 기기(브라우저)에서 처리되고, AI 분석을 누를 때만 축소본이 AI에 전송됩니다.<br>저장 시 위치정보 등 개인 EXIF 데이터는 자동으로 제거됩니다.</p>
   <input type="file" id="fileInput" accept="image/*" multiple hidden>
@@ -383,8 +393,11 @@ details.adv .inner{padding-bottom:12px;}
         </div>
       </div>
       <div class="stagebar">
-        <button class="sbtn" id="btnHold">👁 원본 보기 (꾹)</button>
-        <button class="sbtn" id="btnCompare">◧ 비교 슬라이더</button>
+        <button class="sbtn" id="btnUndo" title="실행 취소">↶</button>
+        <button class="sbtn" id="btnRedo" title="다시 실행">↷</button>
+        <button class="sbtn" id="btnZoom" title="확대 (더블클릭도 가능)">🔍 1x</button>
+        <button class="sbtn" id="btnHold">👁 원본 (꾹)</button>
+        <button class="sbtn" id="btnCompare">◧ 비교</button>
         <button class="sbtn" id="btnReset">↺ 원본으로</button>
         <button class="sbtn" id="btnHome">🏠 처음으로</button>
         <span class="scene-chip" id="sceneChip"></span>
@@ -1349,10 +1362,12 @@ async function addFiles(files){
       tc.width = Math.max(1, Math.round(bitmap.width*ts));
       tc.height = Math.max(1, Math.round(bitmap.height*ts));
       tc.getContext("2d").drawImage(bitmap, 0, 0, tc.width, tc.height);
+      const rec = defaultRecipe();
       state.photos.push({
         id, name: f.name.replace(/\.[^.]+$/, ""), bitmap,
         thumbUrl: tc.toDataURL("image/jpeg", 0.8),
-        recipe: defaultRecipe(),
+        recipe: rec,
+        history: [structuredClone(rec)], histIdx: 0,
         stats: computeStats(bitmap),
         candidates: null, aiResult: null, origUrl: null,
       });
@@ -1395,6 +1410,8 @@ function selectPhoto(id){
   renderMaskUI();
   renderSnowItems();
   renderRetouchUI();
+  setZoom(1);
+  updateHistoryUI();
 }
 
 function removePhoto(id){
@@ -1489,7 +1506,7 @@ function applyMood(m){
   applyRecipe(clampRecipe(Object.assign(defaultRecipe(), m.recipe, keep)));
 }
 
-function applyRecipe(recipe){
+function applyRecipe(recipe, opts = {}){
   const p = currentPhoto(); if(!p) return;
   p.recipe = clampRecipe(recipe);
   if(state.selMask >= p.recipe.masks.length) state.selMask = p.recipe.masks.length - 1;
@@ -1497,6 +1514,41 @@ function applyRecipe(recipe){
   syncKnobs();
   renderStrip();
   renderMaskUI();
+  if(!opts.silent) commitHistory(p);
+}
+
+/* ---------- 편집 히스토리 (실행 취소 / 다시 실행) ---------- */
+function commitHistory(p){
+  p = p || currentPhoto(); if(!p) return;
+  if(!p.history){ p.history = [structuredClone(p.recipe)]; p.histIdx = 0; updateHistoryUI(); return; }
+  const snap = structuredClone(p.recipe);
+  if(JSON.stringify(snap) === JSON.stringify(p.history[p.histIdx])) return; // 변화 없음
+  p.history = p.history.slice(0, p.histIdx + 1); // redo 꼬리 잘라내기
+  p.history.push(snap);
+  if(p.history.length > 40) p.history.shift();
+  p.histIdx = p.history.length - 1;
+  updateHistoryUI();
+}
+function undoEdit(){
+  const p = currentPhoto();
+  if(!p || !p.history || p.histIdx <= 0) return;
+  p.histIdx--;
+  applyRecipe(structuredClone(p.history[p.histIdx]), { silent:true });
+  markCand(null);
+  updateHistoryUI();
+}
+function redoEdit(){
+  const p = currentPhoto();
+  if(!p || !p.history || p.histIdx >= p.history.length - 1) return;
+  p.histIdx++;
+  applyRecipe(structuredClone(p.history[p.histIdx]), { silent:true });
+  markCand(null);
+  updateHistoryUI();
+}
+function updateHistoryUI(){
+  const p = currentPhoto();
+  $("#btnUndo").disabled = !(p?.history && p.histIdx > 0);
+  $("#btnRedo").disabled = !(p?.history && p.histIdx < p.history.length - 1);
 }
 
 /* ============================================================
@@ -1552,7 +1604,7 @@ function buildKnobs(){
       syncKnobs(inp.dataset.key);
       markCand(null);
     });
-    inp.addEventListener("change", () => renderStrip());
+    inp.addEventListener("change", () => { renderStrip(); commitHistory(); });
   });
 }
 function syncKnobs(exceptKey){
@@ -2019,6 +2071,7 @@ function addMask(kind){
   p.recipe.masks.push(clampMasks([base])[0]);
   state.selMask = p.recipe.masks.length - 1;
   requestRender(); renderMaskUI(); markCand(null); renderStrip();
+  commitHistory(p);
 }
 function renderMaskUI(){
   const p = currentPhoto();
@@ -2066,13 +2119,15 @@ function renderMaskEditor(){
       m[k] = (k === "r" || k === "feather" || k === "pos") ? v/100 : v;
       requestRender(); updateMaskOverlay(); markCand(null);
     });
+    inp.addEventListener("change", () => commitHistory());
   });
   const inv = box.querySelector("#maskInvert");
-  if(inv) inv.onchange = () => { m.invert = inv.checked; requestRender(); };
+  if(inv) inv.onchange = () => { m.invert = inv.checked; requestRender(); commitHistory(); };
   box.querySelector("#maskDelete").onclick = () => {
     p.recipe.masks.splice(state.selMask, 1);
     state.selMask = -1;
     requestRender(); renderMaskUI(); renderStrip();
+    commitHistory();
   };
 }
 function updateMaskOverlay(){
@@ -2141,9 +2196,13 @@ function batchApply(recipe, label){
       r.exposure = Math.max(-100, Math.min(100, r.exposure + off));
     }
     p.recipe = r;
+    if(!p.history){ p.history = []; p.histIdx = -1; }
+    p.history = p.history.slice(0, p.histIdx + 1);
+    p.history.push(structuredClone(r));
+    p.histIdx = p.history.length - 1;
     cnt++;
   }
-  requestRender(); syncKnobs(); renderStrip();
+  requestRender(); syncKnobs(); renderStrip(); updateHistoryUI();
   toast(`📦 ${cnt}장 전체에 ${label ? `"${label}" ` : "현재 "}톤을 입혔어요. 내보내기에서 전체 저장하세요!`);
 }
 
@@ -2182,8 +2241,10 @@ async function saveAll(){
   const q = Number($("#quality").value)/100;
   toast(`전체 ${state.photos.length}장을 차례로 저장합니다...`);
   let ok = 0;
-  for(const p of state.photos){
+  for(let i = 0; i < state.photos.length; i++){
+    const p = state.photos[i];
     try{
+      toast(`💾 저장 중... ${i+1}/${state.photos.length} — ${p.name}`, 2000);
       const blob = await exportPhotoBlob(p, q);
       downloadBlob(blob, `${p.name}_tonemaker.jpg`);
       ok++;
@@ -2191,6 +2252,58 @@ async function saveAll(){
     }catch(e){ console.error(e); }
   }
   toast(`💾 ${ok}/${state.photos.length}장 저장 완료!`);
+}
+
+/* ============================================================
+   확대 / 팬 (디테일 확인용)
+   ============================================================ */
+const view = { zoom: 1, x: 0, y: 0 };
+let panMoved = false;
+function clampPan(){
+  const c = $("#compare");
+  const mx = (view.zoom - 1) * c.clientWidth / 2;
+  const my = (view.zoom - 1) * c.clientHeight / 2;
+  view.x = Math.max(-mx, Math.min(mx, view.x));
+  view.y = Math.max(-my, Math.min(my, view.y));
+}
+function setZoom(z){
+  view.zoom = z;
+  if(z === 1){ view.x = 0; view.y = 0; }
+  clampPan();
+  $("#compare").style.transform = z === 1 ? "" : `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
+  $("#canvasbox").classList.toggle("zoomed", z > 1);
+  $("#btnZoom").textContent = `🔍 ${z}x`;
+}
+function initZoomPan(){
+  const box = $("#canvasbox");
+  $("#btnZoom").onclick = () => {
+    const next = view.zoom >= 4 ? 1 : view.zoom * 2;
+    setZoom(next);
+    if(next > 1) toast(`🔍 ${next}배 확대 — 드래그로 움직이고, 더블클릭(더블탭)으로 해제`, 2200);
+  };
+  box.addEventListener("dblclick", e => {
+    e.preventDefault();
+    setZoom(view.zoom === 1 ? 2 : 1);
+  });
+  let panning = false, px = 0, py = 0, moved = 0;
+  box.addEventListener("pointerdown", e => {
+    if(view.zoom <= 1 || state.compare) return;
+    panning = true; moved = 0; px = e.clientX; py = e.clientY;
+    box.setPointerCapture(e.pointerId);
+  });
+  box.addEventListener("pointermove", e => {
+    if(!panning) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    moved += Math.abs(dx) + Math.abs(dy);
+    px = e.clientX; py = e.clientY;
+    view.x += dx; view.y += dy;
+    clampPan();
+    $("#compare").style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
+  });
+  box.addEventListener("pointerup", () => {
+    if(panning && moved > 6) panMoved = true; // 이어지는 click을 마스크 이동으로 오인하지 않게
+    panning = false;
+  });
 }
 
 /* ============================================================
@@ -2375,11 +2488,12 @@ function renderSnowItems(){
       snowSliderChip(box, "saturation", "채도", () => snowMaskItem("saturation","채도",false), m.saturation!==0);
       snowSliderChip(box, "temperature", "온도", () => snowMaskItem("temperature","온도",false), m.temperature!==0);
       if(m.type === "radial" || m.type === "linear"){
-        box.appendChild(snowChip("바깥에 적용", { on: m.invert, onclick: () => { m.invert = !m.invert; requestRender(); renderSnowItems(); } }));
+        box.appendChild(snowChip("바깥에 적용", { on: m.invert, onclick: () => { m.invert = !m.invert; requestRender(); renderSnowItems(); commitHistory(p); } }));
       }
       box.appendChild(snowChip("🗑 삭제", { onclick: () => {
         p.recipe.masks.splice(state.selMask,1); state.selMask=-1;
         requestRender(); renderMaskUI(); renderSnowItems(); renderStrip();
+        commitHistory(p);
       } }));
     }else{
       box.appendChild(snowChip("＋◯ 지점", { onclick: () => addMask("radial") }));
@@ -2449,8 +2563,27 @@ function init(){
   renderChatChips();
   renderPresetList();
   initCompareDrag();
+  initZoomPan();
   renderSnowCats();
   renderRetouchPresets();
+
+  // 실행 취소 / 다시 실행
+  $("#btnUndo").onclick = undoEdit;
+  $("#btnRedo").onclick = redoEdit;
+  document.addEventListener("keydown", e => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.target.matches("input,textarea")){
+      e.preventDefault();
+      e.shiftKey ? redoEdit() : undoEdit();
+    }
+  });
+
+  // 편집 중 실수로 닫기 방지
+  window.addEventListener("beforeunload", e => {
+    if(state.photos.length && state.photos.some(p => !isDefaultRecipe(p.recipe) || p.retouchStack?.length || p.crop)){
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
 
   // 🪄 생성형 리터치
   $("#btnRetouchGo").onclick = () => { runCustomRetouch($("#retouchText").value); $("#retouchText").value = ""; };
@@ -2467,7 +2600,7 @@ function init(){
     markCand(null);
     $$("#snowItems .scard").forEach(x=>x.classList.remove("on"));
   });
-  $("#snowRange").addEventListener("change", () => { renderStrip(); updateSnowLight(); renderSnowItems(); });
+  $("#snowRange").addEventListener("change", () => { renderStrip(); updateSnowLight(); renderSnowItems(); commitHistory(); });
   $("#snowSliderReset").onclick = () => {
     if(!state.snowItem) return;
     state.snowItem.set(state.snowItem.def);
@@ -2520,6 +2653,7 @@ function init(){
   // 🎯 부분 보정
   $$("#maskAdd .chip").forEach(b => b.onclick = () => addMask(b.dataset.mask));
   $("#glcanvas").addEventListener("click", e => {
+    if(panMoved){ panMoved = false; return; } // 팬 드래그 직후의 클릭은 무시
     const p = currentPhoto(); if(!p) return;
     const rect = e.target.getBoundingClientRect();
     const ux = Math.max(0, Math.min(1, (e.clientX - rect.left)/rect.width));
@@ -2531,11 +2665,13 @@ function init(){
       p.recipe.masks.push(clampMasks([{ type:"radial", cx:ux, cy:uy, exposure:20 }])[0]);
       state.selMask = p.recipe.masks.length - 1;
       requestRender(); renderMaskUI(); markCand(null); renderStrip();
+      commitHistory(p);
       toast("◯ 지점을 만들었어요. 아래 손잡이로 이 부분만 다듬어 보세요.");
     }else if(state.selMask >= 0 && p.recipe.masks[state.selMask]?.type === "radial" && !$("#tab-tune").hidden && !state.compare){
       const m = p.recipe.masks[state.selMask];
       m.cx = ux; m.cy = uy;
       requestRender(); updateMaskOverlay();
+      commitHistory(p);
     }
   });
   window.addEventListener("resize", updateMaskOverlay);

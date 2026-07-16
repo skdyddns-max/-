@@ -1,0 +1,16 @@
+{
+  "id": "./tonemaker.html",
+  "name": "톤메이커 — AI 원탭 사진 보정",
+  "short_name": "톤메이커",
+  "description": "사진을 올리면 AI가 톤을 잡아주고, 손과 말로 다듬고, 여러 장에 똑같이 입히는 원탭 보정 도구",
+  "start_url": "./tonemaker.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#171513",
+  "theme_color": "#171513",
+  "lang": "ko",
+  "icons": [
+    { "src": "tonemaker-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
