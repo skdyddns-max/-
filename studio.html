@@ -233,19 +233,15 @@
     <h2>① 치료 목표 설정</h2>
     <p class="muted">목표 화용 기술과 아동 정보를 입력하면, 비디오 모델링용 시나리오 전체(대본·영상 프롬프트·음성 대본·토론 질문·퀴즈)가 한 번에 생성됩니다.</p>
 
-    <label>목표 화용 기술</label>
+    <label>목표 화용 기술 <span class="hint">(7개 화용 영역별로 묶여 있어요)</span></label>
     <select id="f-skill-preset" onchange="app.onSkillPreset()">
       <option value="">직접 입력…</option>
-      <option>놀이에 끼어들어 함께 놀자고 요청하기</option>
-      <option>차례 지키기와 순서 기다리기</option>
-      <option>인사하기와 대화 시작하기</option>
-      <option>사과하기와 갈등 해결하기</option>
-      <option>도움 요청하기</option>
-      <option>상대방의 표정·기분 읽고 반응하기</option>
-      <option>주제 유지하며 대화 주고받기</option>
-      <option>거절 표현을 적절하게 하기</option>
     </select>
     <input type="text" id="f-skill" placeholder="예: 친구가 속상해할 때 위로하는 말 하기" style="margin-top:8px;">
+    <details style="margin-top:8px;">
+      <summary>🗂 화용 영역이란? — 7개 영역과 세부 기술 보기</summary>
+      <div id="domain-info" style="margin-top:8px;"></div>
+    </details>
 
     <div class="row">
       <div>
@@ -534,6 +530,129 @@ const PROJECT_SCHEMA = {
 /* ============================================================
    프롬프트 구성
    ============================================================ */
+/* ============================================================
+   화용 영역 체계 — 7대 영역 × 세부 기술
+   각 영역은 대본 생성 시 영역별 지도 지침(coach)을 프롬프트에 반영
+   ============================================================ */
+const PRAGMATIC_DOMAINS = [
+  {
+    label: "의사소통 기능",
+    blurb: "원하는 것·생각을 말로 표현하기",
+    coach: "목표 기능이 발화로 분명히 드러나는 순간을 장면 중심에 두고, 아동이 그대로 따라 할 수 있는 짧은 핵심 문장을 반복 노출하세요.",
+    skills: [
+      "원하는 것 말로 요청하기",
+      "도움 요청하기",
+      "싫다고·거절 적절히 표현하기",
+      "궁금한 것 질문하기",
+      "\"우리 ~하자\" 함께하자고 제안하기",
+      "내 생각·경험 이야기하기",
+      "불만·항의를 부드럽게 표현하기",
+    ],
+  },
+  {
+    label: "대화 기술",
+    blurb: "대화를 주고받으며 이어가기",
+    coach: "말차례를 주고받는 구조(A→B→A)를 분명히 보여주고, 주제가 유지·전환되는 지점을 관찰 가능하게 만드세요.",
+    skills: [
+      "먼저 말 걸어 대화 시작하기",
+      "차례 지켜 말하기",
+      "주제 유지하며 대화 이어가기",
+      "대화에 적절히 끼어들기",
+      "못 알아들었을 때 다시 물어보기(명료화 요청)",
+      "대화 자연스럽게 마무리하기",
+      "대화 주제 바꾸기",
+    ],
+  },
+  {
+    label: "사회적 상호작용·예절",
+    blurb: "관계 속 규칙과 예절 지키기",
+    coach: "예절·규칙이 지켜졌을 때와 아닐 때 상대의 반응 차이를 드러내, 그 행동이 왜 필요한지 아동이 스스로 알아채게 하세요.",
+    skills: [
+      "인사하기·헤어질 때 인사하기",
+      "사과하기",
+      "고마움·칭찬 표현하기",
+      "차례·순서 기다리기",
+      "양보하고 나누기",
+      "놀이에 끼어 함께 놀자고 요청하기",
+      "약속·규칙 지키기",
+    ],
+  },
+  {
+    label: "비언어적 의사소통",
+    blurb: "표정·목소리·몸짓으로 소통하기",
+    coach: "표정·목소리 톤·몸짓 같은 비언어 단서를 대사만큼 비중 있게 묘사하고, 같은 말이라도 톤에 따라 뜻이 달라지는 대비를 넣으세요.",
+    skills: [
+      "상대 표정 읽고 알맞게 반응하기",
+      "상황에 맞는 목소리 크기·톤 쓰기",
+      "눈맞춤 유지하며 말하기",
+      "몸짓·거리(적당한 간격) 조절하기",
+    ],
+  },
+  {
+    label: "마음이론·추론",
+    blurb: "상대의 마음·숨은 뜻 헤아리기",
+    coach: "등장인물이 서로 다르게 알거나 느끼는 상황을 만들어, 겉으로 드러난 말·표정과 속마음의 차이를 아동이 추론하도록 구성하세요.",
+    skills: [
+      "상대방 기분·마음 읽기",
+      "숨은 의도 파악하기",
+      "농담·놀림·반어 이해하기",
+      "돌려 말하는 간접 표현 이해하기",
+      "상대 입장에서 생각하기(관점 바꾸기)",
+    ],
+  },
+  {
+    label: "감정·자기조절",
+    blurb: "내 감정을 알고 다스리고 나누기",
+    coach: "감정이 커지는 순간과 그것을 알아차려 말로 표현·조절하는 과정을 단계적으로 보여주세요.",
+    skills: [
+      "내 감정 알아차리고 말로 표현하기",
+      "친구 감정에 공감하기",
+      "화·속상함 가라앉히기",
+      "속상한 친구 위로하는 말 하기",
+    ],
+  },
+  {
+    label: "사회적 문제 해결",
+    blurb: "곤란한 상황에 대처하기",
+    coach: "문제 상황 → 여러 대처 방법 중 적절한 선택 → 결과의 흐름을 분명히 하여, 아동이 '어떻게 하면 좋을까'를 생각하도록 하세요.",
+    skills: [
+      "친구와 다툼·갈등 해결하기",
+      "예상 밖 상황에 유연하게 대처하기",
+      "졌을 때·틀렸을 때 마음 다스리기",
+      "놀림·거절을 받았을 때 대처하기",
+      "스스로 할지 도움 청할지 판단하기",
+    ],
+  },
+];
+
+function domainForSkill(text) {
+  return PRAGMATIC_DOMAINS.find(d => d.skills.includes(text)) || null;
+}
+
+function buildSkillLibraryUI() {
+  const sel = $("f-skill-preset");
+  if (sel && sel.querySelectorAll("optgroup").length === 0) {
+    PRAGMATIC_DOMAINS.forEach(d => {
+      const og = document.createElement("optgroup");
+      og.label = d.label;
+      d.skills.forEach(s => {
+        const o = document.createElement("option");
+        o.value = s; o.textContent = s;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  }
+  const info = $("domain-info");
+  if (info) {
+    info.innerHTML = PRAGMATIC_DOMAINS.map((d, i) =>
+      `<p style="margin:8px 0;font-size:13px;line-height:1.6;">` +
+      `<b>${i + 1}. ${esc(d.label)}</b> <span class="muted">— ${esc(d.blurb)}</span><br>` +
+      `<span class="muted" style="font-size:12px;">${d.skills.map(esc).join(" · ")}</span></p>`
+    ).join("");
+  }
+}
+
 const SYSTEM_PROMPT = `당신은 화용언어치료(pragmatic language therapy) 전문 언어재활사이자 아동 콘텐츠 작가입니다.
 비디오 모델링(video modeling) 기법에 근거해, 아동이 목표 화용 기술을 관찰 학습할 수 있는 짧은 영상 시나리오를 만듭니다.
 
@@ -546,9 +665,13 @@ const SYSTEM_PROMPT = `당신은 화용언어치료(pragmatic language therapy) 
 - 퀴즈는 정답을 맞히는 것보다 이유를 생각하게 하는 방향으로. 오답 선택지도 아동이 실제로 할 법한 행동으로.`;
 
 function buildUserPrompt(f) {
+  const dom = domainForSkill(f.skill);
+  const coaching = dom
+    ? `\n- 화용 영역: ${dom.label} (${dom.blurb})\n- 이 영역 지도 포인트: ${dom.coach}`
+    : "";
   return `다음 조건으로 화용언어치료용 비디오 모델링 시나리오를 만들어 주세요.
 
-- 목표 화용 기술: ${f.skill}
+- 목표 화용 기술: ${f.skill}${coaching}
 - 대상 연령: ${f.age}
 - 장면 수: ${f.count}개
 - 상황·장소: ${f.place || "연령에 맞게 자유롭게"}
@@ -2173,6 +2296,7 @@ function fillFormUI() {
 
 load();
 window.app = app;
+buildSkillLibraryUI();
 app.loadSettingsUI();
 app.renderAll();
 fillFormUI();
