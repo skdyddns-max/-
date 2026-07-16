@@ -118,6 +118,12 @@ main{ max-width:820px; margin:0 auto; padding:16px; }
 .res-unclear{ background:#fdf1e7; color:var(--warn); }
 .tblwrap{ overflow-x:auto; }
 .notice{ background:#fdf6ec; border:1px solid #f0dfc4; border-radius:10px; padding:10px 12px; font-size:13px; color:#7a5a2e; margin-bottom:12px; }
+.insight{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:12px 16px; margin-bottom:14px; }
+.insight .irow{ display:flex; gap:10px; padding:5px 0; align-items:baseline; border-bottom:1px dashed #f0eee7; font-size:13.5px; }
+.insight .irow:last-child{ border-bottom:none; }
+.insight .ik{ flex:none; width:92px; color:var(--tx3); font-weight:700; font-size:12px; }
+.evi{ color:var(--tx3); font-size:12.5px; }
+.selfcorr{ display:inline-block; font-size:10.5px; font-weight:800; color:#7c5cbf; background:#f1ecfb; border-radius:5px; padding:1px 5px; margin-left:4px; vertical-align:1px; }
 
 /* ---------- 브리핑 ---------- */
 .brieftabs{ display:flex; gap:8px; margin-bottom:12px; }
@@ -285,6 +291,7 @@ main{ max-width:820px; margin:0 auto; padding:16px; }
   <button class="btn sm" id="btnBackToAnalyze" style="margin-bottom:12px">← 새 분석</button>
   <div id="resultHead"></div>
   <div class="statgrid" id="statGrid"></div>
+  <div id="insightBox"></div>
   <div id="cautionBox"></div>
 
   <div class="card">
@@ -454,9 +461,10 @@ const ANALYSIS_SCHEMA = {
           response:{ type:"string", description:"아동이 실제로 쓴/표시한 반응 그대로. 비어 있으면 '무반응'" },
           result:{ type:"string", enum:["correct","wrong","no_response","unclear"], description:"correct=정반응, wrong=오반응, no_response=무반응(빈칸), unclear=글씨가 흐리거나 사진이 잘려 판독 불가" },
           error_type:{ type:"string", description:"오반응일 때 오류 유형 하나 (예: 받아올림 누락, 자릿수 혼동, 음소 대치, 생략, 첨가, 유사 낱말 혼동, 반전(거울) 쓰기, 의미 혼동). 정반응·무반응·판독불가면 빈 문자열" },
-          note:{ type:"string", description:"특이사항 (자기수정 흔적, 지운 자국, 부분 정답 등). 없으면 빈 문자열" },
+          self_corrected:{ type:"boolean", description:"지우고 고쳐 쓴(자기수정) 흔적이 있으면 true" },
+          note:{ type:"string", description:"특이사항 (원래 반응, 지운 자국, 부분 정답 등). 없으면 빈 문자열" },
         },
-        required:["no","question","expected","response","result","error_type","note"],
+        required:["no","question","expected","response","result","error_type","self_corrected","note"],
         additionalProperties:false,
       },
     },
@@ -467,16 +475,60 @@ const ANALYSIS_SCHEMA = {
         properties:{
           type:{ type:"string", description:"오류 유형 이름 (한국어, 10자 내외)" },
           count:{ type:"integer", minimum:1, description:"해당 유형 오류 개수" },
-          description:{ type:"string", description:"이 오류가 무엇이고 왜 나타나는지 치료사 관점 설명 (1~2문장)" },
+          condition:{ type:"string", description:"이 오류가 나타나는 문항 조건 (예: 받아올림이 필요한 문항에서만, 3음절 이상 낱말에서)" },
+          consistency:{ type:"string", enum:["일관적","비일관적"], description:"같은 조건에서 항상 나타나면 일관적, 때때로 나타나면 비일관적" },
+          description:{ type:"string", description:"이 오류가 무엇인지 치료사 관점 설명 (1~2문장, 발생 조건 대비 발생 횟수 인용)" },
+          hypothesis:{ type:"string", description:"이 오류의 기제 가설 1문장 (예: 절차 순서를 작업기억에 유지하는 부담)" },
+          probe:{ type:"string", description:"다음 회기에 가설을 검증할 프로브 과제 1문장 (예: 받아올림 칸을 제공한 5문항 vs 미제공 5문항 비교)" },
           examples:{ type:"array", items:{ type:"string" }, description:"실제 오류 예시 (문항번호: 기대→반응 형식)" },
         },
-        required:["type","count","description","examples"], additionalProperties:false,
+        required:["type","count","condition","consistency","description","hypothesis","probe","examples"], additionalProperties:false,
       },
     },
-    strengths:{ type:"array", minItems:1, items:{ type:"string" }, description:"이번 수행에서 관찰된 강점 (관찰 근거 포함, 각 1문장)" },
-    difficulties:{ type:"array", items:{ type:"string" }, description:"어려움을 보인 지점 (관찰 근거 포함, 각 1문장)" },
-    clinical_interpretation:{ type:"string", description:"치료사용 임상적 해석 3~6문장: 오류 패턴이 시사하는 바, 발달적 맥락, 촉구·과제 난이도에 대한 소견. 관찰에 근거하고 단정적 진단 표현은 금지" },
-    recommendations:{ type:"array", minItems:1, items:{ type:"string" }, description:"다음 회기 목표·활동·과제 조정 제안 (각 1문장)" },
+    strengths:{
+      type:"array", minItems:1,
+      items:{ type:"object", properties:{
+        point:{ type:"string", description:"강점 1문장" },
+        evidence:{ type:"string", description:"근거 문항·수치 인용 (예: 받아올림 없는 6문항 모두 정반응(1·3·4·6·8·10번))" },
+      }, required:["point","evidence"], additionalProperties:false },
+      description:"이번 수행에서 관찰된 강점",
+    },
+    difficulties:{
+      type:"array",
+      items:{ type:"object", properties:{
+        point:{ type:"string", description:"어려움을 보인 지점 1문장" },
+        evidence:{ type:"string", description:"근거 문항·수치 인용" },
+      }, required:["point","evidence"], additionalProperties:false },
+      description:"어려움을 보인 지점",
+    },
+    clinical_interpretation:{
+      type:"object",
+      properties:{
+        level_comment:{ type:"string", description:"현재 수행 수준 판단과 근거 1~2문장 (정반응률만이 아니라 오류의 질·자기수정·무반응 양상을 함께 고려)" },
+        error_mechanisms:{
+          type:"array", maxItems:3,
+          items:{ type:"object", properties:{
+            hypothesis:{ type:"string", description:"오류 기제 가설 1문장" },
+            evidence:{ type:"string", description:"이 가설을 지지하는 관찰 근거 (문항 번호·수치 인용)" },
+            probe:{ type:"string", description:"가설을 확인할 방법 1문장" },
+          }, required:["hypothesis","evidence","probe"], additionalProperties:false },
+          description:"오류를 설명하는 기제 가설 1~3개. 경쟁 가설이 가능하면 병기",
+        },
+        flow_observation:{ type:"string", description:"문항 위치에 따른 수행 흐름 관찰 1~2문장 (전/후반부 변화, 오류·무반응이 몰린 구간, 주의·피로 관점). 특기사항 없으면 '수행 흐름상 특기사항 없음'과 근거" },
+        summary:{ type:"string", description:"종합 소견 2~3문장 — 개입 우선순위와 방향 포함" },
+      },
+      required:["level_comment","error_mechanisms","flow_observation","summary"],
+      additionalProperties:false,
+    },
+    recommendations:{
+      type:"array", minItems:1,
+      items:{ type:"object", properties:{
+        goal:{ type:"string", description:"측정 가능한 목표 (조건–행동–기준 형식)" },
+        activity:{ type:"string", description:"목표를 다룰 구체적 활동·자료 1문장" },
+        rationale:{ type:"string", description:"이번 수행의 어떤 관찰에서 나온 권고인지 1문장" },
+      }, required:["goal","activity","rationale"], additionalProperties:false },
+      description:"다음 회기 제안",
+    },
     parent_brief:{
       type:"object",
       properties:{
@@ -498,13 +550,20 @@ const ANALYSIS_SCHEMA = {
 
 const SYSTEM_PROMPT = `당신은 언어치료·특수교육 현장 경험이 풍부한 임상 보조 AI입니다. 아동이 푼 워크시트(학습지) 사진을 보고 문항별로 채점하고, 오류 패턴을 분석해 치료사용 브리핑 자료를 만듭니다.
 
-원칙:
+채점 원칙:
 - 사진에 실제로 보이는 것만 근거로 삼으세요. 문항이나 반응을 지어내지 마세요.
 - 아동 글씨가 흐리거나 잘려서 확신할 수 없으면 추측하지 말고 result를 "unclear"로 표시하세요.
 - 빈칸·건너뜀은 "no_response"입니다. 오반응(wrong)과 구분하세요.
+- 지운 자국·덧쓴 흔적 위에 최종 반응을 쓴 경우 self_corrected를 true로 하고 note에 원래 반응(보이면)을 적으세요.
 - 정답 기준이 주어지면 그 기준을 따르고, 기준이 없으면 문항에서 정답을 스스로 판단하되 애매하면 unclear로 두세요.
-- 임상적 해석은 관찰된 수행에 근거한 소견으로 쓰고, "~로 보입니다", "~가능성을 시사합니다"처럼 신중하게 표현하세요. 진단명 단정, 원인 단정은 금지합니다.
-- 보호자용(parent_brief)은 전문용어 없이 따뜻하고 쉬운 한국어로, 아이의 노력을 먼저 인정하는 톤으로 쓰세요.
+
+분석 원칙 — 구체성이 핵심입니다:
+- 모든 판단에 근거 문항 번호와 수치를 인용하세요. "받아올림이 어려움"이 아니라 "받아올림이 필요한 4문항 중 3문항 오류(2·5·7번), 필요 없는 6문항은 모두 정반응"처럼 쓰세요.
+- 오류 패턴마다 다음을 밝히세요: 오류가 나타나는 문항 조건(condition), 일관성(같은 조건에서 항상 나타나면 "일관적", 때때로 나타나면 "비일관적"), 기제 가설(hypothesis, 왜 이 오류가 나는지 1가지), 다음 회기에 가설을 검증할 프로브 과제(probe). 일관적 오류는 개념·절차 자체의 문제를, 비일관적 오류는 주의·유창성·부담의 문제를 시사하는 경우가 많습니다.
+- 문항 위치에 따른 수행 흐름을 관찰하세요: 전반부 대비 후반부 정확도 변화, 오류·무반응이 몰린 구간, 문항 유형이 바뀌는 지점에서의 수행 변화 등을 주의 지속·피로·난이도 관점에서 해석하세요.
+- 임상적 해석은 관찰된 수행에 근거한 소견으로, "~로 보입니다", "~가능성을 시사합니다"처럼 신중하게 표현하세요. 진단명 단정, 원인 단정은 금지합니다. 서로 다른 가설이 가능하면 병기하고 각각의 확인 방법을 제시하세요.
+- 권고의 목표(goal)는 측정 가능한 조건–행동–기준 형식으로 쓰세요. 예: "받아올림 표시 칸이 있는 두 자리 덧셈 10문항을 촉구 없이 80% 이상 정반응".
+- 보호자용(parent_brief)은 전문용어 없이 따뜻하고 쉬운 한국어로, 아이의 노력을 먼저 인정하는 톤으로 쓰세요. 집 활동은 준비물·방법·시간이 담긴, 오늘 바로 할 수 있는 구체적 형태로 제안하세요.
 - 모든 출력은 한국어입니다.`;
 
 function analyzePromptText(meta, keyDesc){
@@ -517,12 +576,13 @@ function analyzePromptText(meta, keyDesc){
 - 치료사가 기록한 수행 시 특이사항: ${meta.notes || "(없음)"}
 
 해 주세요:
-1) 모든 문항을 순서대로 읽고 아동의 반응을 판독해 문항별로 채점 (items)
-2) 오반응들을 유형별로 묶어 패턴 분석 (error_patterns)
-3) 강점과 난점을 관찰 근거와 함께 정리
-4) 치료사용 임상적 해석과 다음 회기 제안
-5) 보호자에게 보낼 쉬운 설명(parent_brief)
-특이사항에 촉구 제공 등이 적혀 있으면 해석에 반영하세요.`;
+1) 모든 문항을 순서대로 읽고 아동의 반응을 판독해 문항별로 채점 (items). 자기수정 흔적도 표시
+2) 오반응들을 유형별로 묶어 패턴 분석 (error_patterns) — 유형마다 발생 조건, 일관성, 기제 가설, 검증 프로브까지
+3) 강점과 난점을 각각 근거 문항·수치와 함께 정리 (evidence 필수)
+4) 임상적 해석: 수행 수준 판단 → 오류 기제 가설(경쟁 가설 병기 가능, 각각 근거·확인 방법) → 문항 위치에 따른 수행 흐름 → 종합 소견
+5) 다음 회기 권고: 측정 가능한 목표(조건–행동–기준) + 구체적 활동 + 근거
+6) 보호자에게 보낼 쉬운 설명(parent_brief) — 집 활동은 준비물·방법·시간까지
+특이사항에 촉구 제공 등이 적혀 있으면 해당 문항 해석과 정반응률 해석에 반영하세요.`;
 }
 
 async function callClaudeVision(imagesB64, promptText, schema){
@@ -765,7 +825,7 @@ async function applyResult(result, meta){
   const session = {
     id: uid(), childId: meta.childId, date: meta.date, area: meta.area,
     task: meta.task || result.task_summary || "", goal: meta.goal, notes: meta.notes,
-    thumb, result, editsT: null, editsP: null, createdAt: Date.now(),
+    thumb, result: normResult(result), editsT: null, editsP: null, createdAt: Date.now(),
   };
   state.sessions.push(session); saveSessions();
   state.currentSessionId = session.id;
@@ -789,12 +849,62 @@ function computeStats(session){
   return { total, unclear, noResp, correct, scorable, percent };
 }
 
+/* 구버전 세션 호환: 문자열이던 필드를 구조화 형태로 승격 */
+function normResult(r){
+  r.items = (r.items||[]).map(it=>({ self_corrected:false, ...it }));
+  r.error_patterns = (r.error_patterns||[]).map(p=>({ condition:"", consistency:"", hypothesis:"", probe:"", ...p }));
+  r.strengths = (r.strengths||[]).map(x=> typeof x==="string" ? { point:x, evidence:"" } : x);
+  r.difficulties = (r.difficulties||[]).map(x=> typeof x==="string" ? { point:x, evidence:"" } : x);
+  if(typeof r.clinical_interpretation === "string")
+    r.clinical_interpretation = { level_comment:"", error_mechanisms:[], flow_observation:"", summary:r.clinical_interpretation };
+  r.clinical_interpretation = { level_comment:"", error_mechanisms:[], flow_observation:"", summary:"", ...(r.clinical_interpretation||{}) };
+  r.recommendations = (r.recommendations||[]).map(x=> typeof x==="string" ? { goal:"", activity:x, rationale:"" } : x);
+  return r;
+}
+
+/* 로컬 계산 분석 지표: 전/후반부 정확도, 자기수정, 최다 오류 유형 */
+function computeExtras(session){
+  const items = session.result.items || [];
+  const half = Math.ceil(items.length/2);
+  const acc = arr => {
+    const sc = arr.filter(i=>i.result!=="unclear");
+    if(!sc.length) return null;
+    return Math.round(sc.filter(i=>i.result==="correct").length / sc.length * 100);
+  };
+  const firstPct = acc(items.slice(0, half)), secondPct = acc(items.slice(half));
+  const selfCorr = items.filter(i=>i.self_corrected).length;
+  const wrong = items.filter(i=>i.result==="wrong");
+  const m = {};
+  wrong.forEach(i=>{ if(i.error_type) m[i.error_type] = (m[i.error_type]||0)+1; });
+  const top = Object.entries(m).sort((a,b)=>b[1]-a[1])[0];
+  const topErr = top ? { type:top[0], count:top[1], share: Math.round(top[1]/wrong.length*100) } : null;
+  return { firstPct, secondPct, selfCorr, topErr, wrongCount: wrong.length };
+}
+
+/* 수행 수준 판정 (정반응률 기준) */
+function levelOf(p){
+  if(p>=90) return { name:"독립 수행", cls:"good", desc:"90% 이상 — 유지·일반화 단계 고려" };
+  if(p>=70) return { name:"습득 진행", cls:"good", desc:"70~89% — 연습으로 안정화 단계" };
+  if(p>=40) return { name:"연습 단계", cls:"warn", desc:"40~69% — 구조화된 촉구·반복 필요" };
+  return { name:"도입 단계", cls:"bad", desc:"40% 미만 — 과제 난이도 하향·시범 필요" };
+}
+function flowNote(ex){
+  if(ex.firstPct===null || ex.secondPct===null) return "";
+  const d = ex.secondPct - ex.firstPct;
+  if(d <= -20) return "후반부 정확도가 크게 낮아짐 — 주의 지속·피로 영향 가능성";
+  if(d >= 20) return "후반부 정확도가 상승 — 워밍업 후 안정화 양상";
+  return "전·후반부 수행이 비교적 고른 편";
+}
+
 /* ============================================================
    결과 화면 렌더
    ============================================================ */
 function renderResult(){
   const s = curSession(); if(!s) return;
+  normResult(s.result);
   const st = computeStats(s);
+  const ex = computeExtras(s);
+  const lv = levelOf(st.percent);
   $("#resultHead").innerHTML = `
     <div class="card" style="padding:14px 18px">
       <b>${esc(childName(s.childId))}</b> · ${esc(fmtDate(s.date))} · <span class="badge gray">${esc(s.area)}</span><br>
@@ -804,6 +914,15 @@ function renderResult(){
     <div class="stat"><div class="v">${st.percent}%</div><div class="k">정반응률 (${st.correct}/${st.scorable})</div></div>
     <div class="stat"><div class="v neutral">${st.total}</div><div class="k">전체 문항</div></div>
     <div class="stat"><div class="v neutral">${st.noResp}${st.unclear?` <span style="font-size:14px;color:var(--warn)">+${st.unclear}❓</span>`:""}</div><div class="k">무반응${st.unclear?" · 판독불가":""}</div></div>`;
+  const halves = (ex.firstPct!==null && ex.secondPct!==null && st.total>=4)
+    ? `<div class="irow"><span class="ik">수행 흐름</span><span>전반부 <b>${ex.firstPct}%</b> → 후반부 <b>${ex.secondPct}%</b> <span class="evi">— ${flowNote(ex)}</span></span></div>` : "";
+  $("#insightBox").innerHTML = `
+    <div class="insight">
+      <div class="irow"><span class="ik">수행 수준</span><span><span class="badge ${lv.cls}">${lv.name}</span> <span class="evi">${lv.desc}</span></span></div>
+      ${halves}
+      ${ex.topErr ? `<div class="irow"><span class="ik">주요 오류</span><span><b>${esc(ex.topErr.type)}</b> ${ex.topErr.count}회 <span class="evi">— 전체 오반응 ${ex.wrongCount}건 중 ${ex.topErr.share}%</span></span></div>` : ""}
+      ${ex.selfCorr ? `<div class="irow"><span class="ik">자기수정</span><span><b>${ex.selfCorr}회</b> <span class="evi">— 스스로 오류를 점검·수정하는 모니터링 행동 관찰</span></span></div>` : ""}
+    </div>`;
   const conf = s.result.reading_confidence;
   const caution = (s.result.caution||"").trim();
   $("#cautionBox").innerHTML = (conf==="low" || conf==="medium" || caution)
@@ -819,7 +938,7 @@ function renderItemTable(){
       <td style="white-space:nowrap">${esc(it.no)}</td>
       <td>${esc(it.question)}</td>
       <td>${esc(it.expected)}</td>
-      <td><b>${esc(it.response)}</b>${it.note?`<br><span class="hint">${esc(it.note)}</span>`:""}</td>
+      <td><b>${esc(it.response)}</b>${it.self_corrected?`<span class="selfcorr">✎ 자기수정</span>`:""}${it.note?`<br><span class="hint">${esc(it.note)}</span>`:""}</td>
       <td><button class="resbtn res-${it.result}" data-i="${i}">${RESULT_LABEL[it.result]}</button></td>
       <td>${it.result==="wrong"?esc(it.error_type||""):""}</td>
     </tr>`).join("");
@@ -844,12 +963,24 @@ function starRow(percent){
   return "★".repeat(n) + "☆".repeat(5-n);
 }
 function briefTherapistHTML(s){
-  const r = s.result, st = computeStats(s);
+  const r = s.result, st = computeStats(s), ex = computeExtras(s), lv = levelOf(st.percent);
   const itemRows = (r.items||[]).map(it=>`
-    <tr><td>${esc(it.no)}</td><td>${esc(it.question)}</td><td>${esc(it.expected)}</td><td>${esc(it.response)}</td>
+    <tr><td>${esc(it.no)}</td><td>${esc(it.question)}</td><td>${esc(it.expected)}</td><td>${esc(it.response)}${it.self_corrected?" ✎":""}</td>
     <td>${RESULT_LABEL[it.result]}</td><td>${it.result==="wrong"?esc(it.error_type||""):""}</td></tr>`).join("");
   const errs = (r.error_patterns||[]).map(p=>`
-    <li><b>${esc(p.type)}</b> (${p.count}회) — ${esc(p.description)}${p.examples?.length?`<br><span style="color:var(--tx3);font-size:12.5px">예: ${p.examples.map(esc).join(" / ")}</span>`:""}</li>`).join("");
+    <li style="margin-bottom:8px"><b>${esc(p.type)}</b> — ${p.count}회${ex.wrongCount?` (전체 오반응의 ${Math.round(p.count/ex.wrongCount*100)}%)`:""}${p.consistency?` · <b>${esc(p.consistency)}</b>`:""}${p.condition?` · 발생 조건: ${esc(p.condition)}`:""}<br>
+    ${esc(p.description)}
+    ${p.hypothesis?`<br><span style="font-size:12.5px">▸ 기제 가설: ${esc(p.hypothesis)}</span>`:""}
+    ${p.probe?`<br><span style="font-size:12.5px">▸ 확인 프로브: ${esc(p.probe)}</span>`:""}
+    ${p.examples?.length?`<br><span style="color:var(--tx3);font-size:12.5px">예: ${p.examples.map(esc).join(" / ")}</span>`:""}</li>`).join("");
+  const mechs = (r.clinical_interpretation.error_mechanisms||[]).map((m,i)=>`
+    <li style="margin-bottom:6px"><b>가설 ${i+1}.</b> ${esc(m.hypothesis)}<br>
+    <span style="font-size:12.5px">근거: ${esc(m.evidence)}</span><br>
+    <span style="font-size:12.5px">확인: ${esc(m.probe)}</span></li>`).join("");
+  const flowLocal = (ex.firstPct!==null && ex.secondPct!==null && st.total>=4)
+    ? `전반부 ${ex.firstPct}% → 후반부 ${ex.secondPct}% (${flowNote(ex)}). ` : "";
+  const recRows = (r.recommendations||[]).map(x=>`
+    <tr><td>${esc(x.goal||"—")}</td><td>${esc(x.activity||"")}</td><td>${esc(x.rationale||"")}</td></tr>`).join("");
   return `
   <div class="bf-head">
     <div class="bf-sub">워크시트 분석 결과 브리핑 · 치료사용</div>
@@ -863,13 +994,13 @@ function briefTherapistHTML(s){
   </div>
   <div class="bf-sec">
     <h4>1. 수행 요약</h4>
-    <div class="bf-score"><span class="big">${st.percent}%</span><span>정반응 ${st.correct} / 채점 가능 ${st.scorable}문항 (전체 ${st.total}문항${st.unclear?`, 판독불가 ${st.unclear}`:""}${st.noResp?`, 무반응 ${st.noResp}`:""})</span></div>
+    <div class="bf-score"><span class="big">${st.percent}%</span><span><span class="badge ${lv.cls}">${lv.name}</span> · 정반응 ${st.correct} / 채점 가능 ${st.scorable}문항 (전체 ${st.total}문항${st.unclear?`, 판독불가 ${st.unclear}`:""}${st.noResp?`, 무반응 ${st.noResp}`:""}${ex.selfCorr?`, 자기수정 ${ex.selfCorr}회`:""})</span></div>
     <div class="bf-bar"><i style="width:${st.percent}%"></i></div>
     <p>${esc(r.task_summary||"")}</p>
     ${s.notes?`<p><b>수행 시 특이사항:</b> ${esc(s.notes)}</p>`:""}
   </div>
   <div class="bf-sec">
-    <h4>2. 문항별 반응</h4>
+    <h4>2. 문항별 반응 <span style="font-weight:400;color:var(--tx3);font-size:11px">(✎ = 자기수정)</span></h4>
     <table class="bf-table">
       <tr><th>번호</th><th>문항</th><th>정답</th><th>아동 반응</th><th>결과</th><th>오류 유형</th></tr>
       ${itemRows}
@@ -880,21 +1011,27 @@ function briefTherapistHTML(s){
     ${errs ? `<ul>${errs}</ul>` : "<p>뚜렷한 오류 패턴이 관찰되지 않았습니다.</p>"}
   </div>
   <div class="bf-sec">
-    <h4>4. 강점 / 난점</h4>
+    <h4>4. 강점 / 난점 <span style="font-weight:400;color:var(--tx3);font-size:11px">(근거 문항 포함)</span></h4>
     <div class="bf-2col">
-      <div class="bf-box good"><h5>💪 강점</h5><ul>${(r.strengths||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
-      <div class="bf-box hard"><h5>🧗 난점</h5><ul>${(r.difficulties||[]).length?(r.difficulties||[]).map(x=>`<li>${esc(x)}</li>`).join(""):"<li>특기할 난점 없음</li>"}</ul></div>
+      <div class="bf-box good"><h5>💪 강점</h5><ul>${(r.strengths||[]).map(x=>`<li>${esc(x.point)}${x.evidence?`<br><span class="evi">근거: ${esc(x.evidence)}</span>`:""}</li>`).join("")}</ul></div>
+      <div class="bf-box hard"><h5>🧗 난점</h5><ul>${(r.difficulties||[]).length?(r.difficulties||[]).map(x=>`<li>${esc(x.point)}${x.evidence?`<br><span class="evi">근거: ${esc(x.evidence)}</span>`:""}</li>`).join(""):"<li>특기할 난점 없음</li>"}</ul></div>
     </div>
   </div>
   <div class="bf-sec">
     <h4>5. 임상적 해석</h4>
-    <p>${esc(r.clinical_interpretation||"")}</p>
+    <p><b>① 수행 수준</b> — <span class="badge ${lv.cls}">${lv.name}</span> ${esc(r.clinical_interpretation.level_comment||"")}</p>
+    ${mechs?`<p style="margin-top:8px"><b>② 오류 기제 가설</b></p><ul>${mechs}</ul>`:""}
+    <p style="margin-top:8px"><b>③ 수행 흐름</b> — ${flowLocal}${esc(r.clinical_interpretation.flow_observation||"")}</p>
+    <p style="margin-top:8px"><b>④ 종합 소견</b> — ${esc(r.clinical_interpretation.summary||"")}</p>
   </div>
   <div class="bf-sec">
     <h4>6. 권고 및 다음 회기 제안</h4>
-    <ul>${(r.recommendations||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+    <table class="bf-table">
+      <tr><th style="width:34%">목표 (조건–행동–기준)</th><th style="width:36%">활동·자료</th><th>근거</th></tr>
+      ${recRows}
+    </table>
   </div>
-  <div class="bf-foot">본 브리핑은 AI 분석 참고자료로, 치료사의 임상적 판단을 대체하지 않습니다. · 워크시트 브리핑</div>`;
+  <div class="bf-foot">본 브리핑은 AI 분석 참고자료로, 치료사의 임상적 판단을 대체하지 않습니다. 수행 수준 구분: 독립 수행 ≥90% · 습득 진행 70~89% · 연습 단계 40~69% · 도입 단계 &lt;40% (판독불가 제외 정반응률 기준) · 워크시트 브리핑</div>`;
 }
 function briefParentHTML(s){
   const r = s.result, p = r.parent_brief || {}, st = computeStats(s);
@@ -1069,12 +1206,14 @@ function lineChartSVG(list){
   const grid = [0,25,50,75,100].map(v=>
     `<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="#eceae2"/>
      <text x="${padL-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#8b98a0">${v}</text>`).join("");
+  const mastery = `<line x1="${padL}" y1="${y(80)}" x2="${W-padR}" y2="${y(80)}" stroke="#c05621" stroke-width="1.2" stroke-dasharray="5 4" opacity=".65"/>
+     <text x="${W-padR}" y="${y(80)-5}" text-anchor="end" font-size="10" fill="#c05621">습득 기준 80%</text>`;
   const line = pts.length>1 ? `<polyline points="${pts.map(p=>`${p.x},${p.y}`).join(" ")}" fill="none" stroke="#1f8a7d" stroke-width="2.5" stroke-linejoin="round"/>` : "";
   const dots = pts.map(p=>`
     <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#1f8a7d"/>
     <text x="${p.x}" y="${p.y-10}" text-anchor="middle" font-size="11" font-weight="700" fill="#0f6c61">${p.p}%</text>
     <text x="${p.x}" y="${H-padB+16}" text-anchor="middle" font-size="10" fill="#8b98a0">${p.d.slice(5).replace("-","/")}</text>`).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="정반응률 변화 추이">${grid}${line}${dots}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="정반응률 변화 추이">${grid}${mastery}${line}${dots}</svg>`;
 }
 
 function errorBarSVG(list){
@@ -1097,15 +1236,50 @@ function errorBarSVG(list){
 function renderTrendSummary(list){
   const box = $("#trendSummary");
   if(list.length < 2){ box.style.display="none"; return; }
-  const first = computeStats(list[0]).percent, last = computeStats(list[list.length-1]).percent;
+  const pcts = list.map(s=>computeStats(s).percent);
+  const first = pcts[0], last = pcts[pcts.length-1];
   const diff = last-first;
-  const best = Math.max(...list.map(s=>computeStats(s).percent));
-  let msg = `첫 세션 ${first}% → 최근 세션 ${last}%`;
-  if(diff>0) msg += ` (▲${diff}%p 상승)`;
-  else if(diff<0) msg += ` (▼${Math.abs(diff)}%p — 과제 난이도나 컨디션 변화를 함께 살펴보세요)`;
-  else msg += " (유지)";
-  msg += ` · 총 ${list.length}회 세션 · 최고 ${best}%`;
-  box.style.display="block"; box.innerHTML = "🔎 " + msg;
+  const lines = [];
+
+  // 수준·변화량
+  let l1 = `첫 세션 ${first}% → 최근 세션 ${last}%`;
+  if(diff>0) l1 += ` (▲${diff}%p 상승)`;
+  else if(diff<0) l1 += ` (▼${Math.abs(diff)}%p — 과제 난이도·컨디션·촉구 조건 변화를 함께 살펴보세요)`;
+  else l1 += " (유지)";
+  l1 += ` · 총 ${list.length}회 · 최고 ${Math.max(...pcts)}%`;
+  lines.push("🔎 " + l1);
+
+  // 최근 3회 평균 + 습득 기준(80%) 대비
+  const recent = pcts.slice(-3);
+  const avg3 = Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);
+  const overCnt = pcts.filter(p=>p>=80).length;
+  let l2 = `최근 ${recent.length}회 평균 ${avg3}% — 습득 기준(80%)을 ${avg3>=80?"충족":`${80-avg3}%p 남김`}`;
+  l2 += ` · 기준 도달 세션 ${overCnt}/${list.length}회`;
+  if(recent.length>=3 && recent.every(p=>p>=80)) l2 += " → 3회 연속 기준 충족: 유지·일반화 단계(새 자료·새 장면) 전환을 고려해 보세요";
+  lines.push("🎯 " + l2);
+
+  // 연속 추세 감지
+  let up=0, down=0;
+  for(let i=pcts.length-1; i>0 && pcts[i]>pcts[i-1]; i--) up++;
+  for(let i=pcts.length-1; i>0 && pcts[i]<pcts[i-1]; i--) down++;
+  if(up>=2) lines.push(`📈 ${up+1}회 연속 상승 흐름이에요.`);
+  if(down>=2) lines.push(`📉 ${down+1}회 연속 하락 — 최근 회기 조건(과제 난이도·촉구·컨디션 기록)을 비교해 원인을 점검해 보세요.`);
+
+  // 오류 유형 변화: 이전 세션들 vs 최근 세션
+  const typesOf = s => new Set((s.result.error_patterns||[]).map(p=>p.type));
+  const prevTypes = new Set(); list.slice(0,-1).forEach(s=>typesOf(s).forEach(t=>prevTypes.add(t)));
+  const lastTypes = typesOf(list[list.length-1]);
+  const resolved = [...prevTypes].filter(t=>!lastTypes.has(t));
+  const persisting = [...lastTypes].filter(t=>prevTypes.has(t));
+  const emerged = [...lastTypes].filter(t=>!prevTypes.has(t));
+  const parts = [];
+  if(resolved.length) parts.push(`최근 세션에서 사라진 오류: ${resolved.join(", ")}`);
+  if(persisting.length) parts.push(`지속 중인 오류: ${persisting.join(", ")}`);
+  if(emerged.length) parts.push(`새로 나타난 오류: ${emerged.join(", ")}`);
+  if(parts.length) lines.push("🧩 " + parts.join(" · "));
+
+  box.style.display="block";
+  box.innerHTML = lines.map(esc).join("<br>");
 }
 
 /* ============================================================
