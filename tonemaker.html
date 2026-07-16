@@ -278,16 +278,55 @@ details.adv .inner{padding-bottom:12px;}
 .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* ---------- 모바일 ---------- */
+/* ---------- SNOW 스타일 하단 편집바 ---------- */
+#snowBar{display:none; flex-direction:column; background:var(--bg2); border-top:1px solid var(--line); padding-bottom:max(4px, env(safe-area-inset-bottom)); flex:0 0 auto;}
+#snowSliderRow{display:flex; align-items:center; gap:10px; padding:10px 14px 2px;}
+#snowSliderRow .ssl{font-size:12px; color:var(--tx2); font-weight:700; white-space:nowrap;}
+#snowSliderRow input{flex:1;}
+#snowSliderRow .ssv{font-size:12px; color:var(--accent2); min-width:32px; text-align:right; font-variant-numeric:tabular-nums;}
+#snowSliderRow .ssr{font-size:15px; color:var(--tx3); padding:2px 6px;}
+#snowItems{display:flex; gap:8px; overflow-x:auto; padding:10px 12px; align-items:center; min-height:58px;}
+#snowCats{display:flex; overflow-x:auto; border-top:1px solid var(--line);}
+.scat{flex:1 0 auto; min-width:58px; padding:7px 6px 9px; text-align:center; color:var(--tx3); font-size:10.5px; font-weight:700;}
+.scat .ic{display:block; font-size:19px; margin-bottom:1px;}
+.scat.on{color:var(--accent2);}
+.sitem{flex:0 0 auto; padding:9px 13px; border-radius:20px; background:var(--bg3); border:1px solid var(--line); font-size:12.5px; color:var(--tx2); position:relative; white-space:nowrap;}
+.sitem.on{border-color:var(--accent); color:var(--accent2); background:#2d221d;}
+.sitem.set::after{content:""; position:absolute; top:5px; right:7px; width:5px; height:5px; border-radius:50%; background:var(--accent);}
+.scard{flex:0 0 auto; width:78px; border-radius:10px; overflow:hidden; border:2px solid var(--line); background:var(--bg3); padding:0;}
+.scard img,.scard .sw2{width:100%; height:50px; object-fit:cover; display:block;}
+.scard .nm{font-size:10.5px; padding:3px 4px 4px; text-align:center; color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.scard.on{border-color:var(--accent);}
+/* 패널 시트 모드 */
+.sheetgrip{display:none;}
+.panel.sheet .sheetgrip{display:flex; align-items:center; justify-content:center; position:relative; padding:9px 10px 5px;}
+.sheetgrip .grip{width:44px; height:4px; border-radius:2px; background:var(--line2);}
+.sheetgrip button{position:absolute; right:10px; top:7px; font-size:12px; color:var(--tx2); background:var(--bg3); border:1px solid var(--line); border-radius:16px; padding:4px 11px;}
+
+/* ---------- 모바일 (SNOW 레이아웃) ---------- */
 @media(max-width:860px){
-  .workarea{flex-direction:column; overflow-y:auto;}
-  .stage{padding:10px; min-height:46dvh; flex:0 0 auto;}
-  .canvasbox{min-height:38dvh;}
-  .panel{width:100%; border-left:none; border-top:1px solid var(--line); flex:1 0 auto;}
-  .tabbody{overflow:visible;}
-  #editorView{height:auto;}
-  #editorView.on{display:block;}
   .feat{grid-template-columns:1fr;}
+  header{padding:8px 10px; gap:6px;}
+  .logo{font-size:15px; white-space:nowrap;}
+  .logo small{display:none;}
+  .hbtn{padding:6px 9px; font-size:12px; white-space:nowrap;}
+  #editorView{height:calc(100dvh - 53px);}
+  #editorView.on{display:flex;}
+  .workarea{flex:1; min-height:0;}
+  .stage{padding:8px; min-width:0;}
+  .stagebar{flex-wrap:nowrap; overflow-x:auto; padding-top:8px;}
+  .stagebar .sbtn{padding:7px 10px; font-size:12px; flex:0 0 auto;}
+  .scene-chip{display:none;}
+  .strip{padding:8px 10px 2px;}
+  .thumb,.addtile{width:46px; height:46px;}
+  /* 패널은 필요할 때만 시트로 */
+  .panel{display:none;}
+  .panel.sheet{
+    display:flex; position:fixed; left:0; right:0; bottom:0; width:auto; height:74dvh; z-index:70;
+    border-radius:18px 18px 0 0; border:1px solid var(--line2); border-bottom:none;
+    box-shadow:0 -14px 44px rgba(0,0,0,.55);
+  }
+  #snowBar{display:flex;}
 }
 </style>
 </head>
@@ -344,6 +383,7 @@ details.adv .inner{padding-bottom:12px;}
     </div>
 
     <div class="panel">
+      <div class="sheetgrip"><span class="grip"></span><button id="sheetClose">✕ 닫기</button></div>
       <div class="tabs">
         <button data-tab="tone" class="on">✨ 자동 톤</button>
         <button data-tab="tune">🎛 다듬기</button>
@@ -466,6 +506,18 @@ details.adv .inner{padding-bottom:12px;}
 
       </div>
     </div>
+  </div>
+
+  <!-- SNOW 스타일 하단 편집바 (모바일 전용) -->
+  <div id="snowBar">
+    <div id="snowSliderRow" hidden>
+      <span class="ssl" id="snowSliderLabel"></span>
+      <input type="range" id="snowRange" min="-100" max="100" value="0">
+      <span class="ssv" id="snowSliderVal">0</span>
+      <button class="ssr" id="snowSliderReset" title="이 값 초기화">↺</button>
+    </div>
+    <div id="snowItems"></div>
+    <div id="snowCats"></div>
   </div>
 </div>
 
@@ -1294,6 +1346,7 @@ function selectPhoto(id){
   renderCropCards();
   syncKnobs();
   renderMaskUI();
+  renderSnowItems();
 }
 
 function removePhoto(id){
@@ -1352,6 +1405,7 @@ async function renderCandidates(){
     b.onclick = () => { applyRecipe(it.recipe); markCand(b); };
     box.appendChild(b);
   }
+  if(state.snowCat === "auto") renderSnowItems();
 }
 function markCand(btn){
   $$("#cands .cand, #moods .mood").forEach(x=>x.classList.remove("on"));
@@ -1376,15 +1430,15 @@ function renderMoods(){
     const b = document.createElement("button");
     b.className = "mood";
     b.innerHTML = `<span class="sw" style="background:linear-gradient(135deg,${m.grad[0]},${m.grad[1]})"></span><div class="nm">${esc(m.name)}</div>`;
-    b.onclick = () => {
-      const p = currentPhoto(); if(!p) return;
-      // 무드는 색감을 입히되, 현재 노출 계열은 유지 (직관적 기대에 부합)
-      const keep = { exposure:p.recipe.exposure, highlights:p.recipe.highlights, shadows:p.recipe.shadows, sharpen:p.recipe.sharpen };
-      applyRecipe(clampRecipe(Object.assign(defaultRecipe(), m.recipe, keep)));
-      markCand(b);
-    };
+    b.onclick = () => { applyMood(m); markCand(b); };
     box.appendChild(b);
   }
+}
+function applyMood(m){
+  const p = currentPhoto(); if(!p) return;
+  // 무드는 색감을 입히되, 현재 노출 계열은 유지 (직관적 기대에 부합)
+  const keep = { exposure:p.recipe.exposure, highlights:p.recipe.highlights, shadows:p.recipe.shadows, sharpen:p.recipe.sharpen };
+  applyRecipe(clampRecipe(Object.assign(defaultRecipe(), m.recipe, keep)));
 }
 
 function applyRecipe(recipe){
@@ -1466,6 +1520,7 @@ function syncKnobs(exceptKey){
     const v = document.querySelector(`[data-val="${exceptKey}"]`);
     if(v) v.textContent = p.recipe[exceptKey];
   }
+  updateSnowLight();
 }
 
 /* ============================================================
@@ -1661,6 +1716,7 @@ async function setReference(file){
   c.getContext("2d").drawImage(state.refBitmap, 0, 0, c.width, c.height);
   $("#btnRefAdd").innerHTML = `<img src="${c.toDataURL("image/jpeg",0.8)}" alt="레퍼런스">`;
   $("#btnRefQuick").disabled = $("#btnRefAI").disabled = false;
+  if(state.snowCat === "ref") renderSnowItems();
   toast("참고 사진을 올렸어요. 빠른 매칭 또는 AI 정밀 매칭을 눌러 보세요!");
 }
 /* 로컬 통계 매칭 — 밝기·대비·채도·색온도를 레퍼런스에 근사 */
@@ -1755,6 +1811,7 @@ function renderCropCards(){
     };
     box.appendChild(b);
   }
+  if(state.snowCat === "crop") renderSnowItems();
 }
 
 /* ============================================================
@@ -1796,6 +1853,7 @@ function renderMaskUI(){
   });
   renderMaskEditor();
   updateMaskOverlay();
+  if(state.snowCat === "mask") renderSnowItems();
 }
 function renderMaskEditor(){
   const p = currentPhoto();
@@ -1994,6 +2052,194 @@ function initCompareDrag(){
 }
 
 /* ============================================================
+   SNOW 스타일 하단 편집바 (모바일)
+   ============================================================ */
+state.snowCat = "auto";
+state.snowItem = null;
+const SNOW_CATS = [
+  { id:"auto",   ic:"✨", nm:"자동톤" },
+  { id:"adjust", ic:"🎛", nm:"조절" },
+  { id:"skin",   ic:"🧑", nm:"피부" },
+  { id:"mood",   ic:"🎨", nm:"무드" },
+  { id:"mask",   ic:"🎯", nm:"부분" },
+  { id:"ref",    ic:"🖼", nm:"참고" },
+  { id:"crop",   ic:"✂", nm:"구도" },
+  { id:"chat",   ic:"💬", nm:"대화",  sheet:"chat" },
+  { id:"export", ic:"📦", nm:"저장",  sheet:"export" },
+];
+const SNOW_ADJUST = [["exposure","밝기"],["contrast","대비"],["temperature","온도감"],["tint","색조"],
+  ["vibrance","화사함"],["saturation","채도"],["highlights","밝은 영역"],["shadows","어두운 영역"],
+  ["clarity","질감"],["sharpen","선명"],["fade","페이드"],["grain","그레인"],["halation","빛번짐"],["vignette","가장자리"]];
+const SNOW_SKIN = [["skinSmooth","피부 결"],["skinPore","모공·잡티"],["skinGlow","피부 광"]];
+
+function renderSnowCats(){
+  const box = $("#snowCats");
+  box.innerHTML = "";
+  for(const c of SNOW_CATS){
+    const b = document.createElement("button");
+    b.className = "scat" + (c.id === state.snowCat ? " on" : "");
+    b.dataset.cat = c.id;
+    b.innerHTML = `<span class="ic">${c.ic}</span>${c.nm}`;
+    b.onclick = () => selectSnowCat(c.id);
+    box.appendChild(b);
+  }
+}
+function selectSnowCat(id){
+  const cat = SNOW_CATS.find(c=>c.id===id);
+  if(cat?.sheet){ openSheet(cat.sheet); return; }
+  state.snowCat = id;
+  state.snowItem = null;
+  $("#snowSliderRow").hidden = true;
+  $$("#snowCats .scat").forEach(b=>b.classList.toggle("on", b.dataset.cat===id));
+  renderSnowItems();
+}
+function openSheet(tab){
+  $(".panel").classList.add("sheet");
+  const btn = $$(".tabs button").find(x=>x.dataset.tab===tab);
+  if(btn) btn.click();
+}
+function closeSheet(){ $(".panel").classList.remove("sheet"); }
+
+function snowRecipeItem(key, label){
+  const def = RECIPE_DEFS.find(d=>d[0]===key);
+  return { id:key, label, min:def[2], max:def[3], def:def[4],
+    get: () => currentPhoto()?.recipe[key] ?? def[4],
+    set: v => { const p=currentPhoto(); if(p) p.recipe[key] = Math.round(v); } };
+}
+function snowMaskItem(key, label, geo){
+  const defs = { r:22, feather:50, pos:40 };
+  return { id:"m_"+key, label,
+    min: geo ? (key==="r" ? 3 : 0) : -100, max: geo ? (key==="r" ? 80 : 100) : 100,
+    def: geo ? defs[key] : 0,
+    get: () => { const m=currentPhoto()?.recipe.masks[state.selMask]; return m ? (geo ? Math.round(m[key]*100) : m[key]) : 0; },
+    set: v => { const m=currentPhoto()?.recipe.masks[state.selMask]; if(!m) return;
+      m[key] = geo ? v/100 : Math.round(v); updateMaskOverlay(); } };
+}
+function showSnowSlider(item){
+  state.snowItem = item;
+  $("#snowSliderRow").hidden = false;
+  $("#snowSliderLabel").textContent = item.label;
+  const r = $("#snowRange");
+  r.min = item.min; r.max = item.max; r.value = item.get();
+  $("#snowSliderVal").textContent = Math.round(item.get());
+  $$("#snowItems .sitem").forEach(b=>b.classList.toggle("on", b.dataset.k === item.id));
+}
+function snowChip(label, opts={}){
+  const b = document.createElement("button");
+  b.className = "sitem" + (opts.on ? " on" : "") + (opts.set ? " set" : "");
+  if(opts.k) b.dataset.k = opts.k;
+  b.textContent = label;
+  if(opts.onclick) b.onclick = opts.onclick;
+  return b;
+}
+function snowSliderChip(box, key, label, itemFactory, isSet){
+  const chip = snowChip(label, { k: itemFactory().id, set: isSet,
+    on: state.snowItem?.id === itemFactory().id,
+    onclick: () => showSnowSlider(itemFactory()) });
+  box.appendChild(chip);
+}
+function renderSnowItems(){
+  const box = $("#snowItems");
+  box.innerHTML = "";
+  const p = currentPhoto();
+  const cat = state.snowCat;
+
+  if(cat === "auto"){
+    box.appendChild(snowChip("🤖 AI 추천", { onclick: runAnalyze }));
+    if(p){
+      if(!p.candidates) p.candidates = buildLocalCandidates(p.stats);
+      const items = (p.aiResult?.presets?.length)
+        ? p.aiResult.presets.map(x=>({ name:x.name, recipe:clampRecipe(x.adjustments) }))
+        : p.candidates;
+      if(!thumbEngine) thumbEngine = new Engine(document.createElement("canvas"), 320);
+      thumbEngine.setImage(srcBitmap(p));
+      const curKey = JSON.stringify(p.recipe);
+      for(const it of items){
+        thumbEngine.render(it.recipe);
+        const b = document.createElement("button");
+        b.className = "scard" + (JSON.stringify(it.recipe)===curKey ? " on" : "");
+        b.innerHTML = `<img src="${thumbEngine.canvas.toDataURL("image/jpeg",0.72)}" alt=""><div class="nm">${esc(it.name)}</div>`;
+        b.onclick = () => { applyRecipe(it.recipe); renderSnowItems(); };
+        box.appendChild(b);
+      }
+    }
+  } else if(cat === "adjust" || cat === "skin"){
+    const list = cat === "adjust" ? SNOW_ADJUST : SNOW_SKIN;
+    for(const [key,label] of list){
+      const def = RECIPE_DEFS.find(d=>d[0]===key);
+      snowSliderChip(box, key, label, () => snowRecipeItem(key,label), p ? p.recipe[key] !== def[4] : false);
+    }
+  } else if(cat === "mood"){
+    for(const m of MOODS){
+      const b = document.createElement("button");
+      b.className = "scard";
+      b.innerHTML = `<span class="sw2" style="background:linear-gradient(135deg,${m.grad[0]},${m.grad[1]})"></span><div class="nm">${esc(m.name)}</div>`;
+      b.onclick = () => { applyMood(m); $$("#snowItems .scard").forEach(x=>x.classList.remove("on")); b.classList.add("on"); };
+      box.appendChild(b);
+    }
+  } else if(cat === "mask"){
+    const m = p?.recipe.masks[state.selMask];
+    if(m){
+      box.appendChild(snowChip("← 목록", { onclick: () => { state.selMask = -1; renderMaskUI(); renderSnowItems(); } }));
+      if(m.type === "radial"){
+        snowSliderChip(box, "r", "크기", () => snowMaskItem("r","크기",true), false);
+        snowSliderChip(box, "feather", "부드러움", () => snowMaskItem("feather","부드러움",true), false);
+      } else if(m.type === "linear"){
+        snowSliderChip(box, "pos", "위치", () => snowMaskItem("pos","위치",true), false);
+        snowSliderChip(box, "feather", "부드러움", () => snowMaskItem("feather","부드러움",true), false);
+      }
+      snowSliderChip(box, "exposure", "밝기", () => snowMaskItem("exposure","밝기",false), m.exposure!==0);
+      snowSliderChip(box, "contrast", "대비", () => snowMaskItem("contrast","대비",false), m.contrast!==0);
+      snowSliderChip(box, "saturation", "채도", () => snowMaskItem("saturation","채도",false), m.saturation!==0);
+      snowSliderChip(box, "temperature", "온도", () => snowMaskItem("temperature","온도",false), m.temperature!==0);
+      if(m.type === "radial" || m.type === "linear"){
+        box.appendChild(snowChip("바깥에 적용", { on: m.invert, onclick: () => { m.invert = !m.invert; requestRender(); renderSnowItems(); } }));
+      }
+      box.appendChild(snowChip("🗑 삭제", { onclick: () => {
+        p.recipe.masks.splice(state.selMask,1); state.selMask=-1;
+        requestRender(); renderMaskUI(); renderSnowItems(); renderStrip();
+      } }));
+    }else{
+      box.appendChild(snowChip("＋◯ 지점", { onclick: () => addMask("radial") }));
+      box.appendChild(snowChip("＋▽ 위(하늘)", { onclick: () => addMask("linear-top") }));
+      box.appendChild(snowChip("＋△ 아래(땅)", { onclick: () => addMask("linear-bottom") }));
+      box.appendChild(snowChip("＋☀ 밝은 곳", { onclick: () => addMask("lumBright") }));
+      box.appendChild(snowChip("＋🌙 어두운 곳", { onclick: () => addMask("lumDark") }));
+      (p?.recipe.masks || []).forEach((mm, i) => {
+        box.appendChild(snowChip(`${maskLabel(mm)} ${i+1} ✎`, { set:true, onclick: () => {
+          state.selMask = i; renderMaskUI(); renderSnowItems();
+        } }));
+      });
+    }
+  } else if(cat === "ref"){
+    box.appendChild(snowChip(state.refBitmap ? "🖼 참고 사진 변경" : "🖼 참고 사진 올리기", { onclick: () => $("#refInput").click() }));
+    box.appendChild(snowChip("⚡ 빠른 매칭", { onclick: () => state.refBitmap ? (refQuickMatch(), renderSnowItems()) : toast("먼저 참고 사진을 올려 주세요.") }));
+    box.appendChild(snowChip("🤖 AI 정밀 매칭", { onclick: () => state.refBitmap ? refAIMatch() : toast("먼저 참고 사진을 올려 주세요.") }));
+  } else if(cat === "crop"){
+    box.appendChild(snowChip("✂ 구도 제안 받기", { onclick: runCropAI }));
+    if(p?.crop) box.appendChild(snowChip("⬜ 원본 구도", { onclick: async () => { await setCrop(p, null); renderSnowItems(); } }));
+    for(const s of (p?.cropSuggestions?.suggestions || [])){
+      const b = document.createElement("button");
+      b.className = "scard";
+      b.innerHTML = `<img src="${cropPreviewUrl(p, s, 180)}" alt=""><div class="nm">✂ ${esc(s.name)}</div>`;
+      b.onclick = async () => { await setCrop(p, s); toast(`✂ "${s.name}" 구도 적용!`); };
+      box.appendChild(b);
+    }
+  }
+}
+function updateSnowLight(){
+  if(state.snowItem && !$("#snowSliderRow").hidden){
+    $("#snowRange").value = state.snowItem.get();
+    $("#snowSliderVal").textContent = Math.round(state.snowItem.get());
+  }
+  const p = currentPhoto(); if(!p) return;
+  $$("#snowItems .sitem[data-k]").forEach(b => {
+    const def = RECIPE_DEFS.find(d=>d[0]===b.dataset.k);
+    if(def) b.classList.toggle("set", p.recipe[def[0]] !== def[4]);
+  });
+}
+
+/* ============================================================
    초기화 / 이벤트
    ============================================================ */
 function openSettings(){
@@ -2010,6 +2256,28 @@ function init(){
   renderChatChips();
   renderPresetList();
   initCompareDrag();
+  renderSnowCats();
+
+  // SNOW 하단 바 슬라이더
+  $("#snowRange").addEventListener("input", () => {
+    if(!state.snowItem) return;
+    const v = Number($("#snowRange").value);
+    state.snowItem.set(v);
+    $("#snowSliderVal").textContent = Math.round(v);
+    requestRender();
+    syncKnobs();
+    markCand(null);
+    $$("#snowItems .scard").forEach(x=>x.classList.remove("on"));
+  });
+  $("#snowRange").addEventListener("change", () => { renderStrip(); updateSnowLight(); renderSnowItems(); });
+  $("#snowSliderReset").onclick = () => {
+    if(!state.snowItem) return;
+    state.snowItem.set(state.snowItem.def);
+    $("#snowRange").value = state.snowItem.def;
+    $("#snowSliderVal").textContent = state.snowItem.def;
+    requestRender(); syncKnobs(); renderSnowItems();
+  };
+  $("#sheetClose").onclick = closeSheet;
 
   // 파일 올리기
   const dz = $("#dropzone");
