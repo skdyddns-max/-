@@ -265,6 +265,11 @@ details.adv .inner{padding-bottom:12px;}
 .pitem .nm{flex:1; font-size:13px; font-weight:700;}
 .pitem button{font-size:12px; color:var(--tx3); padding:4px 8px; border-radius:7px; border:1px solid var(--line);}
 .pitem button.ap{color:var(--accent2); border-color:var(--accent-dk);}
+.hitem{width:100%; text-align:left; cursor:pointer;}
+.hitem .step{width:24px; text-align:center; font-size:11.5px; color:var(--tx3); font-variant-numeric:tabular-nums;}
+.hitem .now{font-size:10.5px; color:var(--accent2); border:1px solid var(--accent-dk); border-radius:12px; padding:2px 8px;}
+.hitem.cur{border-color:var(--accent);}
+.hitem:hover{border-color:var(--line2);}
 .field{margin-bottom:12px;}
 .field label{display:block; font-size:12.5px; font-weight:700; color:var(--tx2); margin-bottom:5px;}
 .field input[type=text],.field input[type=password],.field select,.field textarea{
@@ -395,6 +400,7 @@ details.adv .inner{padding-bottom:12px;}
       <div class="stagebar">
         <button class="sbtn" id="btnUndo" title="실행 취소">↶</button>
         <button class="sbtn" id="btnRedo" title="다시 실행">↷</button>
+        <button class="sbtn" id="btnHistory" title="편집 히스토리 목록">🕘</button>
         <button class="sbtn" id="btnZoom" title="확대 (더블클릭도 가능)">🔍 1x</button>
         <button class="sbtn" id="btnHold">👁 원본 (꾹)</button>
         <button class="sbtn" id="btnCompare">◧ 비교</button>
@@ -457,10 +463,6 @@ details.adv .inner{padding-bottom:12px;}
               <div class="lab"><span class="l">무드 강도</span><span class="val" id="moodStrengthVal">100%</span></div>
               <input type="range" id="moodStrength" min="0" max="100" value="100">
             </div>
-          </div>
-          <div class="sec">
-            <h3>⭐ 내 프리셋</h3>
-            <div class="plist" id="presetList"><p class="note">다듬기 탭에서 마음에 든 톤을 저장하면 여기에 모여요.</p></div>
           </div>
         </div>
 
@@ -549,6 +551,15 @@ details.adv .inner{padding-bottom:12px;}
             <button class="aibtn" id="btnBatch">📦 전체 사진에 이 톤 적용</button>
           </div>
           <div class="sec">
+            <h3>⭐ 내 프리셋</h3>
+            <div class="plist" id="presetList"><p class="note">다듬기 탭에서 마음에 든 톤을 저장하면 여기에 모여요.</p></div>
+            <div class="rowbtns" style="margin-top:10px;">
+              <button class="sbtn" id="btnPresetImport">📥 프리셋 가져오기</button>
+              <button class="sbtn" id="btnPresetExportAll">📤 전체 내보내기</button>
+            </div>
+            <input type="file" id="presetFile" accept=".json,application/json" hidden>
+          </div>
+          <div class="sec">
             <h3>저장</h3>
             <div class="knob">
               <div class="lab"><span class="l">저장 품질</span><span class="val" id="qualVal">높음 (92%)</span></div>
@@ -626,6 +637,15 @@ details.adv .inner{padding-bottom:12px;}
       <textarea id="copyResultBox" rows="5" placeholder='{"scene": ...}'></textarea>
     </div>
     <button class="aibtn" id="btnApplyPasted">적용</button>
+  </div>
+</div>
+
+<!-- ============ 히스토리 모달 ============ -->
+<div class="modal-bg" id="historyModal">
+  <div class="modal">
+    <h2>🕘 편집 히스토리 <span class="sp"></span><button class="close" data-close>닫기 ✕</button></h2>
+    <p class="note" style="margin-bottom:10px;">단계를 누르면 그 시점으로 돌아갑니다. 이후 단계는 그대로 남아 있어서 다시 앞으로도 갈 수 있어요.</p>
+    <div class="plist" id="historyList"></div>
   </div>
 </div>
 
@@ -1429,7 +1449,7 @@ async function addFiles(files){
         id, name: f.name.replace(/\.[^.]+$/, ""), bitmap,
         thumbUrl: tc.toDataURL("image/jpeg", 0.8),
         recipe: rec,
-        history: [structuredClone(rec)], histIdx: 0,
+        history: [{ label:"원본", recipe: structuredClone(rec) }], histIdx: 0,
         stats: computeStats(bitmap),
         candidates: null, aiResult: null, origUrl: null,
       });
@@ -1530,7 +1550,7 @@ async function renderCandidates(){
     const b = document.createElement("button");
     b.className = "cand" + (JSON.stringify(it.recipe)===curKey ? " on" : "");
     b.innerHTML = `<img src="${url}" alt=""><div class="nm">${esc(it.name)}</div>` + (it.comment ? `<div class="cm">${esc(it.comment)}</div>` : "");
-    b.onclick = () => { applyRecipe(it.recipe); markCand(b); };
+    b.onclick = () => { applyRecipe(it.recipe, { label: `"${it.name}" 적용` }); markCand(b); };
     box.appendChild(b);
   }
   if(state.snowCat === "auto") renderSnowItems();
@@ -1573,7 +1593,7 @@ function applyMood(m, strength = 100, opts = {}){
     // 색상각(hue)은 세기와 무관 — 물들임 강도(sat)와 나머지 값만 스케일
     scaled[k] = (k === "splitShadowHue" || k === "splitHighHue") ? v : Math.round(v * strength / 100);
   }
-  applyRecipe(clampRecipe(Object.assign(defaultRecipe(), scaled, keep)), { silent: !!opts.silent });
+  applyRecipe(clampRecipe(Object.assign(defaultRecipe(), scaled, keep)), { silent: !!opts.silent, label: `🎨 무드: ${m.name}` });
   const box = $("#moodStrengthBox");
   if(box){
     box.style.display = "block";
@@ -1591,41 +1611,56 @@ function applyRecipe(recipe, opts = {}){
   syncKnobs();
   renderStrip();
   renderMaskUI();
-  if(!opts.silent) commitHistory(p);
+  if(!opts.silent) commitHistory(p, opts.label);
 }
 
-/* ---------- 편집 히스토리 (실행 취소 / 다시 실행) ---------- */
-function commitHistory(p){
+/* ---------- 편집 히스토리 (실행 취소 / 다시 실행 / 목록 점프) ---------- */
+function commitHistory(p, label){
   p = p || currentPhoto(); if(!p) return;
-  if(!p.history){ p.history = [structuredClone(p.recipe)]; p.histIdx = 0; updateHistoryUI(); return; }
+  if(!p.history){ p.history = [{ label:"원본", recipe: structuredClone(p.recipe) }]; p.histIdx = 0; updateHistoryUI(); return; }
   const snap = structuredClone(p.recipe);
-  if(JSON.stringify(snap) === JSON.stringify(p.history[p.histIdx])) return; // 변화 없음
+  if(JSON.stringify(snap) === JSON.stringify(p.history[p.histIdx].recipe)) return; // 변화 없음
   p.history = p.history.slice(0, p.histIdx + 1); // redo 꼬리 잘라내기
-  p.history.push(snap);
-  if(p.history.length > 40) p.history.shift();
+  p.history.push({ label: label || "조정", recipe: snap });
+  if(p.history.length > 40) p.history.splice(1, 1); // 맨 앞 '원본'은 항상 유지
   p.histIdx = p.history.length - 1;
   updateHistoryUI();
 }
-function undoEdit(){
+function historyJumpTo(i){
   const p = currentPhoto();
-  if(!p || !p.history || p.histIdx <= 0) return;
-  p.histIdx--;
-  applyRecipe(structuredClone(p.history[p.histIdx]), { silent:true });
+  if(!p || !p.history || i < 0 || i >= p.history.length) return;
+  p.histIdx = i;
+  applyRecipe(structuredClone(p.history[i].recipe), { silent:true });
   markCand(null);
   updateHistoryUI();
 }
-function redoEdit(){
-  const p = currentPhoto();
-  if(!p || !p.history || p.histIdx >= p.history.length - 1) return;
-  p.histIdx++;
-  applyRecipe(structuredClone(p.history[p.histIdx]), { silent:true });
-  markCand(null);
-  updateHistoryUI();
-}
+function undoEdit(){ const p = currentPhoto(); if(p?.history && p.histIdx > 0) historyJumpTo(p.histIdx - 1); }
+function redoEdit(){ const p = currentPhoto(); if(p?.history && p.histIdx < p.history.length - 1) historyJumpTo(p.histIdx + 1); }
 function updateHistoryUI(){
   const p = currentPhoto();
   $("#btnUndo").disabled = !(p?.history && p.histIdx > 0);
   $("#btnRedo").disabled = !(p?.history && p.histIdx < p.history.length - 1);
+  if($("#historyModal").classList.contains("on")) renderHistoryList();
+}
+function renderHistoryList(){
+  const p = currentPhoto();
+  const box = $("#historyList");
+  if(!p?.history){ box.innerHTML = `<p class="note">아직 편집 기록이 없어요.</p>`; return; }
+  box.innerHTML = "";
+  for(let i = p.history.length - 1; i >= 0; i--){
+    const h = p.history[i];
+    const d = document.createElement("button");
+    d.className = "pitem hitem" + (i === p.histIdx ? " cur" : "");
+    d.innerHTML = `<span class="step">${i === 0 ? "·" : i}</span><span class="nm">${esc(h.label)}</span>` +
+      (i === p.histIdx ? `<span class="now">현재</span>` : "");
+    d.onclick = () => { historyJumpTo(i); renderHistoryList(); };
+    box.appendChild(d);
+  }
+}
+function openHistory(){
+  if(!currentPhoto()) return;
+  renderHistoryList();
+  $("#historyModal").classList.add("on");
 }
 
 /* ============================================================
@@ -1681,7 +1716,7 @@ function buildKnobs(){
       syncKnobs(inp.dataset.key);
       markCand(null);
     });
-    inp.addEventListener("change", () => { renderStrip(); commitHistory(); });
+    inp.addEventListener("change", () => { renderStrip(); commitHistory(null, (RECIPE_DEFS.find(d=>d[0]===inp.dataset.key)?.[1] || "값") + " 조정"); });
   });
 }
 function syncKnobs(exceptKey){
@@ -1763,7 +1798,7 @@ async function runAnalyze(){
     p.aiResult = res;
     renderDiag();
     await renderCandidates();
-    if(res.presets?.[0]) applyRecipe(clampRecipe(res.presets[0].adjustments));
+    if(res.presets?.[0]) applyRecipe(clampRecipe(res.presets[0].adjustments), { label:"🤖 AI 톤 추천" });
     toast("AI가 이 사진에 맞는 톤 후보를 만들었어요. 마음에 드는 카드를 골라 보세요!");
   }catch(e){
     console.error(e);
@@ -1817,7 +1852,7 @@ async function sendChat(){
     const b64 = await imageToB64(srcBitmap(p));
     const res = await callClaudeVision(b64, chatPromptText(text, p.recipe), CHAT_SCHEMA);
     loadingEl.remove(); state.chat.pop();
-    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }));
+    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }), { label:"💬 대화 보정" });
     pushMsg("ai", `<b>적용했어요.</b> ${esc(res.explanation || "")}`);
   }catch(e){
     console.error(e);
@@ -1866,14 +1901,14 @@ function applyPasted(){
     if(!data.presets?.length){ toast("presets가 없는 JSON이에요."); return; }
     p.aiResult = data;
     renderDiag(); renderCandidates();
-    applyRecipe(clampRecipe(data.presets[0].adjustments));
+    applyRecipe(clampRecipe(data.presets[0].adjustments), { label:"🤖 AI 톤 추천" });
   }else if(copyContext.kind === "crop"){
     if(!data.suggestions?.length){ toast("suggestions가 없는 JSON이에요."); return; }
     p.cropSuggestions = data;
     renderCropCards();
   }else{ // chat / ref
     if(!data.adjustments){ toast("adjustments가 없는 JSON이에요."); return; }
-    applyRecipe(clampRecipe({ ...data.adjustments, masks: data.masks }));
+    applyRecipe(clampRecipe({ ...data.adjustments, masks: data.masks }), { label:"🤖 AI 적용" });
     pushMsg("ai", `<b>적용했어요.</b> ${esc(data.explanation || "")}`);
   }
   $("#copyModal").classList.remove("on");
@@ -1909,7 +1944,7 @@ function refQuickMatch(){
     temperature: cl((s2.warm - s1.warm)*260, -50, 50),
     fade:        s2.p05 > 0.06 ? cl((s2.p05-0.04)*260, 0, 40) : 0, // 레퍼런스 블랙이 떠 있으면 페이드
   });
-  applyRecipe(r);
+  applyRecipe(r, { label:"⚡ 빠른 매칭" });
   markCand(null);
   toast("⚡ 밝기·대비·채도·색온도를 참고 사진에 맞췄어요. 색 물들임까지 원하면 AI 정밀 매칭을!");
 }
@@ -1928,7 +1963,7 @@ async function refAIMatch(){
   try{
     const [curB64, refB64] = await Promise.all([imageToB64(srcBitmap(p)), imageToB64(state.refBitmap, 768)]);
     const res = await callClaudeVision([curB64, refB64], refPromptText(p.recipe), CHAT_SCHEMA);
-    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }));
+    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }), { label:"🖼 레퍼런스 매칭" });
     markCand(null);
     pushMsg("ai", `<b>🖼 레퍼런스 톤을 입혔어요.</b> ${esc(res.explanation || "")}`);
     toast("🖼 레퍼런스 톤을 입혔어요. 자세한 설명은 대화 탭에!", 3600);
@@ -2149,7 +2184,7 @@ function addMask(kind){
   p.recipe.masks.push(clampMasks([base])[0]);
   state.selMask = p.recipe.masks.length - 1;
   requestRender(); renderMaskUI(); markCand(null); renderStrip();
-  commitHistory(p);
+  commitHistory(p, "🎯 부분 보정 추가");
 }
 function renderMaskUI(){
   const p = currentPhoto();
@@ -2197,15 +2232,15 @@ function renderMaskEditor(){
       m[k] = (k === "r" || k === "feather" || k === "pos") ? v/100 : v;
       requestRender(); updateMaskOverlay(); markCand(null);
     });
-    inp.addEventListener("change", () => commitHistory());
+    inp.addEventListener("change", () => commitHistory(null, "🎯 부분 보정 조정"));
   });
   const inv = box.querySelector("#maskInvert");
-  if(inv) inv.onchange = () => { m.invert = inv.checked; requestRender(); commitHistory(); };
+  if(inv) inv.onchange = () => { m.invert = inv.checked; requestRender(); commitHistory(null, "🎯 부분 보정 반전"); };
   box.querySelector("#maskDelete").onclick = () => {
     p.recipe.masks.splice(state.selMask, 1);
     state.selMask = -1;
     requestRender(); renderMaskUI(); renderStrip();
-    commitHistory();
+    commitHistory(null, "🎯 부분 보정 삭제");
   };
 }
 function updateMaskOverlay(){
@@ -2243,8 +2278,9 @@ function renderPresetList(){
     const d = document.createElement("div");
     d.className = "pitem";
     d.innerHTML = `<span class="nm">⭐ ${esc(pr.name)}</span>
-      <button class="ap">적용</button><button class="all">전체 적용</button><button class="del">삭제</button>`;
-    d.querySelector(".ap").onclick = () => { applyRecipe(pr.recipe); markCand(null); toast(`"${pr.name}" 톤을 적용했어요.`); };
+      <button class="ap">적용</button><button class="all">전체 적용</button><button class="ex" title="파일로 내보내기">📤</button><button class="del">삭제</button>`;
+    d.querySelector(".ex").onclick = () => exportPresets([pr]);
+    d.querySelector(".ap").onclick = () => { applyRecipe(pr.recipe, { label:`⭐ ${pr.name}` }); markCand(null); toast(`"${pr.name}" 톤을 적용했어요.`); };
     d.querySelector(".all").onclick = () => batchApply(pr.recipe, pr.name);
     d.querySelector(".del").onclick = () => {
       state.userPresets = state.userPresets.filter(x=>x.id!==pr.id);
@@ -2260,8 +2296,47 @@ function savePresetFlow(){
   if(!name) return;
   state.userPresets.push({ id:"u"+Date.now(), name: name.trim().slice(0,20), recipe: structuredClone(p.recipe) });
   savePresets(); renderPresetList();
-  toast(`⭐ "${name.trim()}" 프리셋으로 저장했어요. 자동 톤 탭과 내보내기에서 쓸 수 있어요.`);
+  toast(`⭐ "${name.trim()}" 프리셋으로 저장했어요. 내보내기 탭에서 적용·일괄 적용·파일 공유까지 할 수 있어요.`);
 }
+/* ---------- 프리셋 파일 내보내기 / 가져오기 ---------- */
+function exportPresets(list){
+  if(!list.length){ toast("내보낼 프리셋이 없어요. 먼저 다듬기 탭에서 톤을 저장해 보세요."); return; }
+  const data = {
+    app: "tonemaker", type: "presets", version: 1,
+    exported: new Date().toISOString().slice(0, 10),
+    presets: list.map(pr => ({ name: pr.name, recipe: pr.recipe })),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const fname = list.length === 1 ? `톤메이커_프리셋_${list[0].name}.json` : `톤메이커_프리셋모음_${list.length}개.json`;
+  downloadBlob(blob, fname);
+  toast(`📤 프리셋 ${list.length}개를 파일로 내보냈어요. 파일을 공유하면 다른 사람도 이 톤을 쓸 수 있어요!`, 3600);
+}
+async function importPresetFile(file){
+  let data;
+  try{ data = JSON.parse(await file.text()); }
+  catch(e){ toast("파일을 읽을 수 없어요. 톤메이커에서 내보낸 JSON 파일인지 확인해 주세요."); return; }
+  // 지원 형태: {presets:[{name,recipe}...]} / {name,recipe} / 레시피 객체 하나
+  let items = [];
+  if(Array.isArray(data?.presets)) items = data.presets;
+  else if(data?.recipe) items = [data];
+  else if(data && typeof data === "object" && "exposure" in data) items = [{ name: file.name.replace(/\.[^.]+$/, ""), recipe: data }];
+  if(!items.length){ toast("프리셋을 찾을 수 없는 파일이에요."); return; }
+  let added = 0;
+  for(const it of items){
+    if(!it?.recipe || typeof it.recipe !== "object") continue;
+    state.userPresets.push({
+      id: "u" + Date.now() + "_" + added,
+      name: String(it.name || "가져온 톤").slice(0, 20),
+      recipe: clampRecipe(it.recipe),
+    });
+    added++;
+  }
+  if(!added){ toast("유효한 프리셋이 없었어요."); return; }
+  savePresets();
+  renderPresetList();
+  toast(`📥 프리셋 ${added}개를 가져왔어요! 목록에서 적용해 보세요.`);
+}
+
 function batchApply(recipe, label){
   const ref = currentPhoto(); if(!ref) return;
   const auto = $("#autoBright").checked;
@@ -2276,7 +2351,7 @@ function batchApply(recipe, label){
     p.recipe = r;
     if(!p.history){ p.history = []; p.histIdx = -1; }
     p.history = p.history.slice(0, p.histIdx + 1);
-    p.history.push(structuredClone(r));
+    p.history.push({ label:"📦 일괄 적용", recipe: structuredClone(r) });
     p.histIdx = p.history.length - 1;
     cnt++;
   }
@@ -2363,7 +2438,7 @@ function eyedropAt(p, ux, uy){
   const ti = (1 - target / Math.max(0.02, g)) / 0.09;
   p.recipe.temperature = Math.max(-100, Math.min(100, Math.round(t * 100)));
   p.recipe.tint = Math.max(-100, Math.min(100, Math.round(ti * 100)));
-  requestRender(); syncKnobs(); markCand(null); commitHistory(p);
+  requestRender(); syncKnobs(); markCand(null); commitHistory(p, "💧 스포이트 WB");
   toast(`💧 화이트밸런스를 맞췄어요 (색온도 ${p.recipe.temperature}, 색조 ${p.recipe.tint})`);
 }
 
@@ -2568,7 +2643,7 @@ function renderSnowItems(){
         const b = document.createElement("button");
         b.className = "scard" + (JSON.stringify(it.recipe)===curKey ? " on" : "");
         b.innerHTML = `<img src="${thumbEngine.canvas.toDataURL("image/jpeg",0.72)}" alt=""><div class="nm">${esc(it.name)}</div>`;
-        b.onclick = () => { applyRecipe(it.recipe); renderSnowItems(); };
+        b.onclick = () => { applyRecipe(it.recipe, { label: `"${it.name}" 적용` }); renderSnowItems(); };
         box.appendChild(b);
       }
     }
@@ -2612,12 +2687,12 @@ function renderSnowItems(){
       snowSliderChip(box, "saturation", "채도", () => snowMaskItem("saturation","채도",false), m.saturation!==0);
       snowSliderChip(box, "temperature", "온도", () => snowMaskItem("temperature","온도",false), m.temperature!==0);
       if(m.type === "radial" || m.type === "linear"){
-        box.appendChild(snowChip("바깥에 적용", { on: m.invert, onclick: () => { m.invert = !m.invert; requestRender(); renderSnowItems(); commitHistory(p); } }));
+        box.appendChild(snowChip("바깥에 적용", { on: m.invert, onclick: () => { m.invert = !m.invert; requestRender(); renderSnowItems(); commitHistory(p, "🎯 부분 보정 반전"); } }));
       }
       box.appendChild(snowChip("🗑 삭제", { onclick: () => {
         p.recipe.masks.splice(state.selMask,1); state.selMask=-1;
         requestRender(); renderMaskUI(); renderSnowItems(); renderStrip();
-        commitHistory(p);
+        commitHistory(p, "🎯 부분 보정 삭제");
       } }));
     }else{
       box.appendChild(snowChip("＋◯ 지점", { onclick: () => addMask("radial") }));
@@ -2715,11 +2790,17 @@ function init(){
     $("#moodStrengthVal").textContent = v + "%";
     if(state.lastMood) applyMood(state.lastMood.mood, v, { silent:true });
   });
-  $("#moodStrength").addEventListener("change", () => commitHistory());
+  $("#moodStrength").addEventListener("change", () => commitHistory(null, `무드 강도 ${$("#moodStrength").value}%`));
 
-  // 실행 취소 / 다시 실행
+  // 실행 취소 / 다시 실행 / 히스토리
   $("#btnUndo").onclick = undoEdit;
   $("#btnRedo").onclick = redoEdit;
+  $("#btnHistory").onclick = openHistory;
+
+  // 프리셋 가져오기/내보내기
+  $("#btnPresetImport").onclick = () => $("#presetFile").click();
+  $("#presetFile").onchange = e => { if(e.target.files[0]) importPresetFile(e.target.files[0]); e.target.value = ""; };
+  $("#btnPresetExportAll").onclick = () => exportPresets(state.userPresets);
   document.addEventListener("keydown", e => {
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.target.matches("input,textarea")){
       e.preventDefault();
@@ -2750,7 +2831,7 @@ function init(){
     markCand(null);
     $$("#snowItems .scard").forEach(x=>x.classList.remove("on"));
   });
-  $("#snowRange").addEventListener("change", () => { renderStrip(); updateSnowLight(); renderSnowItems(); commitHistory(); });
+  $("#snowRange").addEventListener("change", () => { renderStrip(); updateSnowLight(); renderSnowItems(); commitHistory(null, (state.snowItem?.label || "값") + " 조정"); });
   $("#snowSliderReset").onclick = () => {
     if(!state.snowItem) return;
     state.snowItem.set(state.snowItem.def);
@@ -2821,13 +2902,13 @@ function init(){
       p.recipe.masks.push(clampMasks([{ type:"radial", cx:ux, cy:uy, exposure:20 }])[0]);
       state.selMask = p.recipe.masks.length - 1;
       requestRender(); renderMaskUI(); markCand(null); renderStrip();
-      commitHistory(p);
+      commitHistory(p, "🎯 부분 보정 추가");
       toast("◯ 지점을 만들었어요. 아래 손잡이로 이 부분만 다듬어 보세요.");
     }else if(state.selMask >= 0 && p.recipe.masks[state.selMask]?.type === "radial" && !$("#tab-tune").hidden && !state.compare){
       const m = p.recipe.masks[state.selMask];
       m.cx = ux; m.cy = uy;
       requestRender(); updateMaskOverlay();
-      commitHistory(p);
+      commitHistory(p, "🎯 부분 위치 이동");
     }
   });
   window.addEventListener("resize", updateMaskOverlay);
@@ -2863,7 +2944,7 @@ function init(){
   $("#btnCompare").onclick = () => setCompare(!state.compare);
   $("#btnReset").onclick = () => {
     const p = currentPhoto(); if(!p) return;
-    applyRecipe(defaultRecipe()); markCand(null);
+    applyRecipe(defaultRecipe(), { label:"↺ 원본으로" }); markCand(null);
     toast("↺ 원본 상태로 되돌렸어요.");
   };
 
