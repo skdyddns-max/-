@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>워크시트 브리핑 — AI 워크시트 분석 & 결과 브리핑 생성기</title>
+<meta name="description" content="아이 학습지 사진을 올리면 AI가 채점·오류 패턴·강점/난점·임상적 해석을 분석하고, 치료사용·보호자용 결과 브리핑을 자동으로 만들어 드립니다.">
+<style>
+:root{
+  --bg:#f7f6f2; --card:#ffffff; --ink:#20303a; --tx2:#54646e; --tx3:#8b98a0;
+  --line:#e4e2da; --accent:#1f8a7d; --accent2:#e8f4f1; --accent3:#0f6c61;
+  --warn:#c05621; --bad:#c53030; --good:#1f8a7d; --gray:#94a3ad;
+  --shadow:0 2px 10px rgba(32,48,58,.07);
+  --r:14px;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  background:var(--bg); color:var(--ink); line-height:1.6; font-size:15px;
+  padding-bottom:80px;
+}
+button{ font-family:inherit; cursor:pointer; }
+input,select,textarea{ font-family:inherit; font-size:15px; color:var(--ink); }
+h1,h2,h3{ line-height:1.35; }
+
+/* ---------- 헤더 & 탭 ---------- */
+header{
+  position:sticky; top:0; z-index:30; background:rgba(247,246,242,.92);
+  backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+  padding:12px 16px 0;
+}
+.hrow{ display:flex; align-items:center; justify-content:space-between; max-width:820px; margin:0 auto; }
+.logo{ font-size:18px; font-weight:800; letter-spacing:-.02em; }
+.logo small{ display:block; font-size:11px; font-weight:600; color:var(--tx3); letter-spacing:0; }
+.iconbtn{
+  border:1px solid var(--line); background:var(--card); border-radius:10px;
+  width:38px; height:38px; font-size:17px; line-height:1;
+}
+nav.tabs{ display:flex; gap:2px; max-width:820px; margin:10px auto 0; }
+nav.tabs button{
+  flex:1; border:none; background:transparent; padding:10px 4px 12px; font-size:14px; font-weight:700;
+  color:var(--tx3); border-bottom:3px solid transparent;
+}
+nav.tabs button.on{ color:var(--accent3); border-bottom-color:var(--accent); }
+
+main{ max-width:820px; margin:0 auto; padding:16px; }
+.view{ display:none; }
+.view.on{ display:block; }
+
+/* ---------- 카드/공통 ---------- */
+.card{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:18px; margin-bottom:14px; }
+.card h2{ font-size:16px; margin-bottom:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.card h2 .hint{ flex-basis:100%; font-weight:400; }
+.stepnum{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:800; flex:none; }
+.hint{ font-size:13px; color:var(--tx3); }
+.field{ margin-bottom:12px; }
+.field label{ display:block; font-size:13px; font-weight:700; margin-bottom:5px; color:var(--tx2); }
+.field input[type=text],.field input[type=date],.field input[type=password],.field select,.field textarea{
+  width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fff;
+}
+.field textarea{ min-height:74px; resize:vertical; }
+.row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media(max-width:520px){ .row2{ grid-template-columns:1fr; } }
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:1px solid var(--line); background:#fff; color:var(--ink);
+  border-radius:11px; padding:10px 16px; font-size:14px; font-weight:700;
+}
+.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.primary:disabled{ opacity:.5; cursor:default; }
+.btn.big{ width:100%; padding:14px; font-size:16px; }
+.btn.danger{ color:var(--bad); border-color:#eecaca; }
+.btn.sm{ padding:6px 11px; font-size:13px; border-radius:9px; }
+.chips{ display:flex; flex-wrap:wrap; gap:7px; }
+.chip{
+  border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 13px;
+  font-size:13px; font-weight:600; color:var(--tx2);
+}
+.chip.on{ background:var(--accent2); border-color:var(--accent); color:var(--accent3); }
+.badge{ display:inline-block; font-size:11px; font-weight:800; border-radius:6px; padding:2px 7px; }
+.badge.good{ background:var(--accent2); color:var(--accent3); }
+.badge.bad{ background:#fdecec; color:var(--bad); }
+.badge.gray{ background:#eef1f3; color:var(--tx2); }
+.badge.warn{ background:#fdf1e7; color:var(--warn); }
+
+/* ---------- 업로드 ---------- */
+.drop{
+  border:2px dashed var(--line); border-radius:var(--r); background:#fcfbf8;
+  padding:22px 14px; text-align:center; color:var(--tx3); font-size:14px; cursor:pointer;
+}
+.drop b{ color:var(--accent3); }
+.thumbs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.thumb{ position:relative; width:86px; height:112px; border-radius:10px; overflow:hidden; border:1px solid var(--line); background:#eee; }
+.thumb img{ width:100%; height:100%; object-fit:cover; }
+.thumb .x{
+  position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%;
+  border:none; background:rgba(20,30,36,.72); color:#fff; font-size:12px; line-height:1;
+}
+.thumb .pageno{ position:absolute; left:4px; bottom:4px; background:rgba(20,30,36,.72); color:#fff; font-size:10px; border-radius:5px; padding:1px 5px; }
+
+/* ---------- 결과 ---------- */
+.statgrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+@media(max-width:520px){ .statgrid{ grid-template-columns:repeat(3,1fr); } }
+.stat{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 10px; text-align:center; }
+.stat .v{ font-size:26px; font-weight:800; letter-spacing:-.02em; color:var(--accent3); }
+.stat .v.neutral{ color:var(--ink); }
+.stat .k{ font-size:12px; color:var(--tx3); font-weight:600; }
+.itemtable{ width:100%; border-collapse:collapse; font-size:13px; }
+.itemtable th{ text-align:left; font-size:12px; color:var(--tx3); border-bottom:1px solid var(--line); padding:6px 6px; white-space:nowrap; }
+.itemtable td{ border-bottom:1px solid #f0eee7; padding:8px 6px; vertical-align:top; }
+.itemtable .resbtn{
+  border:none; border-radius:8px; padding:4px 9px; font-size:12px; font-weight:800; white-space:nowrap;
+}
+.res-correct{ background:var(--accent2); color:var(--accent3); }
+.res-wrong{ background:#fdecec; color:var(--bad); }
+.res-no_response{ background:#eef1f3; color:var(--tx2); }
+.res-unclear{ background:#fdf1e7; color:var(--warn); }
+.tblwrap{ overflow-x:auto; }
+.notice{ background:#fdf6ec; border:1px solid #f0dfc4; border-radius:10px; padding:10px 12px; font-size:13px; color:#7a5a2e; margin-bottom:12px; }
+
+/* ---------- 브리핑 ---------- */
+.brieftabs{ display:flex; gap:8px; margin-bottom:12px; }
+.brieftabs button{
+  flex:1; border:1px solid var(--line); background:#fff; border-radius:11px; padding:10px; font-size:14px; font-weight:700; color:var(--tx2);
+}
+.brieftabs button.on{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.briefpaper{
+  background:#fff; border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
+  padding:26px 24px; margin-bottom:12px;
+}
+.briefpaper[contenteditable=true]:focus{ outline:2px solid var(--accent2); }
+.briefactions{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+
+/* 브리핑 본문 서식 (화면+인쇄 공용) */
+.bf-head{ border-bottom:2px solid var(--ink); padding-bottom:12px; margin-bottom:16px; }
+.bf-head .bf-title{ font-size:19px; font-weight:800; letter-spacing:-.02em; }
+.bf-head .bf-sub{ font-size:12px; color:var(--tx3); font-weight:700; margin-bottom:2px; }
+.bf-meta{ display:grid; grid-template-columns:1fr 1fr; gap:2px 18px; font-size:13px; margin:12px 0 16px; }
+.bf-meta div b{ color:var(--tx3); font-weight:700; margin-right:8px; font-size:12px; }
+.bf-sec{ margin-bottom:16px; }
+.bf-sec h4{ font-size:14px; color:var(--accent3); margin-bottom:6px; padding-left:9px; border-left:3px solid var(--accent); }
+.bf-sec p, .bf-sec li{ font-size:14px; }
+.bf-sec ul{ padding-left:20px; }
+.bf-score{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.bf-score .big{ font-size:32px; font-weight:800; color:var(--accent3); }
+.bf-bar{ height:10px; border-radius:6px; background:#edeae2; overflow:hidden; margin:6px 0 4px; }
+.bf-bar i{ display:block; height:100%; background:var(--accent); border-radius:6px; }
+.bf-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.bf-table th{ background:#f4f2ec; border:1px solid var(--line); padding:5px 7px; font-size:12px; }
+.bf-table td{ border:1px solid var(--line); padding:5px 7px; }
+.bf-foot{ margin-top:18px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; color:var(--tx3); }
+.bf-cheer{ background:var(--accent2); border-radius:12px; padding:14px 16px; font-size:14.5px; }
+.bf-stars{ font-size:18px; letter-spacing:2px; }
+.bf-2col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:560px){ .bf-2col{ grid-template-columns:1fr; } }
+.bf-box{ border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+.bf-box h5{ font-size:13px; margin-bottom:4px; }
+.bf-box.good h5{ color:var(--accent3); }
+.bf-box.hard h5{ color:var(--warn); }
+
+/* ---------- 기록 ---------- */
+.childrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 4px; border-bottom:1px solid #f0eee7; }
+.childrow:last-child{ border-bottom:none; }
+.childrow .nm{ font-weight:800; }
+.childrow .ct{ font-size:12px; color:var(--tx3); }
+.sesscard{ display:flex; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:12px 14px; margin-bottom:10px; }
+.sesscard img{ width:52px; height:68px; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#eee; flex:none; }
+.sesscard .noimg{ width:52px; height:68px; border-radius:8px; border:1px solid var(--line); background:#f2f0ea; display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
+.sesscard .info{ flex:1; min-width:0; }
+.sesscard .t1{ font-weight:800; font-size:14px; }
+.sesscard .t2{ font-size:12px; color:var(--tx3); }
+.sesscard .pct{ font-size:20px; font-weight:800; color:var(--accent3); flex:none; }
+
+/* ---------- 추이 ---------- */
+.chartcard svg{ width:100%; height:auto; display:block; }
+.legend{ display:flex; gap:14px; font-size:12px; color:var(--tx3); margin-top:6px; flex-wrap:wrap; }
+.legend i{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+
+/* ---------- 모달/토스트 ---------- */
+.modal{ display:none; position:fixed; inset:0; z-index:50; background:rgba(24,34,40,.45); padding:18px; overflow-y:auto; }
+.modal.on{ display:flex; align-items:flex-start; justify-content:center; }
+.modal .panel{ background:var(--card); border-radius:16px; max-width:640px; width:100%; padding:20px; margin:auto 0; }
+.modal h3{ font-size:17px; margin-bottom:12px; }
+.modal .close{ float:right; border:none; background:none; font-size:20px; color:var(--tx3); }
+#toast{
+  display:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+  background:rgba(24,34,40,.92); color:#fff; padding:10px 18px; border-radius:999px;
+  font-size:13.5px; z-index:99; max-width:90vw; text-align:center;
+}
+.spinner{ display:inline-block; width:16px; height:16px; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-3px; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.copybox{ width:100%; min-height:120px; border:1px solid var(--line); border-radius:10px; padding:10px; font-size:12px; font-family:ui-monospace,Consolas,monospace; }
+
+/* ---------- 인쇄 ---------- */
+#printArea{ display:none; }
+@media print{
+  body{ background:#fff; padding:0; }
+  body.printing > *:not(#printArea){ display:none !important; }
+  body.printing #printArea{ display:block !important; }
+  #printArea .briefpaper{ border:none; box-shadow:none; border-radius:0; padding:0; }
+  @page{ size:A4; margin:16mm 15mm; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <div class="logo">📝 워크시트 브리핑<small>AI 워크시트 분석 & 결과 브리핑 생성기</small></div>
+    <button class="iconbtn" id="btnSettings" title="설정">⚙️</button>
+  </div>
+  <nav class="tabs">
+    <button data-view="analyze" class="on">✏️ 분석하기</button>
+    <button data-view="records">🗂 기록</button>
+    <button data-view="trend">📈 추이</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ 분석하기 ============ -->
+<section class="view on" id="view-analyze">
+
+  <div class="card">
+    <h2><span class="stepnum">1</span> 아동 선택</h2>
+    <div class="row2">
+      <div class="field" style="margin-bottom:0">
+        <select id="childSelect"></select>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="newChildName" placeholder="새 아동 이름" style="flex:1; border:1px solid var(--line); border-radius:10px; padding:10px 12px;">
+        <button class="btn" id="btnAddChild">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="stepnum">2</span> 워크시트 사진 <span class="hint">최대 5장</span></h2>
+    <div class="drop" id="dropWs">📷 <b>학습지 사진·스캔본</b>을 탭해서 올리거나 끌어다 놓으세요<br><span style="font-size:12px">글씨가 잘 보이게, 페이지 순서대로 올려 주세요</span></div>
+    <input type="file" id="fileWs" accept="image/*" multiple hidden>
+    <div class="thumbs" id="thumbsWs"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="stepnum">3</span> 정답 기준</h2>
+    <div class="chips" id="keyModeChips" style="margin-bottom:12px">
+      <button class="chip on" data-key="text">✍️ 텍스트로 입력</button>
+      <button class="chip" data-key="image">🖼 정답지 사진</button>
+      <button class="chip" data-key="auto">🤖 AI가 직접 판독</button>
+    </div>
+    <div id="keyTextBox" class="field">
+      <textarea id="keyText" placeholder="예)&#10;1. 사과&#10;2. 바나나&#10;3. 7+5=12&#10;(문항 번호와 정답을 한 줄씩)"></textarea>
+    </div>
+    <div id="keyImageBox" style="display:none">
+      <div class="drop" id="dropKey">🖼 <b>정답지(교사용 답안) 사진</b>을 올려 주세요</div>
+      <input type="file" id="fileKey" accept="image/*" hidden>
+      <div class="thumbs" id="thumbsKey"></div>
+    </div>
+    <div id="keyAutoBox" style="display:none" class="hint">워크시트에 인쇄된 문제를 AI가 읽고 스스로 정답을 판단합니다. 채점 기준이 명확한 과제(연산·낱말 등)에 적합하며, 분석 후 문항표에서 직접 수정할 수 있어요.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="stepnum">4</span> 과제 정보</h2>
+    <div class="row2">
+      <div class="field"><label>세션 날짜</label><input type="date" id="inDate"></div>
+      <div class="field"><label>영역</label>
+        <select id="inArea">
+          <option>조음·음운</option><option>수용언어</option><option>표현언어</option><option>화용</option>
+          <option>읽기</option><option>쓰기</option><option>수학·연산</option><option>인지</option><option>기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>과제명 <span style="font-weight:400;color:var(--tx3)">(예: 받아올림 있는 두 자리 덧셈)</span></label><input type="text" id="inTask" placeholder="이 워크시트가 어떤 과제인지"></div>
+    <div class="field"><label>회기 목표 (선택)</label><input type="text" id="inGoal" placeholder="예: 받아올림 절차를 촉구 없이 수행하기"></div>
+    <div class="field" style="margin-bottom:0"><label>수행 시 특이사항 (선택)</label><textarea id="inNotes" placeholder="예: 3번부터 집중이 흐려짐, 5번은 구어 촉구 1회 제공"></textarea></div>
+  </div>
+
+  <button class="btn primary big" id="btnAnalyze">🤖 AI 분석하기</button>
+  <p class="hint" style="text-align:center; margin-top:10px">사진은 분석할 때만 AI에 전송되고, 기록은 이 브라우저에만 저장됩니다.<br>본 분석은 참고자료이며 치료사의 임상적 판단을 대체하지 않습니다.</p>
+</section>
+
+<!-- ============ 결과 ============ -->
+<section class="view" id="view-result">
+  <button class="btn sm" id="btnBackToAnalyze" style="margin-bottom:12px">← 새 분석</button>
+  <div id="resultHead"></div>
+  <div class="statgrid" id="statGrid"></div>
+  <div id="cautionBox"></div>
+
+  <div class="card">
+    <h2>📋 문항별 반응 <span class="hint">결과 배지를 탭하면 정↔오↔무반응↔판독불가로 바뀌고 정반응률이 다시 계산돼요</span></h2>
+    <div class="tblwrap"><table class="itemtable" id="itemTable"></table></div>
+  </div>
+
+  <div class="brieftabs">
+    <button id="tabT" class="on">🩺 치료사용 상세</button>
+    <button id="tabP">👨‍👩‍👧 보호자용</button>
+  </div>
+  <div class="briefpaper" id="briefBody" contenteditable="true"></div>
+  <p class="hint" style="margin:-4px 0 10px">브리핑 본문은 자유롭게 고칠 수 있어요. 수정 내용은 자동 저장됩니다.</p>
+  <div class="briefactions">
+    <button class="btn primary" id="btnPrint">🖨 인쇄 / PDF 저장</button>
+    <button class="btn" id="btnCopyText">📄 텍스트 복사</button>
+    <button class="btn" id="btnResetBrief">↺ 원문으로 되돌리기</button>
+  </div>
+</section>
+
+<!-- ============ 기록 ============ -->
+<section class="view" id="view-records">
+  <div class="card">
+    <h2>👶 아동 목록</h2>
+    <div id="childList"></div>
+  </div>
+  <div class="card">
+    <h2>🗂 세션 기록 <button class="btn sm" id="btnCsv" style="float:right">CSV 내려받기</button></h2>
+    <div class="chips" id="recChildChips" style="margin-bottom:12px"></div>
+    <div id="sessList"></div>
+  </div>
+</section>
+
+<!-- ============ 추이 ============ -->
+<section class="view" id="view-trend">
+  <div class="card">
+    <h2>📈 정반응률 변화 추이</h2>
+    <div class="chips" id="trChildChips" style="margin-bottom:8px"></div>
+    <div class="chips" id="trAreaChips" style="margin-bottom:12px"></div>
+    <div class="chartcard" id="lineChart"></div>
+    <div id="trendSummary" class="notice" style="display:none; margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <h2>🧩 오류 유형 분포 <span class="hint">선택한 아동·영역의 누적</span></h2>
+    <div class="chartcard" id="barChart"></div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============ 설정 모달 ============ -->
+<div class="modal" id="modalSettings">
+  <div class="panel">
+    <button class="close" data-close>✕</button>
+    <h3>⚙️ 설정</h3>
+    <div class="field">
+      <label>생성 방식</label>
+      <select id="setMode">
+        <option value="api">Claude API 키로 자동 분석</option>
+        <option value="copy">키 없이 프롬프트 복사 모드</option>
+      </select>
+    </div>
+    <div class="field" id="apiKeyField">
+      <label>Claude API 키 <span style="font-weight:400;color:var(--tx3)">(console.anthropic.com에서 발급, 내 브라우저에만 저장)</span></label>
+      <input type="password" id="setApiKey" placeholder="sk-ant-...">
+    </div>
+    <div class="field" id="modelField">
+      <label>모델</label>
+      <select id="setModel">
+        <option value="claude-sonnet-5">Claude Sonnet 5 — 빠르고 경제적 (추천)</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8 — 가장 정밀</option>
+      </select>
+    </div>
+    <button class="btn primary big" id="btnSaveSettings">저장</button>
+  </div>
+</div>
+
+<!-- ============ 복사 모드 모달 ============ -->
+<div class="modal" id="modalCopy">
+  <div class="panel">
+    <button class="close" data-close>✕</button>
+    <h3>📋 프롬프트 복사 모드</h3>
+    <p style="font-size:13.5px; margin-bottom:10px">① 아래 프롬프트를 복사해 <b>claude.ai</b>에 붙여넣고, <b>워크시트 사진(정답지 사진이 있다면 함께)</b>을 첨부하세요.<br>② 답변으로 받은 JSON을 아래 칸에 붙여넣고 적용을 누르세요.</p>
+    <textarea class="copybox" id="copyPrompt" readonly></textarea>
+    <button class="btn" id="btnCopyPrompt" style="margin:8px 0 14px">📄 프롬프트 복사</button>
+    <textarea class="copybox" id="copyResult" placeholder='claude.ai가 준 JSON을 여기에 붙여넣기'></textarea>
+    <button class="btn primary big" id="btnApplyCopy" style="margin-top:8px">적용</button>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<div id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   상수 / 상태
+   ============================================================ */
+const LS_SET = "wsb_settings", LS_CHILD = "wsb_children", LS_SESS = "wsb_sessions";
+const RESULT_LABEL = { correct:"정반응", wrong:"오반응", no_response:"무반응", unclear:"판독불가" };
+const RESULT_CYCLE = ["correct","wrong","no_response","unclear"];
+
+const state = {
+  settings: { mode:"api", apiKey:"", model:"claude-sonnet-5" },
+  children: [],   // {id, name, createdAt}
+  sessions: [],   // {id, childId, date, area, task, goal, notes, thumb, result, editsT, editsP, createdAt}
+  wsImages: [],   // 분석용 워크시트 b64 (전송 해상도)
+  wsThumbs: [],   // 미리보기 dataURL
+  keyMode: "text",
+  keyImage: null, keyImageThumb: null,
+  currentSessionId: null,
+  briefTab: "T",
+  recChildId: null, trChildId: null, trArea: "전체",
+};
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let toastTimer = null;
+function toast(msg, ms=2800){
+  const t = $("#toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.style.display="none"; }, ms);
+}
+function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const fmtDate = d => d || "";
+
+/* ============================================================
+   저장 / 복원
+   ============================================================ */
+function loadAll(){
+  try{ const s = JSON.parse(localStorage.getItem(LS_SET)); if(s) Object.assign(state.settings, s); }catch(e){}
+  try{ const c = JSON.parse(localStorage.getItem(LS_CHILD)); if(Array.isArray(c)) state.children = c; }catch(e){}
+  try{ const x = JSON.parse(localStorage.getItem(LS_SESS)); if(Array.isArray(x)) state.sessions = x; }catch(e){}
+}
+function saveSettings(){ localStorage.setItem(LS_SET, JSON.stringify(state.settings)); }
+function saveChildren(){ localStorage.setItem(LS_CHILD, JSON.stringify(state.children)); }
+function saveSessions(){
+  try{ localStorage.setItem(LS_SESS, JSON.stringify(state.sessions)); }
+  catch(e){
+    // 용량 초과 시 썸네일부터 비우고 재시도
+    state.sessions.forEach(s=>{ s.thumb = null; });
+    try{ localStorage.setItem(LS_SESS, JSON.stringify(state.sessions)); toast("저장 공간이 부족해 미리보기 이미지를 빼고 저장했어요."); }
+    catch(e2){ toast("저장 공간이 부족해 기록을 저장하지 못했어요. 오래된 세션을 삭제해 주세요."); }
+  }
+}
+
+/* ============================================================
+   Claude API (tonemaker/studio와 동일 패턴)
+   ============================================================ */
+let sdkPromise = null;
+function loadSDK(){
+  if(!sdkPromise) sdkPromise = import("https://esm.sh/@anthropic-ai/sdk@latest");
+  return sdkPromise;
+}
+
+const ANALYSIS_SCHEMA = {
+  type:"object",
+  properties:{
+    task_summary:{ type:"string", description:"이 워크시트가 어떤 과제인지 1~2문장 요약 (한국어)" },
+    items:{
+      type:"array", minItems:1,
+      items:{
+        type:"object",
+        properties:{
+          no:{ type:"string", description:"문항 번호 (예: 1, 2-a). 번호가 없으면 순서대로 붙이기" },
+          question:{ type:"string", description:"문항 내용을 짧게 (예: 7+5, '사과' 낱말 읽기)" },
+          expected:{ type:"string", description:"정답 또는 기대 반응" },
+          response:{ type:"string", description:"아동이 실제로 쓴/표시한 반응 그대로. 비어 있으면 '무반응'" },
+          result:{ type:"string", enum:["correct","wrong","no_response","unclear"], description:"correct=정반응, wrong=오반응, no_response=무반응(빈칸), unclear=글씨가 흐리거나 사진이 잘려 판독 불가" },
+          error_type:{ type:"string", description:"오반응일 때 오류 유형 하나 (예: 받아올림 누락, 자릿수 혼동, 음소 대치, 생략, 첨가, 유사 낱말 혼동, 반전(거울) 쓰기, 의미 혼동). 정반응·무반응·판독불가면 빈 문자열" },
+          note:{ type:"string", description:"특이사항 (자기수정 흔적, 지운 자국, 부분 정답 등). 없으면 빈 문자열" },
+        },
+        required:["no","question","expected","response","result","error_type","note"],
+        additionalProperties:false,
+      },
+    },
+    error_patterns:{
+      type:"array",
+      items:{
+        type:"object",
+        properties:{
+          type:{ type:"string", description:"오류 유형 이름 (한국어, 10자 내외)" },
+          count:{ type:"integer", minimum:1, description:"해당 유형 오류 개수" },
+          description:{ type:"string", description:"이 오류가 무엇이고 왜 나타나는지 치료사 관점 설명 (1~2문장)" },
+          examples:{ type:"array", items:{ type:"string" }, description:"실제 오류 예시 (문항번호: 기대→반응 형식)" },
+        },
+        required:["type","count","description","examples"], additionalProperties:false,
+      },
+    },
+    strengths:{ type:"array", minItems:1, items:{ type:"string" }, description:"이번 수행에서 관찰된 강점 (관찰 근거 포함, 각 1문장)" },
+    difficulties:{ type:"array", items:{ type:"string" }, description:"어려움을 보인 지점 (관찰 근거 포함, 각 1문장)" },
+    clinical_interpretation:{ type:"string", description:"치료사용 임상적 해석 3~6문장: 오류 패턴이 시사하는 바, 발달적 맥락, 촉구·과제 난이도에 대한 소견. 관찰에 근거하고 단정적 진단 표현은 금지" },
+    recommendations:{ type:"array", minItems:1, items:{ type:"string" }, description:"다음 회기 목표·활동·과제 조정 제안 (각 1문장)" },
+    parent_brief:{
+      type:"object",
+      properties:{
+        today_did:{ type:"string", description:"오늘 어떤 활동을 했는지 쉬운 말로 1~2문장" },
+        well_done:{ type:"array", minItems:1, items:{ type:"string" }, description:"잘한 점, 전문용어 없이 긍정적으로" },
+        practice_points:{ type:"array", items:{ type:"string" }, description:"더 연습하면 좋은 점, 아이를 탓하지 않는 부드러운 표현으로" },
+        home_activities:{ type:"array", minItems:1, items:{ type:"string" }, description:"집에서 5~10분에 할 수 있는 구체적 연계 활동" },
+        cheer:{ type:"string", description:"보호자와 아이에게 전하는 따뜻한 응원 한마디" },
+      },
+      required:["today_did","well_done","practice_points","home_activities","cheer"],
+      additionalProperties:false,
+    },
+    reading_confidence:{ type:"string", enum:["high","medium","low"], description:"필기 판독의 전반적 신뢰도" },
+    caution:{ type:"string", description:"판독이 불확실했던 부분·확인이 필요한 문항 안내. 없으면 빈 문자열" },
+  },
+  required:["task_summary","items","error_patterns","strengths","difficulties","clinical_interpretation","recommendations","parent_brief","reading_confidence","caution"],
+  additionalProperties:false,
+};
+
+const SYSTEM_PROMPT = `당신은 언어치료·특수교육 현장 경험이 풍부한 임상 보조 AI입니다. 아동이 푼 워크시트(학습지) 사진을 보고 문항별로 채점하고, 오류 패턴을 분석해 치료사용 브리핑 자료를 만듭니다.
+
+원칙:
+- 사진에 실제로 보이는 것만 근거로 삼으세요. 문항이나 반응을 지어내지 마세요.
+- 아동 글씨가 흐리거나 잘려서 확신할 수 없으면 추측하지 말고 result를 "unclear"로 표시하세요.
+- 빈칸·건너뜀은 "no_response"입니다. 오반응(wrong)과 구분하세요.
+- 정답 기준이 주어지면 그 기준을 따르고, 기준이 없으면 문항에서 정답을 스스로 판단하되 애매하면 unclear로 두세요.
+- 임상적 해석은 관찰된 수행에 근거한 소견으로 쓰고, "~로 보입니다", "~가능성을 시사합니다"처럼 신중하게 표현하세요. 진단명 단정, 원인 단정은 금지합니다.
+- 보호자용(parent_brief)은 전문용어 없이 따뜻하고 쉬운 한국어로, 아이의 노력을 먼저 인정하는 톤으로 쓰세요.
+- 모든 출력은 한국어입니다.`;
+
+function analyzePromptText(meta, keyDesc){
+  return `첨부한 사진은 아동이 푼 워크시트입니다.${keyDesc}
+
+과제 정보:
+- 영역: ${meta.area}
+- 과제명: ${meta.task || "(미입력 — 사진에서 파악)"}
+- 회기 목표: ${meta.goal || "(미입력)"}
+- 치료사가 기록한 수행 시 특이사항: ${meta.notes || "(없음)"}
+
+해 주세요:
+1) 모든 문항을 순서대로 읽고 아동의 반응을 판독해 문항별로 채점 (items)
+2) 오반응들을 유형별로 묶어 패턴 분석 (error_patterns)
+3) 강점과 난점을 관찰 근거와 함께 정리
+4) 치료사용 임상적 해석과 다음 회기 제안
+5) 보호자에게 보낼 쉬운 설명(parent_brief)
+특이사항에 촉구 제공 등이 적혀 있으면 해석에 반영하세요.`;
+}
+
+async function callClaudeVision(imagesB64, promptText, schema){
+  const { default: Anthropic } = await loadSDK();
+  const client = new Anthropic({
+    apiKey: state.settings.apiKey,
+    dangerouslyAllowBrowser: true, // 개인용 도구: 키는 사용자 본인 브라우저에만 저장됨
+  });
+  const content = [];
+  for(const b64 of imagesB64) content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } });
+  content.push({ type:"text", text: promptText });
+  const response = await client.messages.create({
+    model: state.settings.model || "claude-sonnet-5",
+    max_tokens: 16000,
+    thinking: { type:"adaptive" },
+    system: SYSTEM_PROMPT,
+    output_config: { format: { type:"json_schema", schema } },
+    messages: [{ role:"user", content }],
+  });
+  if(response.stop_reason === "refusal") throw new Error("모델이 이 요청을 거절했습니다. 사진을 확인하고 다시 시도해 주세요.");
+  if(response.stop_reason === "max_tokens") throw new Error("출력이 너무 길어 잘렸습니다. 워크시트를 나눠서 분석해 주세요.");
+  const text = response.content.find(b=>b.type==="text")?.text ?? "";
+  return JSON.parse(text);
+}
+
+async function fileToB64(file, max=1568, quality=0.9){
+  const bitmap = await createImageBitmap(file);
+  const s = Math.min(1, max/Math.max(bitmap.width, bitmap.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(bitmap.width*s));
+  c.height = Math.max(1, Math.round(bitmap.height*s));
+  c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
+  const dataUrl = c.toDataURL("image/jpeg", quality);
+  bitmap.close?.();
+  return { b64:dataUrl.split(",")[1], dataUrl };
+}
+function shrinkDataUrl(dataUrl, max=200, quality=0.6){
+  return new Promise(res=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const s = Math.min(1, max/Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      res(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = ()=>res(null);
+    img.src = dataUrl;
+  });
+}
+
+/* ============================================================
+   탭 전환
+   ============================================================ */
+$$("nav.tabs button").forEach(b=>{
+  b.addEventListener("click", ()=>showView(b.dataset.view));
+});
+function showView(name){
+  $$("nav.tabs button").forEach(b=>b.classList.toggle("on", b.dataset.view===name));
+  $$(".view").forEach(v=>v.classList.remove("on"));
+  $("#view-"+name).classList.add("on");
+  if(name==="records") renderRecords();
+  if(name==="trend") renderTrend();
+  window.scrollTo(0,0);
+}
+function showResultView(){
+  $$("nav.tabs button").forEach(b=>b.classList.remove("on"));
+  $$(".view").forEach(v=>v.classList.remove("on"));
+  $("#view-result").classList.add("on");
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   아동 관리
+   ============================================================ */
+function renderChildSelect(){
+  const sel = $("#childSelect");
+  if(!state.children.length){
+    sel.innerHTML = `<option value="">아동을 먼저 추가해 주세요 →</option>`;
+    return;
+  }
+  sel.innerHTML = state.children.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+}
+$("#btnAddChild").addEventListener("click", ()=>{
+  const name = $("#newChildName").value.trim();
+  if(!name){ toast("아동 이름을 입력해 주세요."); return; }
+  const child = { id:uid(), name, createdAt:Date.now() };
+  state.children.push(child); saveChildren();
+  $("#newChildName").value = "";
+  renderChildSelect();
+  $("#childSelect").value = child.id;
+  toast(`${name} 아동을 추가했어요.`);
+});
+
+/* ============================================================
+   업로드
+   ============================================================ */
+function bindDrop(dropEl, inputEl, handler){
+  dropEl.addEventListener("click", ()=>inputEl.click());
+  dropEl.addEventListener("dragover", e=>{ e.preventDefault(); });
+  dropEl.addEventListener("drop", e=>{ e.preventDefault(); handler([...e.dataTransfer.files].filter(f=>f.type.startsWith("image/"))); });
+  inputEl.addEventListener("change", ()=>{ handler([...inputEl.files]); inputEl.value=""; });
+}
+bindDrop($("#dropWs"), $("#fileWs"), async files=>{
+  for(const f of files){
+    if(state.wsImages.length >= 5){ toast("워크시트 사진은 최대 5장까지예요."); break; }
+    try{
+      const { b64, dataUrl } = await fileToB64(f);
+      state.wsImages.push(b64); state.wsThumbs.push(dataUrl);
+    }catch(e){ toast("이미지를 읽지 못했어요: "+f.name); }
+  }
+  renderWsThumbs();
+});
+function renderWsThumbs(){
+  $("#thumbsWs").innerHTML = state.wsThumbs.map((d,i)=>`
+    <div class="thumb"><img src="${d}"><span class="pageno">${i+1}쪽</span><button class="x" data-i="${i}">✕</button></div>`).join("");
+  $$("#thumbsWs .x").forEach(b=>b.addEventListener("click", e=>{
+    const i = +e.target.dataset.i;
+    state.wsImages.splice(i,1); state.wsThumbs.splice(i,1); renderWsThumbs();
+  }));
+}
+bindDrop($("#dropKey"), $("#fileKey"), async files=>{
+  if(!files.length) return;
+  try{
+    const { b64, dataUrl } = await fileToB64(files[0]);
+    state.keyImage = b64; state.keyImageThumb = dataUrl;
+  }catch(e){ toast("이미지를 읽지 못했어요."); }
+  renderKeyThumb();
+});
+function renderKeyThumb(){
+  $("#thumbsKey").innerHTML = state.keyImageThumb
+    ? `<div class="thumb"><img src="${state.keyImageThumb}"><button class="x" id="delKey">✕</button></div>` : "";
+  $("#delKey")?.addEventListener("click", ()=>{ state.keyImage=null; state.keyImageThumb=null; renderKeyThumb(); });
+}
+$$("#keyModeChips .chip").forEach(c=>c.addEventListener("click", ()=>{
+  state.keyMode = c.dataset.key;
+  $$("#keyModeChips .chip").forEach(x=>x.classList.toggle("on", x===c));
+  $("#keyTextBox").style.display = state.keyMode==="text" ? "block" : "none";
+  $("#keyImageBox").style.display = state.keyMode==="image" ? "block" : "none";
+  $("#keyAutoBox").style.display = state.keyMode==="auto" ? "block" : "none";
+}));
+
+/* ============================================================
+   분석 실행
+   ============================================================ */
+function collectMeta(){
+  return {
+    childId: $("#childSelect").value,
+    date: $("#inDate").value || new Date().toISOString().slice(0,10),
+    area: $("#inArea").value,
+    task: $("#inTask").value.trim(),
+    goal: $("#inGoal").value.trim(),
+    notes: $("#inNotes").value.trim(),
+  };
+}
+function keyDescription(){
+  if(state.keyMode==="text"){
+    const t = $("#keyText").value.trim();
+    return t ? `\n\n정답 기준(치료사 입력):\n${t}` : "\n\n정답 기준: 별도 입력 없음 — 문항에서 정답을 스스로 판단하세요.";
+  }
+  if(state.keyMode==="image" && state.keyImage){
+    return `\n\n**마지막 사진 1장은 정답지(교사용 답안)**입니다. 그 앞의 사진들이 아동이 푼 워크시트입니다. 정답지를 기준으로 채점하세요.`;
+  }
+  return "\n\n정답 기준: 별도 제공 없음 — 워크시트에 인쇄된 문제를 읽고 정답을 스스로 판단하되, 애매하면 unclear로 두세요.";
+}
+function validateInputs(){
+  if(!state.children.length || !$("#childSelect").value){ toast("아동을 먼저 추가·선택해 주세요."); return false; }
+  if(!state.wsImages.length){ toast("워크시트 사진을 올려 주세요."); return false; }
+  if(state.keyMode==="image" && !state.keyImage){ toast("정답지 사진을 올리거나 다른 정답 기준을 선택해 주세요."); return false; }
+  return true;
+}
+
+$("#btnAnalyze").addEventListener("click", async ()=>{
+  if(!validateInputs()) return;
+  const meta = collectMeta();
+  const prompt = analyzePromptText(meta, keyDescription());
+  const images = [...state.wsImages];
+  if(state.keyMode==="image" && state.keyImage) images.push(state.keyImage);
+
+  if(state.settings.mode==="copy" || !state.settings.apiKey){
+    if(state.settings.mode==="api" && !state.settings.apiKey){
+      openSettings(); toast("먼저 Claude API 키를 넣거나, 복사 모드를 선택해 주세요."); return;
+    }
+    openCopyModal(prompt, meta); return;
+  }
+
+  const btn = $("#btnAnalyze");
+  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> 분석 중… (30초~1분 정도 걸려요)`;
+  try{
+    const result = await callClaudeVision(images, prompt, ANALYSIS_SCHEMA);
+    await applyResult(result, meta);
+  }catch(e){
+    console.error(e);
+    toast("분석에 실패했어요: " + (e.message || e), 4200);
+  }finally{
+    btn.disabled = false; btn.innerHTML = "🤖 AI 분석하기";
+  }
+});
+
+/* ---- 복사 모드 ---- */
+let copyMeta = null;
+function openCopyModal(prompt, meta){
+  copyMeta = meta;
+  const attach = state.keyMode==="image" && state.keyImage
+    ? "워크시트 사진들을 먼저, 정답지 사진을 마지막에 첨부하세요."
+    : "워크시트 사진들을 첨부하세요.";
+  $("#copyPrompt").value =
+`${SYSTEM_PROMPT}
+
+${prompt}
+
+(※ ${attach})
+
+아래 JSON 스키마를 정확히 따르는 JSON만 출력하세요. 설명 문장 없이 JSON 하나만:
+${JSON.stringify(ANALYSIS_SCHEMA, null, 1)}`;
+  $("#copyResult").value = "";
+  $("#modalCopy").classList.add("on");
+}
+$("#btnCopyPrompt").addEventListener("click", async ()=>{
+  await navigator.clipboard.writeText($("#copyPrompt").value).catch(()=>{});
+  toast("프롬프트를 복사했어요. claude.ai에 사진과 함께 붙여넣으세요.");
+});
+$("#btnApplyCopy").addEventListener("click", async ()=>{
+  let raw = $("#copyResult").value.trim();
+  if(!raw){ toast("JSON을 붙여넣어 주세요."); return; }
+  raw = raw.replace(/^```(json)?/m,"").replace(/```$/m,"").trim();
+  try{
+    const result = JSON.parse(raw);
+    if(!Array.isArray(result.items) || !result.parent_brief) throw new Error("형식이 달라요");
+    $("#modalCopy").classList.remove("on");
+    await applyResult(result, copyMeta);
+  }catch(e){ toast("JSON을 읽지 못했어요. claude.ai 답변의 JSON 부분만 붙여넣어 주세요.", 4000); }
+});
+
+/* ============================================================
+   결과 세션 생성/저장
+   ============================================================ */
+async function applyResult(result, meta){
+  const thumb = state.wsThumbs[0] ? await shrinkDataUrl(state.wsThumbs[0]) : null;
+  const session = {
+    id: uid(), childId: meta.childId, date: meta.date, area: meta.area,
+    task: meta.task || result.task_summary || "", goal: meta.goal, notes: meta.notes,
+    thumb, result, editsT: null, editsP: null, createdAt: Date.now(),
+  };
+  state.sessions.push(session); saveSessions();
+  state.currentSessionId = session.id;
+  state.briefTab = "T";
+  renderResult();
+  showResultView();
+  toast("분석 완료! 브리핑이 저장됐어요.");
+}
+const curSession = () => state.sessions.find(s=>s.id===state.currentSessionId);
+const childName = id => state.children.find(c=>c.id===id)?.name || "이름 없음";
+
+/* 정반응률 재계산: 판독불가 제외, 무반응은 오답 처리 */
+function computeStats(session){
+  const items = session.result.items || [];
+  const total = items.length;
+  const unclear = items.filter(i=>i.result==="unclear").length;
+  const noResp = items.filter(i=>i.result==="no_response").length;
+  const correct = items.filter(i=>i.result==="correct").length;
+  const scorable = total - unclear;
+  const percent = scorable ? Math.round(correct/scorable*100) : 0;
+  return { total, unclear, noResp, correct, scorable, percent };
+}
+
+/* ============================================================
+   결과 화면 렌더
+   ============================================================ */
+function renderResult(){
+  const s = curSession(); if(!s) return;
+  const st = computeStats(s);
+  $("#resultHead").innerHTML = `
+    <div class="card" style="padding:14px 18px">
+      <b>${esc(childName(s.childId))}</b> · ${esc(fmtDate(s.date))} · <span class="badge gray">${esc(s.area)}</span><br>
+      <span class="hint">${esc(s.task || s.result.task_summary || "")}</span>
+    </div>`;
+  $("#statGrid").innerHTML = `
+    <div class="stat"><div class="v">${st.percent}%</div><div class="k">정반응률 (${st.correct}/${st.scorable})</div></div>
+    <div class="stat"><div class="v neutral">${st.total}</div><div class="k">전체 문항</div></div>
+    <div class="stat"><div class="v neutral">${st.noResp}${st.unclear?` <span style="font-size:14px;color:var(--warn)">+${st.unclear}❓</span>`:""}</div><div class="k">무반응${st.unclear?" · 판독불가":""}</div></div>`;
+  const conf = s.result.reading_confidence;
+  const caution = (s.result.caution||"").trim();
+  $("#cautionBox").innerHTML = (conf==="low" || conf==="medium" || caution)
+    ? `<div class="notice">⚠️ <b>판독 신뢰도 ${conf==="low"?"낮음":conf==="medium"?"보통":"높음"}</b>${caution?` — ${esc(caution)}`:""}<br>문항표에서 실제 답안과 대조해 결과를 확인·수정해 주세요.</div>` : "";
+  renderItemTable();
+  renderBrief();
+}
+
+function renderItemTable(){
+  const s = curSession(); if(!s) return;
+  const rows = (s.result.items||[]).map((it,i)=>`
+    <tr>
+      <td style="white-space:nowrap">${esc(it.no)}</td>
+      <td>${esc(it.question)}</td>
+      <td>${esc(it.expected)}</td>
+      <td><b>${esc(it.response)}</b>${it.note?`<br><span class="hint">${esc(it.note)}</span>`:""}</td>
+      <td><button class="resbtn res-${it.result}" data-i="${i}">${RESULT_LABEL[it.result]}</button></td>
+      <td>${it.result==="wrong"?esc(it.error_type||""):""}</td>
+    </tr>`).join("");
+  $("#itemTable").innerHTML = `
+    <thead><tr><th>번호</th><th>문항</th><th>정답</th><th>아동 반응</th><th>결과</th><th>오류 유형</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+  $$("#itemTable .resbtn").forEach(b=>b.addEventListener("click", ()=>{
+    const s2 = curSession(); const it = s2.result.items[+b.dataset.i];
+    it.result = RESULT_CYCLE[(RESULT_CYCLE.indexOf(it.result)+1) % RESULT_CYCLE.length];
+    if(it.result!=="wrong") it.error_type = it.error_type || "";
+    // 수치가 바뀌므로 브리핑을 원문 기준으로 다시 생성 (수동 편집은 초기화)
+    if(s2.editsT || s2.editsP){ s2.editsT = null; s2.editsP = null; toast("채점이 바뀌어 브리핑을 새 수치로 다시 만들었어요."); }
+    saveSessions(); renderResult();
+  }));
+}
+
+/* ============================================================
+   브리핑 템플릿 (고정)
+   ============================================================ */
+function starRow(percent){
+  const n = Math.round(percent/20); // 0~5
+  return "★".repeat(n) + "☆".repeat(5-n);
+}
+function briefTherapistHTML(s){
+  const r = s.result, st = computeStats(s);
+  const itemRows = (r.items||[]).map(it=>`
+    <tr><td>${esc(it.no)}</td><td>${esc(it.question)}</td><td>${esc(it.expected)}</td><td>${esc(it.response)}</td>
+    <td>${RESULT_LABEL[it.result]}</td><td>${it.result==="wrong"?esc(it.error_type||""):""}</td></tr>`).join("");
+  const errs = (r.error_patterns||[]).map(p=>`
+    <li><b>${esc(p.type)}</b> (${p.count}회) — ${esc(p.description)}${p.examples?.length?`<br><span style="color:var(--tx3);font-size:12.5px">예: ${p.examples.map(esc).join(" / ")}</span>`:""}</li>`).join("");
+  return `
+  <div class="bf-head">
+    <div class="bf-sub">워크시트 분석 결과 브리핑 · 치료사용</div>
+    <div class="bf-title">${esc(s.task || r.task_summary || "워크시트 수행 분석")}</div>
+  </div>
+  <div class="bf-meta">
+    <div><b>아동</b>${esc(childName(s.childId))}</div>
+    <div><b>날짜</b>${esc(fmtDate(s.date))}</div>
+    <div><b>영역</b>${esc(s.area)}</div>
+    <div><b>회기 목표</b>${esc(s.goal || "—")}</div>
+  </div>
+  <div class="bf-sec">
+    <h4>1. 수행 요약</h4>
+    <div class="bf-score"><span class="big">${st.percent}%</span><span>정반응 ${st.correct} / 채점 가능 ${st.scorable}문항 (전체 ${st.total}문항${st.unclear?`, 판독불가 ${st.unclear}`:""}${st.noResp?`, 무반응 ${st.noResp}`:""})</span></div>
+    <div class="bf-bar"><i style="width:${st.percent}%"></i></div>
+    <p>${esc(r.task_summary||"")}</p>
+    ${s.notes?`<p><b>수행 시 특이사항:</b> ${esc(s.notes)}</p>`:""}
+  </div>
+  <div class="bf-sec">
+    <h4>2. 문항별 반응</h4>
+    <table class="bf-table">
+      <tr><th>번호</th><th>문항</th><th>정답</th><th>아동 반응</th><th>결과</th><th>오류 유형</th></tr>
+      ${itemRows}
+    </table>
+  </div>
+  <div class="bf-sec">
+    <h4>3. 오반응 패턴 분석</h4>
+    ${errs ? `<ul>${errs}</ul>` : "<p>뚜렷한 오류 패턴이 관찰되지 않았습니다.</p>"}
+  </div>
+  <div class="bf-sec">
+    <h4>4. 강점 / 난점</h4>
+    <div class="bf-2col">
+      <div class="bf-box good"><h5>💪 강점</h5><ul>${(r.strengths||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
+      <div class="bf-box hard"><h5>🧗 난점</h5><ul>${(r.difficulties||[]).length?(r.difficulties||[]).map(x=>`<li>${esc(x)}</li>`).join(""):"<li>특기할 난점 없음</li>"}</ul></div>
+    </div>
+  </div>
+  <div class="bf-sec">
+    <h4>5. 임상적 해석</h4>
+    <p>${esc(r.clinical_interpretation||"")}</p>
+  </div>
+  <div class="bf-sec">
+    <h4>6. 권고 및 다음 회기 제안</h4>
+    <ul>${(r.recommendations||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  </div>
+  <div class="bf-foot">본 브리핑은 AI 분석 참고자료로, 치료사의 임상적 판단을 대체하지 않습니다. · 워크시트 브리핑</div>`;
+}
+function briefParentHTML(s){
+  const r = s.result, p = r.parent_brief || {}, st = computeStats(s);
+  return `
+  <div class="bf-head">
+    <div class="bf-sub">오늘의 학습 이야기 · 보호자용</div>
+    <div class="bf-title">${esc(childName(s.childId))} 어린이의 ${esc(fmtDate(s.date))} 활동</div>
+  </div>
+  <div class="bf-sec">
+    <h4>📖 오늘은 이런 활동을 했어요</h4>
+    <p>${esc(p.today_did||"")}</p>
+    <p style="margin-top:6px">스스로 해낸 문제: <b>${st.scorable}문제 중 ${st.correct}문제</b> <span class="bf-stars">${starRow(st.percent)}</span></p>
+  </div>
+  <div class="bf-sec">
+    <h4>🌟 이렇게 잘했어요</h4>
+    <ul>${(p.well_done||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  </div>
+  <div class="bf-sec">
+    <h4>🌱 함께 연습하면 좋아요</h4>
+    <ul>${(p.practice_points||[]).length?(p.practice_points||[]).map(x=>`<li>${esc(x)}</li>`).join(""):"<li>지금처럼 꾸준히만 하면 충분해요!</li>"}</ul>
+  </div>
+  <div class="bf-sec">
+    <h4>🏠 집에서 이렇게 해보세요 <span style="font-weight:400;color:var(--tx3);font-size:12px">(하루 5~10분이면 충분해요)</span></h4>
+    <ul>${(p.home_activities||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  </div>
+  <div class="bf-cheer">💌 ${esc(p.cheer||"오늘도 잘 해냈어요. 다음 시간에도 즐겁게 만나요!")}</div>
+  <div class="bf-foot">이 안내는 학습 참고자료입니다. 궁금한 점은 담당 치료사(교사)에게 편하게 물어봐 주세요. · 워크시트 브리핑</div>`;
+}
+
+function renderBrief(){
+  const s = curSession(); if(!s) return;
+  $("#tabT").classList.toggle("on", state.briefTab==="T");
+  $("#tabP").classList.toggle("on", state.briefTab==="P");
+  const edited = state.briefTab==="T" ? s.editsT : s.editsP;
+  $("#briefBody").innerHTML = edited ?? (state.briefTab==="T" ? briefTherapistHTML(s) : briefParentHTML(s));
+}
+$("#tabT").addEventListener("click", ()=>{ state.briefTab="T"; renderBrief(); });
+$("#tabP").addEventListener("click", ()=>{ state.briefTab="P"; renderBrief(); });
+
+/* 브리핑 수동 편집 자동 저장 (디바운스) */
+let editTimer = null;
+$("#briefBody").addEventListener("input", ()=>{
+  clearTimeout(editTimer);
+  editTimer = setTimeout(()=>{
+    const s = curSession(); if(!s) return;
+    if(state.briefTab==="T") s.editsT = $("#briefBody").innerHTML;
+    else s.editsP = $("#briefBody").innerHTML;
+    saveSessions();
+  }, 600);
+});
+$("#btnResetBrief").addEventListener("click", ()=>{
+  const s = curSession(); if(!s) return;
+  if(state.briefTab==="T") s.editsT = null; else s.editsP = null;
+  saveSessions(); renderBrief(); toast("원문 브리핑으로 되돌렸어요.");
+});
+
+/* ---- 인쇄 / 복사 ---- */
+$("#btnPrint").addEventListener("click", ()=>{
+  $("#printArea").innerHTML = `<div class="briefpaper">${$("#briefBody").innerHTML}</div>`;
+  document.body.classList.add("printing");
+  window.print();
+  setTimeout(()=>{ document.body.classList.remove("printing"); $("#printArea").innerHTML=""; }, 400);
+});
+$("#btnCopyText").addEventListener("click", async ()=>{
+  await navigator.clipboard.writeText($("#briefBody").innerText).catch(()=>{});
+  toast("브리핑 텍스트를 복사했어요. 알림장·메신저에 붙여넣으세요.");
+});
+$("#btnBackToAnalyze").addEventListener("click", ()=>showView("analyze"));
+
+/* ============================================================
+   기록
+   ============================================================ */
+function renderRecords(){
+  // 아동 목록
+  $("#childList").innerHTML = state.children.length ? state.children.map(c=>{
+    const n = state.sessions.filter(s=>s.childId===c.id).length;
+    return `<div class="childrow">
+      <div><span class="nm">${esc(c.name)}</span> <span class="ct">세션 ${n}회</span></div>
+      <button class="btn sm danger" data-del="${c.id}">삭제</button>
+    </div>`;
+  }).join("") : `<p class="hint">아직 아동이 없어요. 분석하기 탭에서 추가해 주세요.</p>`;
+  $$("#childList [data-del]").forEach(b=>b.addEventListener("click", ()=>{
+    const c = state.children.find(x=>x.id===b.dataset.del);
+    if(!confirm(`${c.name} 아동과 모든 세션 기록을 삭제할까요? 되돌릴 수 없어요.`)) return;
+    state.children = state.children.filter(x=>x.id!==c.id);
+    state.sessions = state.sessions.filter(s=>s.childId!==c.id);
+    if(state.recChildId===c.id) state.recChildId=null;
+    saveChildren(); saveSessions(); renderRecords();
+  }));
+
+  // 아동 필터 칩
+  if(!state.recChildId && state.children.length) state.recChildId = state.children[0].id;
+  $("#recChildChips").innerHTML = state.children.map(c=>
+    `<button class="chip ${c.id===state.recChildId?"on":""}" data-c="${c.id}">${esc(c.name)}</button>`).join("");
+  $$("#recChildChips .chip").forEach(b=>b.addEventListener("click", ()=>{ state.recChildId=b.dataset.c; renderRecords(); }));
+
+  // 세션 카드
+  const list = state.sessions.filter(s=>s.childId===state.recChildId).sort((a,b)=>b.date.localeCompare(a.date) || b.createdAt-a.createdAt);
+  $("#sessList").innerHTML = list.length ? list.map(s=>{
+    const st = computeStats(s);
+    return `<div class="sesscard">
+      ${s.thumb?`<img src="${s.thumb}">`:`<div class="noimg">📄</div>`}
+      <div class="info">
+        <div class="t1">${esc(s.task || s.result.task_summary || "워크시트")}</div>
+        <div class="t2">${esc(fmtDate(s.date))} · ${esc(s.area)} · ${st.correct}/${st.scorable}문항</div>
+      </div>
+      <div class="pct">${st.percent}%</div>
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <button class="btn sm" data-open="${s.id}">열기</button>
+        <button class="btn sm danger" data-delsess="${s.id}">삭제</button>
+      </div>
+    </div>`;
+  }).join("") : `<p class="hint">이 아동의 세션 기록이 아직 없어요.</p>`;
+  $$("#sessList [data-open]").forEach(b=>b.addEventListener("click", ()=>{
+    state.currentSessionId = b.dataset.open; state.briefTab="T";
+    renderResult(); showResultView();
+  }));
+  $$("#sessList [data-delsess]").forEach(b=>b.addEventListener("click", ()=>{
+    if(!confirm("이 세션 기록을 삭제할까요?")) return;
+    state.sessions = state.sessions.filter(s=>s.id!==b.dataset.delsess);
+    saveSessions(); renderRecords();
+  }));
+}
+
+/* ---- CSV ---- */
+$("#btnCsv").addEventListener("click", ()=>{
+  if(!state.sessions.length){ toast("내보낼 기록이 없어요."); return; }
+  const rows = [["아동","날짜","영역","과제","정반응","채점가능","전체문항","무반응","판독불가","정반응률(%)","오류유형"]];
+  for(const s of [...state.sessions].sort((a,b)=>a.date.localeCompare(b.date))){
+    const st = computeStats(s);
+    const errs = (s.result.error_patterns||[]).map(p=>`${p.type}(${p.count})`).join("; ");
+    rows.push([childName(s.childId), s.date, s.area, s.task||s.result.task_summary||"", st.correct, st.scorable, st.total, st.noResp, st.unclear, st.percent, errs]);
+  }
+  const csv = "﻿" + rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  a.download = `워크시트브리핑_기록_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ============================================================
+   추이 (SVG 차트, 라이브러리 없음)
+   ============================================================ */
+function renderTrend(){
+  if(!state.trChildId && state.children.length) state.trChildId = state.children[0].id;
+  $("#trChildChips").innerHTML = state.children.map(c=>
+    `<button class="chip ${c.id===state.trChildId?"on":""}" data-c="${c.id}">${esc(c.name)}</button>`).join("") || `<p class="hint">아동이 없어요.</p>`;
+  $$("#trChildChips .chip").forEach(b=>b.addEventListener("click", ()=>{ state.trChildId=b.dataset.c; state.trArea="전체"; renderTrend(); }));
+
+  const childSess = state.sessions.filter(s=>s.childId===state.trChildId);
+  const areas = ["전체", ...new Set(childSess.map(s=>s.area))];
+  if(!areas.includes(state.trArea)) state.trArea = "전체";
+  $("#trAreaChips").innerHTML = areas.map(a=>
+    `<button class="chip ${a===state.trArea?"on":""}" data-a="${a}">${esc(a)}</button>`).join("");
+  $$("#trAreaChips .chip").forEach(b=>b.addEventListener("click", ()=>{ state.trArea=b.dataset.a; renderTrend(); }));
+
+  const list = childSess.filter(s=>state.trArea==="전체" || s.area===state.trArea)
+    .sort((a,b)=>a.date.localeCompare(b.date) || a.createdAt-b.createdAt);
+
+  $("#lineChart").innerHTML = list.length ? lineChartSVG(list) : `<p class="hint">아직 표시할 세션이 없어요. 분석을 진행하면 여기에 변화가 쌓여요.</p>`;
+  $("#barChart").innerHTML = errorBarSVG(list);
+  renderTrendSummary(list);
+}
+
+function lineChartSVG(list){
+  const W=720, H=260, padL=42, padR=16, padT=18, padB=44;
+  const iw = W-padL-padR, ih = H-padT-padB;
+  const n = list.length;
+  const x = i => padL + (n===1 ? iw/2 : i/(n-1)*iw);
+  const y = p => padT + (1-p/100)*ih;
+  const pts = list.map((s,i)=>({ x:x(i), y:y(computeStats(s).percent), p:computeStats(s).percent, d:s.date }));
+  const grid = [0,25,50,75,100].map(v=>
+    `<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="#eceae2"/>
+     <text x="${padL-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#8b98a0">${v}</text>`).join("");
+  const line = pts.length>1 ? `<polyline points="${pts.map(p=>`${p.x},${p.y}`).join(" ")}" fill="none" stroke="#1f8a7d" stroke-width="2.5" stroke-linejoin="round"/>` : "";
+  const dots = pts.map(p=>`
+    <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#1f8a7d"/>
+    <text x="${p.x}" y="${p.y-10}" text-anchor="middle" font-size="11" font-weight="700" fill="#0f6c61">${p.p}%</text>
+    <text x="${p.x}" y="${H-padB+16}" text-anchor="middle" font-size="10" fill="#8b98a0">${p.d.slice(5).replace("-","/")}</text>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="정반응률 변화 추이">${grid}${line}${dots}</svg>`;
+}
+
+function errorBarSVG(list){
+  const agg = {};
+  for(const s of list) for(const p of (s.result.error_patterns||[])) agg[p.type] = (agg[p.type]||0) + (p.count||0);
+  const entries = Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if(!entries.length) return `<p class="hint">누적된 오류 데이터가 없어요.</p>`;
+  const W=720, rowH=34, padL=150, padR=44, H=entries.length*rowH+10;
+  const max = entries[0][1];
+  const bars = entries.map(([k,v],i)=>{
+    const bw = Math.max(4, (W-padL-padR)*(v/max));
+    const yy = 8+i*rowH;
+    return `<text x="${padL-10}" y="${yy+17}" text-anchor="end" font-size="12" fill="#54646e">${esc(k)}</text>
+      <rect x="${padL}" y="${yy}" width="${bw}" height="22" rx="6" fill="#1f8a7d" opacity="${0.55+0.45*(v/max)}"/>
+      <text x="${padL+bw+8}" y="${yy+16}" font-size="12" font-weight="700" fill="#0f6c61">${v}회</text>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="오류 유형 분포">${bars}</svg>`;
+}
+
+function renderTrendSummary(list){
+  const box = $("#trendSummary");
+  if(list.length < 2){ box.style.display="none"; return; }
+  const first = computeStats(list[0]).percent, last = computeStats(list[list.length-1]).percent;
+  const diff = last-first;
+  const best = Math.max(...list.map(s=>computeStats(s).percent));
+  let msg = `첫 세션 ${first}% → 최근 세션 ${last}%`;
+  if(diff>0) msg += ` (▲${diff}%p 상승)`;
+  else if(diff<0) msg += ` (▼${Math.abs(diff)}%p — 과제 난이도나 컨디션 변화를 함께 살펴보세요)`;
+  else msg += " (유지)";
+  msg += ` · 총 ${list.length}회 세션 · 최고 ${best}%`;
+  box.style.display="block"; box.innerHTML = "🔎 " + msg;
+}
+
+/* ============================================================
+   설정 모달
+   ============================================================ */
+function openSettings(){
+  $("#setMode").value = state.settings.mode;
+  $("#setApiKey").value = state.settings.apiKey;
+  $("#setModel").value = state.settings.model;
+  syncSettingsFields();
+  $("#modalSettings").classList.add("on");
+}
+function syncSettingsFields(){
+  const api = $("#setMode").value === "api";
+  $("#apiKeyField").style.display = api ? "block" : "none";
+  $("#modelField").style.display = api ? "block" : "none";
+}
+$("#setMode").addEventListener("change", syncSettingsFields);
+$("#btnSettings").addEventListener("click", openSettings);
+$("#btnSaveSettings").addEventListener("click", ()=>{
+  state.settings.mode = $("#setMode").value;
+  state.settings.apiKey = $("#setApiKey").value.trim();
+  state.settings.model = $("#setModel").value;
+  saveSettings();
+  $("#modalSettings").classList.remove("on");
+  toast("설정을 저장했어요.");
+});
+$$("[data-close]").forEach(b=>b.addEventListener("click", e=>e.target.closest(".modal").classList.remove("on")));
+$$(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("on"); }));
+
+/* ============================================================
+   초기화
+   ============================================================ */
+loadAll();
+renderChildSelect();
+$("#inDate").value = new Date().toISOString().slice(0,10);
+if(state.settings.mode==="api" && !state.settings.apiKey && !state.children.length){
+  // 첫 방문 안내
+  setTimeout(()=>toast("⚙️ 설정에서 Claude API 키를 넣거나, 키 없이 복사 모드를 선택할 수 있어요.", 4200), 800);
+}
+</script>
+</body>
+</html>
