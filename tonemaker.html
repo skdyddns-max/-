@@ -124,9 +124,18 @@ header .sp{flex:1;}
 }
 .tabs{display:flex; border-bottom:1px solid var(--line);}
 .tabs button{
-  flex:1; padding:11px 4px; font-size:12.5px; font-weight:700; color:var(--tx3);
-  border-bottom:2px solid transparent;
+  flex:1; padding:11px 2px; font-size:11.5px; font-weight:700; color:var(--tx3);
+  border-bottom:2px solid transparent; white-space:nowrap;
 }
+.rtbtn{
+  display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+  background:var(--bg3); border:1px solid var(--line); border-radius:var(--r-s); padding:11px 13px;
+}
+.rtbtn:hover{border-color:var(--accent-dk);}
+.rtbtn:disabled{opacity:.5;}
+.rtbtn .ic{font-size:20px;}
+.rtbtn .tx b{display:block; font-size:13px;}
+.rtbtn .tx small{color:var(--tx3); font-size:11.5px; line-height:1.4; display:block;}
 .tabs button.on{color:var(--accent2); border-bottom-color:var(--accent);}
 .tabbody{flex:1; overflow-y:auto; padding:14px; min-height:0;}
 .sec{margin-bottom:18px;}
@@ -387,6 +396,7 @@ details.adv .inner{padding-bottom:12px;}
       <div class="tabs">
         <button data-tab="tone" class="on">✨ 자동 톤</button>
         <button data-tab="tune">🎛 다듬기</button>
+        <button data-tab="retouch">🪄 리터치</button>
         <button data-tab="chat">💬 대화</button>
         <button data-tab="export">📦 내보내기</button>
       </div>
@@ -469,6 +479,30 @@ details.adv .inner{padding-bottom:12px;}
           </div>
         </div>
 
+        <!-- 생성형 리터치 -->
+        <div class="tab" id="tab-retouch" hidden>
+          <div class="sec">
+            <h3>🪄 생성형 리터치 <span class="spinner" id="retouchBusy" style="display:none;"></span></h3>
+            <p class="note" style="margin-bottom:10px;">AI가 사진의 픽셀을 직접 다시 그려서 고칩니다. 결과 위에 톤 보정이 그대로 얹히고, 언제든 되돌릴 수 있어요.</p>
+            <div class="plist" id="retouchPresets"></div>
+          </div>
+          <div class="sec">
+            <h3>✏ 직접 지시</h3>
+            <div class="chatin">
+              <textarea id="retouchText" placeholder='예: "오른쪽 위 전선을 지워줘", "테이블 위 컵 치워줘"'></textarea>
+              <button id="btnRetouchGo">🪄</button>
+            </div>
+          </div>
+          <div class="sec">
+            <button class="aibtn sub" id="btnRetouchUndo" style="display:none;">↺ 리터치 한 단계 되돌리기</button>
+          </div>
+          <div class="sec">
+            <p class="note">· 엔진: Gemini 이미지 편집 (⚙설정에서 <b>Gemini API 키</b> 필요 — aistudio.google.com 무료 발급)<br>
+            · 리터치 시 사진이 AI 서버로 전송되고, 결과 해상도는 최대 약 1280px로 제한될 수 있어요.<br>
+            · 구도(크롭)를 바꾸면 리터치는 초기화됩니다.</p>
+          </div>
+        </div>
+
         <!-- 대화 -->
         <div class="tab" id="tab-chat" hidden>
           <div class="sec">
@@ -543,7 +577,11 @@ details.adv .inner{padding-bottom:12px;}
         <option value="claude-opus-4-8">Claude Opus 4.8 — 가장 정밀</option>
       </select>
     </div>
-    <p class="note">사진은 AI 분석을 누를 때만 축소본(최대 1024px)으로 전송됩니다. 복사 모드에서는 아무것도 전송되지 않아요.</p>
+    <div class="field">
+      <label>Gemini API 키 <span style="font-weight:400;color:var(--tx3)">(🪄 생성형 리터치용 — aistudio.google.com에서 무료 발급)</span></label>
+      <input type="password" id="setGeminiKey" placeholder="AIza...">
+    </div>
+    <p class="note">사진은 AI 분석·리터치를 누를 때만 축소본으로 전송됩니다. 복사 모드에서는 아무것도 전송되지 않아요. 모든 키는 내 브라우저에만 저장됩니다.</p>
     <div style="margin-top:16px;"><button class="aibtn" id="btnSaveSettings">저장</button></div>
   </div>
 </div>
@@ -579,6 +617,7 @@ details.adv .inner{padding-bottom:12px;}
       <p style="margin-bottom:10px;"><b style="color:var(--tx)">5. 레퍼런스 톤 매칭</b> — 따라하고 싶은 감성 사진을 올리면 그 톤을 내 사진에 입혀요. (⚡빠른 매칭은 내 기기에서, 🤖AI 정밀 매칭은 색 물들임·필름 질감까지)</p>
       <p style="margin-bottom:10px;"><b style="color:var(--tx)">6. AI 구도 제안</b> — AI가 3분할·수평·주제 강조 관점으로 크롭을 제안해요. 원본 구도로 언제든 복귀.</p>
       <p style="margin-bottom:10px;"><b style="color:var(--tx)">7. 부분 보정</b> — 다듬기 탭에서 ◯지점(사진 탭해서 위치 지정)·▽하늘·☀밝은 곳 등을 골라 그 부분만 밝기·채도·온도를 조정. "영역 바깥에 적용"을 켜면 배경만 어둡게도 가능해요.</p>
+      <p style="margin-bottom:10px;"><b style="color:var(--tx)">🪄 생성형 리터치</b> — 잡티 클린·배경 흐림·방해물 제거·화질 개선, 또는 "전선 지워줘" 같은 직접 지시로 AI가 픽셀을 다시 그려요. Gemini API 키(무료)가 필요하고, 언제든 한 단계씩 되돌릴 수 있어요.</p>
       <p style="margin-bottom:10px;"><b style="color:var(--tx)">8. 일괄 적용</b> — 마음에 든 톤을 ⭐프리셋으로 저장하고, 전체 사진에 한 번에 입혀서 저장하세요.</p>
       <p style="color:var(--tx3)">원본은 절대 건드리지 않아요. 언제든 ↺ 원본으로 되돌릴 수 있습니다.</p>
     </div>
@@ -599,7 +638,7 @@ const LS_PRE = "tonemaker_presets_v1";
 const state = {
   photos: [],          // {id, name, bitmap, thumbUrl, recipe, stats, candidates, aiResult}
   currentId: null,
-  settings: { mode: "api", apiKey: "", model: "claude-sonnet-5" },
+  settings: { mode: "api", apiKey: "", model: "claude-sonnet-5", geminiKey: "" },
   userPresets: [],     // {id, name, recipe}
   chat: [],            // {role:"me"|"ai", text}
   compare: false,
@@ -1225,10 +1264,18 @@ let thumbEngine = null;   // 후보 썸네일용 (긴 변 320 제한)
 let renderQueued = false;
 
 function currentPhoto(){ return state.photos.find(p=>p.id===state.currentId) || null; }
-function srcBitmap(p){ return p.cropBitmap || p.bitmap; }
+/* 소스 체인: 원본 → (크롭) → (생성형 리터치 스택) — 모두 비파괴 */
+function srcBitmap(p){
+  if(p.retouchStack?.length) return p.retouchStack[p.retouchStack.length-1];
+  return p.cropBitmap || p.bitmap;
+}
 
 /* 크롭 적용/해제 — 원본 비트맵은 절대 건드리지 않음 */
 async function setCrop(p, s){
+  if(p.retouchStack?.length){
+    p.retouchStack = [];
+    toast("구도가 바뀌어 생성형 리터치를 초기화했어요. 필요하면 다시 리터치해 주세요.");
+  }
   if(!s){ p.crop = null; p.cropBitmap = null; }
   else{
     const W = p.bitmap.width, H = p.bitmap.height;
@@ -1347,6 +1394,7 @@ function selectPhoto(id){
   syncKnobs();
   renderMaskUI();
   renderSnowItems();
+  renderRetouchUI();
 }
 
 function removePhoto(id){
@@ -1764,6 +1812,139 @@ async function refAIMatch(){
 }
 
 /* ============================================================
+   🪄 생성형 리터치 (Gemini 이미지 편집 — 픽셀을 새로 그림)
+   ============================================================ */
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const RETOUCH_PRESETS = [
+  { id:"blemish", ic:"✨", nm:"잡티 클린", desc:"여드름·잡티·일시적 트러블만 제거 (피부 결·이목구비는 그대로)",
+    prompt:"Retouch this photo: remove skin blemishes, pimples, acne marks and temporary spots from the person's skin. Preserve natural skin texture and pores. Do not change face shape, identity, expression, hair, lighting, colors, background or composition — output the same photo, just cleaned." },
+  { id:"bokeh", ic:"🌫", nm:"배경 흐림", desc:"주인공은 선명하게, 배경만 인물 렌즈처럼 부드럽게",
+    prompt:"Apply a realistic shallow depth-of-field to this photo: keep the main subject perfectly sharp and blur the background smoothly, like an 85mm f/1.8 portrait lens. Do not change the subject, colors, lighting or composition." },
+  { id:"clean", ic:"🧹", nm:"방해물 제거", desc:"전선·쓰레기·배경 행인 같은 방해 요소를 자연스럽게 지움",
+    prompt:"Remove distracting elements from this photo: power lines, trash, clutter and photobombing passersby in the background. Fill the removed areas naturally. Keep the main subject and overall scene exactly the same." },
+  { id:"enhance", ic:"🔍", nm:"화질 개선", desc:"노이즈·압축 자국·살짝 흔들린 디테일을 복원",
+    prompt:"Enhance the quality of this photo: increase sharpness and fine detail, reduce noise, JPEG artifacts and slight blur. Do not change the content, colors, framing or identity." },
+];
+async function callGeminiRetouch(bitmap, instruction){
+  // 입력 이미지 (최대 1280px)
+  const s = Math.min(1, 1280/Math.max(bitmap.width, bitmap.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(bitmap.width*s));
+  c.height = Math.max(1, Math.round(bitmap.height*s));
+  c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
+  const b64 = c.toDataURL("image/jpeg", 0.92).split(",")[1];
+  const res = await fetch(`${GEMINI_BASE}/models/gemini-2.5-flash-image:generateContent`, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "x-goog-api-key": state.settings.geminiKey },
+    body: JSON.stringify({
+      contents:[{ parts:[
+        { inlineData:{ mimeType:"image/jpeg", data:b64 } },
+        { text: instruction + " No text, no captions, no watermark. Keep the exact same aspect ratio and framing." },
+      ]}],
+      generationConfig:{ responseModalities:["TEXT","IMAGE"] },
+    }),
+  });
+  if(!res.ok){
+    let msg = res.status + " " + res.statusText;
+    try{ const e = await res.json(); msg = e?.error?.message || msg; }catch(_){}
+    if(res.status === 400 || res.status === 403) msg += " — 설정의 Gemini API 키를 확인해 주세요.";
+    if(res.status === 429) msg = "요청이 너무 잦아요(무료 등급 한도). 잠시 후 다시 시도해 주세요.";
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const part = (data.candidates?.[0]?.content?.parts || []).find(p=>p.inlineData?.mimeType?.startsWith("image/"));
+  if(!part){
+    const r = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || "";
+    throw new Error("응답에 이미지가 없습니다" + (r ? " ("+r+")" : "") + ". 다시 시도해 주세요.");
+  }
+  const bin = atob(part.inlineData.data);
+  const arr = new Uint8Array(bin.length);
+  for(let i=0; i<bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return createImageBitmap(new Blob([arr], { type: part.inlineData.mimeType }));
+}
+/* 소스가 바뀐 뒤 파생 데이터(비교 원본·통계·후보·썸네일) 갱신 */
+function refreshPhotoDerived(p, keepOrig){
+  if(!keepOrig) p.origUrl = null;
+  p.stats = computeStats(srcBitmap(p));
+  p.candidates = null;
+  const bm = srcBitmap(p);
+  const tc = document.createElement("canvas");
+  const ts = Math.min(1, 120/Math.max(bm.width, bm.height));
+  tc.width = Math.max(1, Math.round(bm.width*ts));
+  tc.height = Math.max(1, Math.round(bm.height*ts));
+  tc.getContext("2d").drawImage(bm, 0, 0, tc.width, tc.height);
+  p.thumbUrl = tc.toDataURL("image/jpeg", 0.8);
+  if(p.id === state.currentId) selectPhoto(p.id);
+  else renderStrip();
+}
+let retouchBusy = false;
+async function applyRetouch(instruction, label){
+  const p = currentPhoto(); if(!p || retouchBusy) return;
+  if(!state.settings.geminiKey){
+    openSettings();
+    toast("생성형 리터치에는 Gemini API 키가 필요해요. aistudio.google.com에서 무료 발급!", 4200);
+    return;
+  }
+  retouchBusy = true;
+  renderRetouchUI();
+  toast(`🪄 ${label} 작업 중... (수 초~수십 초 걸려요)`, 6000);
+  try{
+    const before = srcBitmap(p);
+    const result = await callGeminiRetouch(before, instruction);
+    // 비교 슬라이더의 "원본"을 리터치 직전 모습으로 → 효과를 바로 비교
+    const oc = document.createElement("canvas");
+    const os = Math.min(1, 1920/Math.max(before.width, before.height));
+    oc.width = Math.max(1, Math.round(before.width*os));
+    oc.height = Math.max(1, Math.round(before.height*os));
+    oc.getContext("2d").drawImage(before, 0, 0, oc.width, oc.height);
+    p.origUrl = oc.toDataURL("image/jpeg", 0.85);
+    if(!p.retouchStack) p.retouchStack = [];
+    p.retouchStack.push(result);
+    if(p.retouchStack.length > 5) p.retouchStack.shift(); // 메모리 보호
+    refreshPhotoDerived(p, true);
+    toast(`🪄 ${label} 완료! 원본 보기(꾹)로 전후를 비교해 보세요. 마음에 안 들면 리터치 되돌리기.`, 4500);
+  }catch(e){
+    console.error(e);
+    toast("리터치 실패: " + (e?.message || e), 5000);
+  }finally{
+    retouchBusy = false;
+    renderRetouchUI();
+  }
+}
+function undoRetouch(){
+  const p = currentPhoto();
+  if(!p || !p.retouchStack?.length) return;
+  p.retouchStack.pop();
+  refreshPhotoDerived(p, false);
+  toast("↺ 리터치를 한 단계 되돌렸어요.");
+}
+function runCustomRetouch(text){
+  const t = (text || "").trim();
+  if(!t){ toast("어떻게 고칠지 적어 주세요. 예: \"왼쪽 아래 컵을 지워줘\""); return; }
+  applyRetouch(`Edit this photo as instructed: "${t}". Apply only this change and keep everything else — subject, identity, colors, lighting, framing — exactly the same.`, "직접 지시");
+}
+function renderRetouchPresets(){
+  const box = $("#retouchPresets");
+  box.innerHTML = "";
+  for(const r of RETOUCH_PRESETS){
+    const b = document.createElement("button");
+    b.className = "rtbtn";
+    b.innerHTML = `<span class="ic">${r.ic}</span><span class="tx"><b>${esc(r.nm)}</b><small>${esc(r.desc)}</small></span>`;
+    b.onclick = () => applyRetouch(r.prompt, r.nm);
+    box.appendChild(b);
+  }
+}
+function renderRetouchUI(){
+  const p = currentPhoto();
+  const undoBtns = $$("#btnRetouchUndo, [data-k='retouch_undo']");
+  undoBtns.forEach(b => b.style.display = p?.retouchStack?.length ? "" : "none");
+  $$("#retouchPresets .rtbtn").forEach(b => b.disabled = retouchBusy);
+  const badge = $("#retouchBusy");
+  if(badge) badge.style.display = retouchBusy ? "inline-flex" : "none";
+  if(state.snowCat === "retouch") renderSnowItems();
+}
+
+/* ============================================================
    ✂ AI 구도 제안
    ============================================================ */
 async function runCropAI(){
@@ -2060,6 +2241,7 @@ const SNOW_CATS = [
   { id:"auto",   ic:"✨", nm:"자동톤" },
   { id:"adjust", ic:"🎛", nm:"조절" },
   { id:"skin",   ic:"🧑", nm:"피부" },
+  { id:"retouch",ic:"🪄", nm:"리터치" },
   { id:"mood",   ic:"🎨", nm:"무드" },
   { id:"mask",   ic:"🎯", nm:"부분" },
   { id:"ref",    ic:"🖼", nm:"참고" },
@@ -2211,6 +2393,16 @@ function renderSnowItems(){
         } }));
       });
     }
+  } else if(cat === "retouch"){
+    if(retouchBusy){
+      box.appendChild(snowChip("⏳ 리터치 작업 중..."));
+    }else{
+      for(const r of RETOUCH_PRESETS){
+        box.appendChild(snowChip(`${r.ic} ${r.nm}`, { onclick: () => applyRetouch(r.prompt, r.nm) }));
+      }
+      box.appendChild(snowChip("✏ 직접 지시", { onclick: () => openSheet("retouch") }));
+      if(p?.retouchStack?.length) box.appendChild(snowChip("↺ 되돌리기", { set:true, onclick: undoRetouch }));
+    }
   } else if(cat === "ref"){
     box.appendChild(snowChip(state.refBitmap ? "🖼 참고 사진 변경" : "🖼 참고 사진 올리기", { onclick: () => $("#refInput").click() }));
     box.appendChild(snowChip("⚡ 빠른 매칭", { onclick: () => state.refBitmap ? (refQuickMatch(), renderSnowItems()) : toast("먼저 참고 사진을 올려 주세요.") }));
@@ -2246,6 +2438,7 @@ function openSettings(){
   $("#setMode").value = state.settings.mode;
   $("#setApiKey").value = state.settings.apiKey;
   $("#setModel").value = state.settings.model;
+  $("#setGeminiKey").value = state.settings.geminiKey || "";
   $("#settingsModal").classList.add("on");
 }
 
@@ -2257,6 +2450,11 @@ function init(){
   renderPresetList();
   initCompareDrag();
   renderSnowCats();
+  renderRetouchPresets();
+
+  // 🪄 생성형 리터치
+  $("#btnRetouchGo").onclick = () => { runCustomRetouch($("#retouchText").value); $("#retouchText").value = ""; };
+  $("#btnRetouchUndo").onclick = undoRetouch;
 
   // SNOW 하단 바 슬라이더
   $("#snowRange").addEventListener("input", () => {
@@ -2416,6 +2614,7 @@ function init(){
     state.settings.mode = $("#setMode").value;
     state.settings.apiKey = $("#setApiKey").value.trim();
     state.settings.model = $("#setModel").value;
+    state.settings.geminiKey = $("#setGeminiKey").value.trim();
     saveSettings();
     $("#settingsModal").classList.remove("on");
     toast("설정을 저장했어요.");
