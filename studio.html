@@ -178,6 +178,25 @@
   a { color: var(--rose-deep); text-decoration-color: rgba(165,98,95,.35); text-underline-offset: 2px; }
   footer { text-align: center; font-size: 12px; color: var(--sub); padding: 24px 16px 30px; line-height: 1.8; }
 
+  /* ---------- 마음 읽기 카드 ---------- */
+  .mind-card {
+    border: 1.5px solid var(--line); border-radius: 14px; padding: 15px 16px;
+    margin-bottom: 12px; background: #FFFDFB; cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .mind-card:hover { border-color: var(--rose); box-shadow: var(--shadow-sm); }
+  .mind-card .situation { font-size: 13px; color: var(--sub); }
+  .mind-card .surface { font-size: 15.5px; font-weight: 700; margin: 6px 0; }
+  .mind-card .cue { font-size: 12.5px; color: var(--sage-deep); }
+  .mind-card .inner-box {
+    margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+    background: var(--rose-soft); border: 1px dashed var(--rose); display: none;
+  }
+  .mind-card.open .inner-box { display: block; animation: rise .18s ease-out; }
+  .mind-card .inner-box b { color: var(--rose-deep); }
+  .mind-card .flip-hint { font-size: 12px; color: var(--rose-deep); font-weight: 700; margin-top: 8px; }
+  .mind-card .ref { font-size: 12px; color: var(--sub); margin-top: 8px; }
+
   @media (max-width: 420px) {
     main { padding: 16px 12px 80px; }
     .card { padding: 16px; border-radius: 14px; }
@@ -200,6 +219,7 @@
   <button data-step="4" onclick="app.go(4)">④ 퀴즈</button>
   <button data-step="5" onclick="app.go(5)">⑤ 내보내기</button>
   <button data-step="7" onclick="app.go(7)">🃏 감정 카드</button>
+  <button data-step="8" onclick="app.go(8)">🫧 마음 읽기</button>
   <button data-step="6" onclick="app.go(6)">⚙ 설정</button>
 </nav>
 
@@ -233,19 +253,15 @@
     <h2>① 치료 목표 설정</h2>
     <p class="muted">목표 화용 기술과 아동 정보를 입력하면, 비디오 모델링용 시나리오 전체(대본·영상 프롬프트·음성 대본·토론 질문·퀴즈)가 한 번에 생성됩니다.</p>
 
-    <label>목표 화용 기술</label>
+    <label>목표 화용 기술 <span class="hint">(7개 화용 영역별로 묶여 있어요)</span></label>
     <select id="f-skill-preset" onchange="app.onSkillPreset()">
       <option value="">직접 입력…</option>
-      <option>놀이에 끼어들어 함께 놀자고 요청하기</option>
-      <option>차례 지키기와 순서 기다리기</option>
-      <option>인사하기와 대화 시작하기</option>
-      <option>사과하기와 갈등 해결하기</option>
-      <option>도움 요청하기</option>
-      <option>상대방의 표정·기분 읽고 반응하기</option>
-      <option>주제 유지하며 대화 주고받기</option>
-      <option>거절 표현을 적절하게 하기</option>
     </select>
     <input type="text" id="f-skill" placeholder="예: 친구가 속상해할 때 위로하는 말 하기" style="margin-top:8px;">
+    <details style="margin-top:8px;">
+      <summary>🗂 화용 영역이란? — 7개 영역과 세부 기술 보기</summary>
+      <div id="domain-info" style="margin-top:8px;"></div>
+    </details>
 
     <div class="row">
       <div>
@@ -362,6 +378,51 @@
     <div id="emo-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;"></div>
     <button class="btn btn-sage" id="emo-sheet-btn" onclick="app.exportEmotionSheet()" style="display:none;">🖨 인쇄용 카드 시트 다운로드</button>
     <p class="muted" style="margin-top:10px;">이미지 생성은 ⚙ 설정의 Gemini API 키(유료 등급)를 사용하며 장당 소액 과금됩니다. 카드는 저장 버튼을 누르기 전까지는 페이지를 닫으면 사라집니다.</p>
+  </div>
+</section>
+
+<!-- 🫧 마음 읽기 -->
+<section class="step" id="step8">
+  <div class="card">
+    <h2>🫧 마음 읽기 (속마음)</h2>
+    <p class="muted"><b>마음이론·추론</b> 영역 활동입니다. 등장인물이 겉으로 한 말·행동과 <b>진짜 속마음</b>이 다른 상황을 보여주고, 아동이 표정·상황 단서로 숨은 마음을 추론하게 합니다.</p>
+    <p class="muted">💡 활용법: 상황과 겉말을 보여주고 <b>"진짜 마음은 뭘까?"</b> 묻기 → 표정·단서 근거 찾기 → 🫧 속마음 뒤집어 확인 → "너도 이런 적 있었어?" 연결.</p>
+
+    <div class="row">
+      <div>
+        <label>대상 연령</label>
+        <select id="mind-age">
+          <option>4~5세</option><option selected>5~7세</option>
+          <option>초등 저학년(8~10세)</option><option>초등 고학년(11~13세)</option>
+        </select>
+      </div>
+      <div>
+        <label>카드 수</label>
+        <select id="mind-count">
+          <option value="3">3장</option><option value="4" selected>4장</option>
+          <option value="5">5장</option><option value="6">6장</option>
+        </select>
+      </div>
+    </div>
+
+    <label>상황 소재 <span class="hint">(선택 — 비우면 일상 상황에서 자유롭게)</span></label>
+    <input type="text" id="mind-topic" placeholder="예: 친구 관계, 학교 생활, 형제자매, 선물 받았을 때">
+
+    <button class="btn btn-primary" id="mind-btn" onclick="app.generateMind()">🪄 마음 읽기 카드 만들기</button>
+    <div class="status" id="mind-status"></div>
+
+    <div id="mind-copy-box" style="display:none;">
+      <hr class="divider">
+      <p class="muted">아래 프롬프트를 claude.ai 또는 ChatGPT에 붙여넣고, 결과 JSON을 아래 칸에 붙여넣어 주세요.</p>
+      <div class="promptbox" id="mind-copy-prompt"></div>
+      <button class="btn btn-ghost btn-sm" onclick="app.copyText('mind-copy-prompt')">📋 프롬프트 복사</button>
+      <textarea id="mind-paste" placeholder='{"cards": ...}' style="min-height:100px;"></textarea>
+      <button class="btn btn-sage btn-sm" onclick="app.applyMindPasted()">✅ 결과 적용하기</button>
+    </div>
+
+    <div id="mind-grid" style="margin-top:12px;"></div>
+    <button class="btn btn-sage" id="mind-sheet-btn" onclick="app.exportMindSheet()" style="display:none;">🖨 인쇄용 카드 시트 다운로드</button>
+    <p class="muted" id="mind-embed-note" style="margin-top:10px; display:none;">✅ 이 카드는 ⑤에서 플레이어를 내보낼 때 <b>마음 읽기 게임 모드</b>로 함께 담깁니다.</p>
   </div>
 </section>
 
@@ -534,6 +595,129 @@ const PROJECT_SCHEMA = {
 /* ============================================================
    프롬프트 구성
    ============================================================ */
+/* ============================================================
+   화용 영역 체계 — 7대 영역 × 세부 기술
+   각 영역은 대본 생성 시 영역별 지도 지침(coach)을 프롬프트에 반영
+   ============================================================ */
+const PRAGMATIC_DOMAINS = [
+  {
+    label: "의사소통 기능",
+    blurb: "원하는 것·생각을 말로 표현하기",
+    coach: "목표 기능이 발화로 분명히 드러나는 순간을 장면 중심에 두고, 아동이 그대로 따라 할 수 있는 짧은 핵심 문장을 반복 노출하세요.",
+    skills: [
+      "원하는 것 말로 요청하기",
+      "도움 요청하기",
+      "싫다고·거절 적절히 표현하기",
+      "궁금한 것 질문하기",
+      "\"우리 ~하자\" 함께하자고 제안하기",
+      "내 생각·경험 이야기하기",
+      "불만·항의를 부드럽게 표현하기",
+    ],
+  },
+  {
+    label: "대화 기술",
+    blurb: "대화를 주고받으며 이어가기",
+    coach: "말차례를 주고받는 구조(A→B→A)를 분명히 보여주고, 주제가 유지·전환되는 지점을 관찰 가능하게 만드세요.",
+    skills: [
+      "먼저 말 걸어 대화 시작하기",
+      "차례 지켜 말하기",
+      "주제 유지하며 대화 이어가기",
+      "대화에 적절히 끼어들기",
+      "못 알아들었을 때 다시 물어보기(명료화 요청)",
+      "대화 자연스럽게 마무리하기",
+      "대화 주제 바꾸기",
+    ],
+  },
+  {
+    label: "사회적 상호작용·예절",
+    blurb: "관계 속 규칙과 예절 지키기",
+    coach: "예절·규칙이 지켜졌을 때와 아닐 때 상대의 반응 차이를 드러내, 그 행동이 왜 필요한지 아동이 스스로 알아채게 하세요.",
+    skills: [
+      "인사하기·헤어질 때 인사하기",
+      "사과하기",
+      "고마움·칭찬 표현하기",
+      "차례·순서 기다리기",
+      "양보하고 나누기",
+      "놀이에 끼어 함께 놀자고 요청하기",
+      "약속·규칙 지키기",
+    ],
+  },
+  {
+    label: "비언어적 의사소통",
+    blurb: "표정·목소리·몸짓으로 소통하기",
+    coach: "표정·목소리 톤·몸짓 같은 비언어 단서를 대사만큼 비중 있게 묘사하고, 같은 말이라도 톤에 따라 뜻이 달라지는 대비를 넣으세요.",
+    skills: [
+      "상대 표정 읽고 알맞게 반응하기",
+      "상황에 맞는 목소리 크기·톤 쓰기",
+      "눈맞춤 유지하며 말하기",
+      "몸짓·거리(적당한 간격) 조절하기",
+    ],
+  },
+  {
+    label: "마음이론·추론",
+    blurb: "상대의 마음·숨은 뜻 헤아리기",
+    coach: "등장인물이 서로 다르게 알거나 느끼는 상황을 만들어, 겉으로 드러난 말·표정과 속마음의 차이를 아동이 추론하도록 구성하세요.",
+    skills: [
+      "상대방 기분·마음 읽기",
+      "숨은 의도 파악하기",
+      "농담·놀림·반어 이해하기",
+      "돌려 말하는 간접 표현 이해하기",
+      "상대 입장에서 생각하기(관점 바꾸기)",
+    ],
+  },
+  {
+    label: "감정·자기조절",
+    blurb: "내 감정을 알고 다스리고 나누기",
+    coach: "감정이 커지는 순간과 그것을 알아차려 말로 표현·조절하는 과정을 단계적으로 보여주세요.",
+    skills: [
+      "내 감정 알아차리고 말로 표현하기",
+      "친구 감정에 공감하기",
+      "화·속상함 가라앉히기",
+      "속상한 친구 위로하는 말 하기",
+    ],
+  },
+  {
+    label: "사회적 문제 해결",
+    blurb: "곤란한 상황에 대처하기",
+    coach: "문제 상황 → 여러 대처 방법 중 적절한 선택 → 결과의 흐름을 분명히 하여, 아동이 '어떻게 하면 좋을까'를 생각하도록 하세요.",
+    skills: [
+      "친구와 다툼·갈등 해결하기",
+      "예상 밖 상황에 유연하게 대처하기",
+      "졌을 때·틀렸을 때 마음 다스리기",
+      "놀림·거절을 받았을 때 대처하기",
+      "스스로 할지 도움 청할지 판단하기",
+    ],
+  },
+];
+
+function domainForSkill(text) {
+  return PRAGMATIC_DOMAINS.find(d => d.skills.includes(text)) || null;
+}
+
+function buildSkillLibraryUI() {
+  const sel = $("f-skill-preset");
+  if (sel && sel.querySelectorAll("optgroup").length === 0) {
+    PRAGMATIC_DOMAINS.forEach(d => {
+      const og = document.createElement("optgroup");
+      og.label = d.label;
+      d.skills.forEach(s => {
+        const o = document.createElement("option");
+        o.value = s; o.textContent = s;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  }
+  const info = $("domain-info");
+  if (info) {
+    info.innerHTML = PRAGMATIC_DOMAINS.map((d, i) =>
+      `<p style="margin:8px 0;font-size:13px;line-height:1.6;">` +
+      `<b>${i + 1}. ${esc(d.label)}</b> <span class="muted">— ${esc(d.blurb)}</span><br>` +
+      `<span class="muted" style="font-size:12px;">${d.skills.map(esc).join(" · ")}</span></p>`
+    ).join("");
+  }
+}
+
 const SYSTEM_PROMPT = `당신은 화용언어치료(pragmatic language therapy) 전문 언어재활사이자 아동 콘텐츠 작가입니다.
 비디오 모델링(video modeling) 기법에 근거해, 아동이 목표 화용 기술을 관찰 학습할 수 있는 짧은 영상 시나리오를 만듭니다.
 
@@ -546,9 +730,13 @@ const SYSTEM_PROMPT = `당신은 화용언어치료(pragmatic language therapy) 
 - 퀴즈는 정답을 맞히는 것보다 이유를 생각하게 하는 방향으로. 오답 선택지도 아동이 실제로 할 법한 행동으로.`;
 
 function buildUserPrompt(f) {
+  const dom = domainForSkill(f.skill);
+  const coaching = dom
+    ? `\n- 화용 영역: ${dom.label} (${dom.blurb})\n- 이 영역 지도 포인트: ${dom.coach}`
+    : "";
   return `다음 조건으로 화용언어치료용 비디오 모델링 시나리오를 만들어 주세요.
 
-- 목표 화용 기술: ${f.skill}
+- 목표 화용 기술: ${f.skill}${coaching}
 - 대상 연령: ${f.age}
 - 장면 수: ${f.count}개
 - 상황·장소: ${f.place || "연령에 맞게 자유롭게"}
@@ -1124,11 +1312,14 @@ const app = {
     if (!state.project) { setStatus("export-status", "error", "먼저 시나리오를 생성해 주세요."); return; }
     const cards = EMOTIONS.filter(e => emoCards[e.ko])
       .map(e => ({ ko: e.ko, mime: emoCards[e.ko].mime, data: emoCards[e.ko].data }));
-    const html = buildPlayerHTML(state.project, cards);
+    const html = buildPlayerHTML(state.project, cards, mindCards);
     const blob = new Blob([html], { type: "text/html" });
     downloadBlob(blob, sanitizeName(state.project.title) + "_플레이어.html");
+    const extras = [];
+    if (cards.length) extras.push(`감정 놀이(${cards.length}장)`);
+    if (mindCards.length) extras.push(`마음 읽기(${mindCards.length}장)`);
     setStatus("export-status", "info", "✅ 플레이어를 저장했습니다. 파일을 열고 장면별 영상 파일을 지정한 뒤 '시작하기'를 누르세요." +
-      (cards.length ? ` (감정 카드 ${cards.length}장이 함께 담겨 '감정 놀이' 모드를 쓸 수 있어요)` : " 🃏 감정 카드 탭에서 카드를 만들어 두면 플레이어에 '감정 놀이' 모드가 함께 담깁니다."));
+      (extras.length ? ` (${extras.join(" · ")} 모드가 함께 담겼어요)` : " 🃏 감정 카드 · 🫧 마음 읽기 탭에서 카드를 만들어 두면 플레이어에 게임 모드로 함께 담깁니다."));
   },
 
   exportWorksheet() {
@@ -1320,6 +1511,106 @@ const app = {
     downloadBlob(r.blob, sanitizeName(state.project?.title || "장면") + `_장면${no}_더빙.wav`);
   },
 
+  /* ---------- 마음 읽기 (속마음) ---------- */
+  async generateMind() {
+    const n = parseInt($("mind-count").value, 10);
+    const age = $("mind-age").value;
+    const topic = $("mind-topic").value.trim();
+    const prompt = buildMindPrompt(n, age, topic);
+
+    const engine = state.settings.mode;
+    const hasKey = engine === "api" ? !!state.settings.apiKey
+                 : engine === "gemini" ? !!state.settings.geminiKey
+                 : false;
+
+    if (engine === "copy" || !hasKey) {
+      $("mind-copy-box").style.display = "block";
+      $("mind-copy-prompt").textContent = prompt + "\n\n" + MIND_GUIDE;
+      setStatus("mind-status", "info", engine !== "copy" && !hasKey
+        ? "API 키가 없어 <b>프롬프트 복사 모드</b>로 전환했습니다. 아래 프롬프트를 복사해 claude.ai에 붙여넣고 결과를 되붙여 주세요."
+        : "아래 프롬프트를 복사해 claude.ai 또는 ChatGPT에 붙여넣고, 결과 JSON을 붙여넣기 칸에 넣어 주세요.");
+      return;
+    }
+
+    const btn = $("mind-btn");
+    btn.disabled = true;
+    setStatus("mind-status", "info", '<span class="spinner"></span>마음 읽기 카드를 만들고 있습니다…');
+    try {
+      const data = engine === "gemini"
+        ? await callGemini(prompt + "\n\n" + MIND_GUIDE)
+        : await callClaude(prompt, MIND_SCHEMA);
+      if (!data.cards || !data.cards.length) throw new Error("생성 결과가 비어 있습니다. 다시 시도해 주세요.");
+      mindCards = data.cards;
+      this.renderMindCards();
+      setStatus("mind-status", "info", `✅ 카드 ${mindCards.length}장이 완성되었습니다! 카드를 눌러 속마음을 확인하세요.`);
+    } catch (err) {
+      setStatus("mind-status", "error", "⚠️ " + esc(engine === "gemini" ? (err.message || String(err)) : apiErrorMessage(err)));
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  applyMindPasted() {
+    let raw = $("mind-paste").value.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    if (!raw) { setStatus("mind-status", "error", "JSON을 붙여넣어 주세요."); return; }
+    try {
+      const data = JSON.parse(raw);
+      if (!data.cards || !data.cards.length) throw new Error("cards 항목이 없습니다");
+      mindCards = data.cards;
+      this.renderMindCards();
+      setStatus("mind-status", "info", `✅ 카드 ${mindCards.length}장을 불러왔습니다!`);
+    } catch (e) {
+      setStatus("mind-status", "error", "JSON 해석 실패: " + esc(e.message));
+    }
+  },
+
+  renderMindCards() {
+    const grid = $("mind-grid");
+    if (!grid) return;
+    grid.innerHTML = mindCards.map((c, i) => mindCardHTML(c, i)).join("");
+    $("mind-sheet-btn").style.display = mindCards.length ? "inline-block" : "none";
+    $("mind-embed-note").style.display = mindCards.length ? "block" : "none";
+  },
+
+  exportMindSheet() {
+    if (!mindCards.length) return;
+    const cardsHTML = mindCards.map((c, i) => `
+      <div class="cardp">
+        <div class="no">${i + 1}</div>
+        <p class="situation">📍 ${esc(c.situation)}</p>
+        <p class="surface">💬 ${esc(c.surface)}</p>
+        <p class="cue">👀 단서: ${esc(c.surface_cue)}</p>
+        <div class="inner"><b>🫧 속마음:</b> ${esc(c.inner)}<br><span>${esc(c.explanation)}</span></div>
+      </div>`).join("\n");
+    const html = `<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>마음 읽기 카드</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:#eee; color:#222; }
+  .sheet { background:#fff; max-width:190mm; margin:10px auto; padding:12mm;
+    display:grid; grid-template-columns:1fr 1fr; gap:6mm; }
+  .cardp { border:1.5px solid #999; border-radius:12px; padding:6mm; page-break-inside:avoid; position:relative; }
+  .cardp .no { position:absolute; top:5mm; right:6mm; font-weight:800; color:#C4817E; }
+  .cardp .situation { font-size:13px; color:#666; }
+  .cardp .surface { font-size:16px; font-weight:700; margin:5px 0; }
+  .cardp .cue { font-size:12.5px; color:#66815F; }
+  .cardp .inner { margin-top:8mm; padding:5mm; border:1.5px dashed #C4817E; border-radius:10px;
+    background:#F7ECEA; font-size:13.5px; }
+  .cardp .inner span { color:#666; font-size:12.5px; }
+  .noprint { position:sticky; top:0; background:#3d3835; color:#fff; text-align:center; padding:12px; font-size:14px; }
+  .noprint button { border:none; border-radius:8px; background:#C4817E; color:#fff; font-family:inherit;
+    font-size:14px; font-weight:700; padding:9px 20px; cursor:pointer; margin-left:10px; }
+  @media print { .noprint { display:none; } body { background:#fff; } .sheet { margin:0; max-width:none; } }
+</style></head>
+<body>
+<div class="noprint">상황·겉말을 보여주고 '속마음'은 접어서(가리고) 물어보세요 <button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>
+<div class="sheet">
+${cardsHTML}
+</div></body></html>`;
+    downloadBlob(new Blob([html], { type: "text/html" }), "마음읽기_카드.html");
+    setStatus("mind-status", "info", "✅ 카드 시트를 저장했습니다. 상황·겉말을 보여주고 속마음 칸은 가린 채 물어보세요.");
+  },
+
   /* ---------- 감정 카드 ---------- */
   renderEmotionUI() {
     const sel = $("emo-char");
@@ -1506,6 +1797,81 @@ function emoCardHTML(ko) {
   </div>`;
 }
 
+/* ---------- 마음 읽기 (속마음) — 마음이론·추론 활동 ---------- */
+let mindCards = [];   // [{situation, surface, surface_cue, inner, question, options, answer_index, explanation}] (세션 중에만 유지)
+
+const MIND_SCHEMA = {
+  type: "object",
+  properties: {
+    cards: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          situation: { type: "string", description: "짧고 명확한 상황 (연령에 맞는 쉬운 한국어)" },
+          surface: { type: "string", description: "인물이 겉으로 한 말이나 행동 (한국어)" },
+          surface_cue: { type: "string", description: "속마음을 알아챌 표정·몸짓 단서 (한국어)" },
+          inner: { type: "string", description: "인물의 진짜 속마음·감정 (한국어)" },
+          question: { type: "string", description: "'○○의 진짜 마음은?' 형태 질문 (한국어)" },
+          options: { type: "array", items: { type: "string" }, description: "선택지 3개 (정답 1 + 헷갈릴 오답 2)" },
+          answer_index: { type: "integer", description: "정답 위치 (0부터)" },
+          explanation: { type: "string", description: "왜 그런 마음인지 아동에게 읽어줄 설명 (한국어)" }
+        },
+        required: ["situation", "surface", "surface_cue", "inner", "question", "options", "answer_index", "explanation"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["cards"],
+  additionalProperties: false
+};
+
+function buildMindPrompt(n, age, topic) {
+  return `화용언어치료의 '마음이론·추론' 영역 활동인 '마음 읽기(속마음)' 카드를 ${n}장 만들어 주세요.
+각 카드는 등장인물이 겉으로 드러낸 말·행동과 실제 속마음이 다른 상황입니다. 아동이 표정·상황 단서로 숨은 마음을 추론하도록 돕는 것이 목표입니다.
+
+- 대상 연령: ${age}
+- 상황 소재: ${topic || "일상(놀이터·교실·가정·친구 관계 등)에서 자유롭게"}
+
+원칙:
+- 대상 연령에 맞는 짧고 쉬운 한국어. 상황은 아동이 실제 겪을 법한 것으로.
+- 겉말과 속마음의 차이가 분명하되, 표정·몸짓 단서(surface_cue)로 추론 가능해야 함.
+- 선택지(options)는 감정·마음을 나타내는 짧은 말 3개. 오답도 아동이 헷갈릴 만한 그럴듯한 것으로.
+- 다양한 마음(속상함·부러움·서운함·미안함·긴장·실망 등)을 골고루 다룰 것.`;
+}
+
+const MIND_GUIDE = `결과는 아래 구조의 JSON **하나만** 출력하세요. JSON 외의 설명 문장은 쓰지 마세요.
+
+{
+  "cards": [
+    {
+      "situation": "상황",
+      "surface": "겉으로 한 말/행동",
+      "surface_cue": "표정·몸짓 단서",
+      "inner": "진짜 속마음",
+      "question": "○○의 진짜 마음은 무엇일까요?",
+      "options": ["보기1", "보기2", "보기3"],
+      "answer_index": 0,
+      "explanation": "왜 그런 마음인지 설명"
+    }
+  ]
+}`;
+
+function mindCardHTML(c, i) {
+  const optLine = c.options.map((o, oi) => (oi === c.answer_index ? "✅ " : "") + esc(o)).join(" · ");
+  return `<div class="mind-card" onclick="this.classList.toggle('open')">
+    <div class="situation">📍 ${esc(c.situation)}</div>
+    <div class="surface">💬 ${esc(c.surface)}</div>
+    <div class="cue">👀 단서: ${esc(c.surface_cue)}</div>
+    <div class="flip-hint">🫧 눌러서 속마음 보기</div>
+    <div class="inner-box">
+      <b>속마음:</b> ${esc(c.inner)}<br>
+      <span style="font-size:13px;color:var(--sub);">${esc(c.explanation)}</span>
+      <div class="ref">정답 보기: ${optLine}</div>
+    </div>
+  </div>`;
+}
+
 /* ---------- Gemini TTS 보조 ---------- */
 const ttsResults = {};   // sceneNo -> { blob, url }  (세션 중에만 유지)
 
@@ -1648,9 +2014,10 @@ ${quizPage}
    치료용 인터랙티브 플레이어 HTML 생성
    (독립 실행형 — 영상 파일은 사용자가 열어서 지정)
    ============================================================ */
-function buildPlayerHTML(project, emotionCards = []) {
+function buildPlayerHTML(project, emotionCards = [], mindReadingCards = []) {
   const data = JSON.stringify(project).replace(/</g, "\\u003c");
   const cardsData = JSON.stringify(emotionCards).replace(/</g, "\\u003c");
+  const mindData = JSON.stringify(mindReadingCards).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1727,6 +2094,7 @@ function buildPlayerHTML(project, emotionCards = []) {
   </label>
   <button class="big" id="start" disabled>▶ 시작하기</button>
   <button class="big" id="emo-start" style="background:#8CA888; display:none;">🃏 감정 놀이 (영상 없이 가능)</button>
+  <button class="big" id="mind-start" style="background:#8CA888; display:none;">🫧 마음 읽기 (영상 없이 가능)</button>
   <h3>📊 지난 기록</h3>
   <div id="log-area"></div>
 </div>
@@ -1745,6 +2113,7 @@ function buildPlayerHTML(project, emotionCards = []) {
 <script>
 var PROJECT = ${data};
 var CARDS = ${cardsData};   // 감정 카드 [{ko, mime, data}]
+var MINDCARDS = ${mindData};   // 마음 읽기 카드 [{situation, surface, ...}]
 var EMO_WORDS = ["기쁨", "슬픔", "화남", "놀람", "무서움", "부끄러움", "신남", "피곤함"];
 var LOGKEY = "화용플레이어기록::" + PROJECT.title;
 var files = {};   // sceneNo -> objectURL
@@ -1863,6 +2232,12 @@ document.getElementById("emo-start").addEventListener("click", function(){
   startEmotionQuiz(false);
 });
 
+// ----- 마음 읽기 (카드가 담겨 있을 때만) -----
+if (MINDCARDS.length) document.getElementById("mind-start").style.display = "block";
+document.getElementById("mind-start").addEventListener("click", function(){
+  startMindQuiz(false);
+});
+
 var emoOrder = [], emoPos = -1, emoAttempts = 0;
 
 function startEmotionQuiz(fromStory) {
@@ -1937,6 +2312,85 @@ function emoFinish() {
   if (results.length) {
     var first = results.filter(function(r){ return r.firstTry; }).length;
     h += "<div class='result'><b>" + escText(session.child || "우리 친구") + "</b>의 감정 읽기 — 첫 시도 정답 <b>" + first + " / " + results.length + "</b></div>";
+    results.forEach(function(r){
+      h += "<div class='result'>" + (r.firstTry
+        ? "<span class='good'>✓ 한 번에 정답!</span>"
+        : "<span class='retry'>↻ " + r.attempts + "번 만에 정답</span>") + " — " + escText(r.question) + "</div>";
+    });
+  }
+  h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
+  inner.innerHTML = h;
+  showOverlay();
+}
+
+// ----- 마음 읽기 게임 -----
+var mindOrder = [], mindPos = -1, mindAttempts = 0;
+
+function startMindQuiz(fromStory) {
+  if (!session.startedAt) {
+    session.child = (document.getElementById("child-name").value || "").trim();
+    session.startedAt = new Date().toISOString();
+  }
+  document.getElementById("setup").style.display = "none";
+  mindOrder = MINDCARDS.map(function(_, i){ return i; });
+  for (var i = mindOrder.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = mindOrder[i]; mindOrder[i] = mindOrder[j]; mindOrder[j] = t;
+  }
+  mindPos = -1;
+  nextMind();
+}
+
+function nextMind() {
+  mindPos++;
+  if (mindPos >= mindOrder.length) { mindFinish(); return; }
+  mindAttempts = 0;
+  var c = MINDCARDS[mindOrder[mindPos]];
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🫧 진짜 마음은? <span style='font-size:14px;color:#C7BCB1;'>(" + (mindPos + 1) + " / " + mindOrder.length + ")</span></h2>";
+  h += "<div class='talk'><div style='font-size:14px;color:#C7BCB1;'>📍 " + escText(c.situation) + "</div>" +
+       "<div style='font-size:17px;font-weight:700;margin:8px 0;'>💬 " + escText(c.surface) + "</div>" +
+       "<div style='font-size:13.5px;color:#A3D6A0;'>👀 " + escText(c.surface_cue) + "</div></div>";
+  h += "<p style='margin:14px 0 6px;'>" + escText(c.question || "이 친구의 진짜 마음은?") + "</p>";
+  c.options.forEach(function(o, i){
+    h += "<button class='opt mind-opt' data-i='" + i + "'>" + escText(o) + "</button>";
+  });
+  h += "<div id='feedback'></div>";
+  inner.innerHTML = h;
+  showOverlay();
+  inner.querySelectorAll(".mind-opt").forEach(function(btn){
+    btn.addEventListener("click", function(){ answerMind(c, parseInt(btn.dataset.i, 10), btn); });
+  });
+}
+
+function answerMind(c, i, btn) {
+  var fb = document.getElementById("feedback");
+  mindAttempts++;
+  if (i === c.answer_index) {
+    if (!session.quizLog["mind-" + mindPos]) {
+      session.quizLog["mind-" + mindPos] = { question: "마음 읽기: " + c.surface, attempts: mindAttempts, firstTry: mindAttempts === 1 };
+    }
+    btn.classList.add("correct");
+    document.querySelectorAll(".mind-opt").forEach(function(b){ b.disabled = true; });
+    fb.innerHTML = "<div class='result' style='margin-top:14px;'><b>🫧 속마음:</b> " + escText(c.inner) +
+      "<br><span style='font-size:13px;color:#C7BCB1;'>" + escText(c.explanation) + "</span></div>" +
+      "<button class='big' style='display:inline-block;width:auto;padding:12px 28px;' onclick='nextMind()'>다음 ▶</button>";
+  } else {
+    btn.classList.add("wrong");
+    btn.disabled = true;
+    fb.textContent = "음… 표정과 상황을 다시 볼까요? 🙂";
+  }
+}
+
+function mindFinish() {
+  saveSession();
+  var inner = document.getElementById("ov-inner");
+  var h = "<h2>🌟 마음 읽기 끝!</h2>";
+  var results = [];
+  for (var k in session.quizLog) if (k.indexOf("mind-") === 0) results.push(session.quizLog[k]);
+  if (results.length) {
+    var first = results.filter(function(r){ return r.firstTry; }).length;
+    h += "<div class='result'><b>" + escText(session.child || "우리 친구") + "</b>의 마음 읽기 — 첫 시도 정답 <b>" + first + " / " + results.length + "</b></div>";
     results.forEach(function(r){
       h += "<div class='result'>" + (r.firstTry
         ? "<span class='good'>✓ 한 번에 정답!</span>"
@@ -2139,6 +2593,9 @@ function finish() {
   if (CARDS.length) {
     h += "<button class='big' style='background:#8CA888;' onclick='startEmotionQuiz(true)'>🃏 이어서 감정 놀이 하기</button>";
   }
+  if (MINDCARDS.length) {
+    h += "<button class='big' style='background:#8CA888;' onclick='startMindQuiz(true)'>🫧 이어서 마음 읽기 하기</button>";
+  }
   h += "<button class='big' onclick='location.reload()'>⟲ 처음 화면으로 (기록 저장됨)</button>";
   inner.innerHTML = h;
   showOverlay();
@@ -2173,6 +2630,7 @@ function fillFormUI() {
 
 load();
 window.app = app;
+buildSkillLibraryUI();
 app.loadSettingsUI();
 app.renderAll();
 fillFormUI();
