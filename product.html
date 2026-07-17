@@ -2326,7 +2326,7 @@ function saveAllImages(){ const imgs=state.result?.images||{}; let n=0; ["hero",
    그대로 래스터화한 뒤, 섹션 경계에서 잘라 여러 장의 PNG로 저장 */
 async function saveSplit(){
   if(!state.result){ toast("먼저 생성해 주세요"); return; }
-  const W = 1080, scale = 2, MAXH = 1500;   // 슬라이스 한 장 최대 높이(CSS px)
+  const W = 720, scale = 3, MAXH = 1240;   // 좁게 렌더→글씨가 1.5배 커짐 · 한 장 최대 높이(CSS px)
   const btn = $("btn-split"); btn.disabled = true; const old = btn.textContent; btn.textContent = "만드는 중…";
   try{
     const src = $("dp-canvas");
@@ -2344,9 +2344,6 @@ async function saveSplit(){
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     await Promise.all([...clone.querySelectorAll("img")].map(im=> im.complete ? null : new Promise(r=>{ im.onload=im.onerror=r; })));
     const H = clone.scrollHeight;
-    // 이미지가 차지하는 세로 구간(여기는 절대 자르지 않는다)
-    const cr = clone.getBoundingClientRect();
-    const imgRanges = [...clone.querySelectorAll("img")].map(im=>{ const r=im.getBoundingClientRect(); return [r.top-cr.top, r.bottom-cr.top]; });
     document.body.removeChild(holder);
 
     // foreignObject SVG로 전체를 한 번 래스터화
@@ -2357,42 +2354,45 @@ async function saveSplit(){
     const url = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
     const big = await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error("render")); im.src=url; });
 
-    const full = document.createElement("canvas"); full.width=W*scale; full.height=H*scale;
-    const fx = full.getContext("2d",{willReadFrequently:true}); fx.fillStyle="#fff"; fx.fillRect(0,0,full.width,full.height);
-    fx.drawImage(big, 0,0, full.width, full.height);
+    const pw = W*scale, ph = Math.round(H*scale);
+    const full = document.createElement("canvas"); full.width=pw; full.height=ph;
+    const fx = full.getContext("2d",{willReadFrequently:true}); fx.fillStyle="#fff"; fx.fillRect(0,0,pw,ph);
+    fx.drawImage(big, 0,0, pw, ph);
 
-    // 안전 컷 지점 찾기 — 균일한 빈 배경 줄에서만, 이미지 구간 안에서는 절대 안 자름
-    const SC=scale, pw=full.width, ph=full.height;
-    const rowBusy = (dy)=>{ if(dy<1||dy>=ph-1) return 999; const d=fx.getImageData(0,dy,pw,1).data; let a=255,b=255,c=255,A=0,B=0,C=0; for(let xp=0;xp<pw;xp+=16){ const i=xp*4; if(d[i]<a)a=d[i]; if(d[i]>A)A=d[i]; if(d[i+1]<b)b=d[i+1]; if(d[i+1]>B)B=d[i+1]; if(d[i+2]<c)c=d[i+2]; if(d[i+2]>C)C=d[i+2]; } return (A-a)+(B-b)+(C-c); };
-    const inImage = (y)=> imgRanges.some(([a,b])=> y>a+2 && y<b-2);
-    const cuts=[0]; const step=MAXH, win=440;
-    let pos=step;
-    while(pos < H - step*0.35){
-      let best=null, bestB=1e9;
-      for(let dd=0; dd<=win; dd+=2){
-        for(const cand of [pos+dd, pos-dd]){
-          if(cand<=cuts[cuts.length-1]+60 || cand>=H-4 || inImage(cand)) continue;
-          const bb=rowBusy(Math.round(cand*SC));
-          if(bb<bestB){ bestB=bb; best=cand; }
-          if(bestB<=6){ dd=win+1; break; }
-        }
-      }
-      if(best==null){ best=pos; while(inImage(best) && best<H-4) best+=8; }   // 최후: 이미지 밖으로 밀어 자름
-      if(best<=cuts[cuts.length-1]+60) best=Math.min(H, cuts[cuts.length-1]+step);
-      cuts.push(best); pos=best+step;
+    // 컷 지점을 '실제 래스터 픽셀'에서 찾는다 — DOM 측정과 렌더(폰트) 오차에 흔들리지 않도록.
+    // 가로 전체가 균일한 색으로 '두껍게'(≈섹션 여백) 이어지는 띠 = 섹션 사이 빈 공간.
+    // 글줄 사이 간격은 얇아서 제외되고, 사진·글은 균일하지 않아 절대 후보가 안 된다.
+    const rowData=(dy)=>fx.getImageData(0,dy,pw,1).data;
+    const isBlank=(dy)=>{ const d=rowData(dy); let a=255,b=255,c=255,A=0,B=0,C=0; for(let xp=0;xp<pw;xp+=8){const i=xp*4; if(d[i]<a)a=d[i];if(d[i]>A)A=d[i];if(d[i+1]<b)b=d[i+1];if(d[i+1]>B)B=d[i+1];if(d[i+2]<c)c=d[i+2];if(d[i+2]>C)C=d[i+2];} return (A-a)+(B-b)+(C-c) < 16; };
+    const MINBAND=Math.round(40*scale);   // 40 CSS px 이상 균일해야 '섹션 여백'으로 인정
+    const bands=[]; let run=0;             // [center] 목록
+    for(let y=1;y<ph;y++){ if(isBlank(y)) run++; else { if(run>=MINBAND) bands.push(y-Math.round(run/2)); run=0; } }
+    if(run>=MINBAND) bands.push(ph-Math.round(run/2));
+
+    // MAXH 간격으로 그리디: start 이후 (start+step) 이하의 가장 먼 여백띠에서 컷.
+    // 범위 안에 띠가 없으면(큰 이미지 등) 다음 띠까지 통째로 미뤄 '한 덩어리'를 지킨다.
+    const step=MAXH*scale, minSlice=120*scale;
+    const cuts=[0]; let start=0;
+    while(ph-start > step*1.18){
+      const limit=start+step;
+      let pick=null;
+      for(const cy of bands){ if(cy>start+minSlice && cy<=limit) pick=cy; }
+      if(pick==null){ for(const cy of bands){ if(cy>start+minSlice){ pick=cy; break; } } }
+      if(pick==null) break;
+      cuts.push(pick); start=pick;
     }
-    cuts.push(H);
+    cuts.push(ph);
 
     let n=0;
     for(let k=0;k<cuts.length-1;k++){
-      const y0=cuts[k], y1=cuts[k+1], h=Math.max(1, y1-y0);
-      const pc=document.createElement("canvas"); pc.width=pw; pc.height=Math.round(h*SC);
-      pc.getContext("2d").drawImage(full, 0, Math.round(y0*SC), pw, Math.round(h*SC), 0, 0, pw, Math.round(h*SC));
+      const y0=Math.round(cuts[k]), y1=Math.round(cuts[k+1]), h=Math.max(1, y1-y0);
+      const pc=document.createElement("canvas"); pc.width=pw; pc.height=h;
+      pc.getContext("2d").drawImage(full, 0, y0, pw, h, 0, 0, pw, h);
       const idx=String(++n).padStart(2,"0");
       await new Promise(r=> pc.toBlob(bl=>{ if(bl) saveBlob(bl, `${safeName()}-상세-${idx}.png`); r(); }, "image/png") );
       await new Promise(r=>setTimeout(r,160));
     }
-    toast(`${n}장으로 나눴어요 — 이미지 안 자르고 빈 여백에서만 컷`);
+    toast(`${n}장으로 나눴어요 — 섹션 경계에서만 컷, 글자·이미지 안 잘림`);
   }catch(e){
     console.warn(e); toast("분할 저장에 실패했어요. 다시 시도해 주세요.");
   }finally{ btn.disabled=false; btn.textContent=old; }
