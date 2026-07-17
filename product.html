@@ -278,6 +278,10 @@
   .chip{border:1px solid var(--line);background:#fff;color:var(--ink-soft);padding:8px 13px;border-radius:999px;font-size:12.5px;font-weight:600;transition:all .13s;letter-spacing:-.01em;}
   .chip:hover{border-color:var(--muted-2);}
   .chip[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .cat-panel{margin:2px 0 4px;padding:14px 14px 4px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;background:var(--paper);animation:catin .25s var(--ease);}
+  @keyframes catin{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+  .cat-panel-t{font-size:12px;font-weight:800;color:var(--ink);letter-spacing:-.01em;margin-bottom:11px;}
+  .cat-panel-t span{font-weight:600;color:var(--muted-2);}
 
   .drop{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--paper);transition:all .16s;cursor:pointer;}
   .drop b{color:var(--ink);}
@@ -769,8 +773,10 @@
       <label class="f"><span class="req">제품명</span>
         <input type="text" id="f-name" placeholder="예) 제주 감귤 콜드프레스 주스"></label>
 
-      <label class="f"><span>카테고리</span>
+      <label class="f"><span>카테고리 <span style="font-weight:600;color:var(--muted-2);">(고르면 맞춤 항목이 열려요)</span></span>
         <div class="chips" id="f-cat">
+          <button class="chip" data-v="책·출판물">책·출판물</button>
+          <button class="chip" data-v="교육·자료">교육·자료</button>
           <button class="chip" data-v="뷰티·화장품">뷰티·화장품</button>
           <button class="chip" data-v="식품·건강">식품·건강</button>
           <button class="chip" data-v="패션·잡화">패션·잡화</button>
@@ -780,6 +786,8 @@
           <button class="chip" data-v="서비스·클래스">서비스·클래스</button>
           <button class="chip" data-v="기타">기타</button>
         </div></label>
+
+      <div id="f-details"></div>
 
       <label class="f"><span class="req">한 줄 설명 · 특징</span>
         <textarea id="f-desc" placeholder="예) 방부제·첨가물 없이 착즙한 100% 제주 감귤. 새콤달콤하고 비타민C가 풍부해 아침 대용으로 좋음. 유리병 패키지."></textarea></label>
@@ -913,7 +921,7 @@ const LS_KEY = "detail-studio-settings";
 
 const state = {
   settings: { engine:"gemini", geminiKey:"", openaiKey:"" },
-  input: { name:"", category:"", desc:"", target:"", price:"", tone:"", platform:"", images:[] },
+  input: { name:"", category:"", desc:"", target:"", price:"", tone:"", platform:"", images:[], details:{}, categoryManual:false },
   result: null,
   theme: null,   // null = 톤에서 자동, 문자열 = 사용자가 고른 테마
 };
@@ -1187,9 +1195,134 @@ const TONE_VOICE = {
   "럭셔리·프리미엄":"말을 아껴 품격을 낸다. 형용사보다 침묵. 짧고 단정한 문장, 여운. 설득하지 않고 매혹한다.",
   "건강·자연":"맑고 담백하게. 꾸밈없이, 재료와 정직함이 그대로 드러나는 목소리. 편안하고 다정하게.",
 };
+/* ---------- 카테고리별 세부 항목 (클릭 후 확장) ---------- */
+const CATEGORY_FIELDS = {
+  "책·출판물":[
+    {k:"author",label:"저자·지은이",ph:"예) 17년차 언어재활사 홍길동"},
+    {k:"genre",label:"분야·장르",ph:"예) 에세이·실무 가이드"},
+    {k:"reader",label:"이런 독자에게",ph:"예) 신입 언어재활사·전공 대학생"},
+    {k:"pages",label:"페이지·판형",ph:"예) 약 112쪽 · A5"},
+    {k:"format",label:"형태·제본",ph:"예) 무광 소프트커버 / 전자책"},
+    {k:"toc",label:"목차·핵심 내용",ph:"예) 첫날 체크리스트, 현장 스크립트, 마음 지지"},
+    {k:"point",label:"이 책만의 강점",ph:"예) 이론서엔 없는 현장의 말 한마디"},
+  ],
+  "교육·자료":[
+    {k:"reader",label:"사용 대상",ph:"예) 언어치료사·특수교사·학부모"},
+    {k:"purpose",label:"학습·치료 목표",ph:"예) 조음, 어휘 확장, 화용"},
+    {k:"ageband",label:"대상 연령",ph:"예) 5~9세"},
+    {k:"format",label:"형태·구성",ph:"예) PDF 40p + 인쇄용 카드 20장"},
+    {k:"usage",label:"활용 방법",ph:"예) 회기 활동지·과제·게임"},
+    {k:"license",label:"이용 범위",ph:"예) 개인/기관 이용, 재배포 불가"},
+    {k:"point",label:"차별점",ph:"예) 현장 검증된 난이도 단계"},
+  ],
+  "뷰티·화장품":[
+    {k:"ingredients",label:"핵심 성분",ph:"예) 센텔라·판테놀"},
+    {k:"skintype",label:"피부 타입",ph:"예) 민감·건성"},
+    {k:"volume",label:"용량",ph:"예) 150ml"},
+    {k:"usage",label:"사용법",ph:"예) 아침·저녁 세안 후"},
+    {k:"scent",label:"향",ph:"예) 무향"},
+    {k:"cert",label:"인증·테스트",ph:"예) 피부저자극 테스트 완료"},
+  ],
+  "식품·건강":[
+    {k:"ingredients",label:"원재료·함량",ph:"예) 제주 감귤 100%"},
+    {k:"weight",label:"중량·용량",ph:"예) 200ml x 10"},
+    {k:"storage",label:"보관",ph:"예) 냉장 0~10℃"},
+    {k:"intake",label:"섭취·조리법",ph:"예) 하루 1병, 흔들어서"},
+    {k:"origin",label:"원산지",ph:"예) 국내산"},
+    {k:"cert",label:"인증",ph:"예) HACCP"},
+  ],
+  "패션·잡화":[
+    {k:"material",label:"소재",ph:"예) 코튼 100%"},
+    {k:"size",label:"사이즈·실측",ph:"예) FREE / 총장 68cm"},
+    {k:"color",label:"색상",ph:"예) 아이보리·차콜"},
+    {k:"fit",label:"핏",ph:"예) 오버핏"},
+    {k:"care",label:"세탁·관리",ph:"예) 찬물 손세탁"},
+    {k:"detail",label:"디테일",ph:"예) 히든 포켓"},
+  ],
+  "리빙·인테리어":[
+    {k:"material",label:"소재",ph:"예) 원목·세라믹"},
+    {k:"size",label:"크기",ph:"예) 30x20x12cm"},
+    {k:"comp",label:"구성",ph:"예) 본체+받침"},
+    {k:"care",label:"관리",ph:"예) 마른 천으로"},
+    {k:"install",label:"설치·사용",ph:"예) 별도 조립 없음"},
+  ],
+  "디지털·가전":[
+    {k:"spec",label:"주요 사양",ph:"예) 20000mAh·65W"},
+    {k:"size",label:"크기·무게",ph:"예) 350g"},
+    {k:"compat",label:"호환",ph:"예) iOS·안드로이드"},
+    {k:"comp",label:"구성품",ph:"예) 본체·케이블·설명서"},
+    {k:"warranty",label:"보증",ph:"예) 1년 무상 A/S"},
+  ],
+  "반려·키즈":[
+    {k:"target",label:"대상",ph:"예) 소·중형견 / 24개월+"},
+    {k:"material",label:"소재·성분",ph:"예) 식품등급 실리콘"},
+    {k:"safety",label:"안전 인증",ph:"예) KC 인증"},
+    {k:"usage",label:"사용법",ph:"예) 식기세척기 가능"},
+    {k:"size",label:"크기",ph:"예) 지름 12cm"},
+  ],
+  "서비스·클래스":[
+    {k:"how",label:"진행 방식",ph:"예) 1:1 온라인 / 오프라인"},
+    {k:"time",label:"소요 시간·횟수",ph:"예) 회당 50분 · 8회"},
+    {k:"target",label:"대상",ph:"예) 성인 초급"},
+    {k:"prep",label:"준비물",ph:"예) 노트북·필기구"},
+    {k:"cred",label:"강사·자격",ph:"예) 자격증·경력"},
+  ],
+  "기타":[
+    {k:"feature",label:"핵심 특징",ph:"이 제품만의 장점"},
+    {k:"target",label:"대상",ph:"누구를 위한 것인지"},
+    {k:"detail",label:"추가 정보",ph:"소재·구성·사용법 등"},
+  ],
+};
+/* 제품명(대상 어휘)에서 카테고리 자동 추정 — 즉시·무료(로컬 키워드) */
+const CATEGORY_HINTS = {
+  "책·출판물":["책","도서","출판","에세이","소설","시집","단행본","교재","워크북","전자책","ebook","이북","가이드북","매뉴얼","북"],
+  "교육·자료":["자료","학습지","워크시트","활동지","교구","프린트","pdf","치료자료","수업자료","교안","커리큘럼","플래시","카드","문제집","교육자료","치료","재활"],
+  "뷰티·화장품":["크림","세럼","토너","로션","에센스","클렌저","클렌징","선크림","선블록","마스크팩","팩","립","쿠션","파운데이션","화장품","스킨","앰플","오일","밤","mist","미스트","보습","각질"],
+  "식품·건강":["주스","차","커피","스낵","즙","분말","환","영양제","비타민","단백질","프로틴","보충제","간식","반찬","소스","잼","꿀","식품","음료","건강","다이어트","그래놀라","견과","젤리"],
+  "패션·잡화":["티셔츠","셔츠","니트","코트","자켓","패딩","팬츠","바지","원피스","스커트","가방","백","지갑","신발","슈즈","운동화","모자","양말","벨트","악세서리","주얼리","반지","목걸이","귀걸이","스카프","머플러"],
+  "리빙·인테리어":["디퓨저","캔들","향초","조명","램프","무드등","쿠션","러그","화분","식기","그릇","머그","컵","텀블러","수납","선반","가구","의자","오브제","포스터","커튼","침구","이불","베개","방향제"],
+  "디지털·가전":["충전기","보조배터리","이어폰","에어팟","헤드폰","스피커","키보드","마우스","케이블","거치대","가습기","선풍기","청소기","드라이어","면도기","전동","스마트","워치","모니터","공기청정기","전자"],
+  "반려·키즈":["강아지","고양이","반려","펫","사료","펫간식","장난감","유아","아기","아이","키즈","기저귀","젖병","아동","유모차","치발기","이유식","완구","분유"],
+  "서비스·클래스":["클래스","강의","레슨","코칭","컨설팅","상담","수업","체험","워크숍","워크샵","프로그램","세션","과외","교육과정","트레이닝","멤버십","이용권"],
+};
+function guessCategory(name){
+  const t=(name||"").toLowerCase(); if(t.length<2) return null;
+  let best=null, score=0;
+  for(const [cat,words] of Object.entries(CATEGORY_HINTS)){
+    const c=words.reduce((n,w)=> n + (t.includes(w.toLowerCase())?1:0), 0);
+    if(c>score){ score=c; best=cat; }
+  }
+  return score>0?best:null;
+}
+function applyGuessedCategory(){
+  if(state.input.categoryManual) return;
+  const g = guessCategory($("f-name").value);
+  if(!g || g===state.input.category) return;
+  state.input.category = g;
+  document.querySelectorAll("#f-cat .chip").forEach(c=>c.setAttribute("aria-pressed", String(c.getAttribute("data-v")===g)));
+  renderCategoryFields();
+  toast(`카테고리 자동 감지: ${g}`);
+}
+function renderCategoryFields(){
+  const box = $("f-details"); const cat = state.input.category;
+  const fields = CATEGORY_FIELDS[cat];
+  if(!fields){ box.innerHTML=""; return; }
+  box.innerHTML = `<div class="cat-panel"><div class="cat-panel-t">${esc(cat)} 세부 정보 <span>· 아는 만큼만</span></div>` +
+    fields.map(f=>`<label class="f"><span>${esc(f.label)}</span><input type="text" data-dk="${f.k}" value="${esc(state.input.details?.[f.k]||"")}" placeholder="${esc(f.ph)}"></label>`).join("") +
+    `</div>`;
+  box.querySelectorAll("input[data-dk]").forEach(inp=>inp.addEventListener("input",()=>{
+    state.input.details = state.input.details||{};
+    state.input.details[inp.getAttribute("data-dk")] = inp.value;
+  }));
+}
+
 function buildCopyPrompt(){
   const i = state.input; const hasImg = i.images.length>0;
   const voice = TONE_VOICE[i.tone];
+  const fields = CATEGORY_FIELDS[i.category]||[];
+  const details = fields
+    .map(f=>{ const v=(i.details?.[f.k]||"").trim(); return v?`- ${f.label}: ${v}`:""; })
+    .filter(Boolean).join("\n");
   return [
     `제품명: ${i.name||"(미입력)"}`,
     `카테고리: ${i.category||"(미지정)"}`,
@@ -1198,6 +1331,7 @@ function buildCopyPrompt(){
     `가격·혜택: ${i.price||"(미지정)"}`,
     `톤 & 무드: ${i.tone||"(미지정 — 카테고리에 맞게)"}`,
     `판매 채널: ${i.platform||"(미지정)"}`,
+    details ? `\n[${i.category} 세부 정보 — 아래 사실을 결과물의 핵심 재료로 삼으세요]\n${details}\n※ 각 항목을 관련 섹션에 구체적으로 살려 쓰세요: 스펙(specs)·성분/구성(material·value)·혜택(features)·적합성(fit)에 실제 수치와 표현으로 반영하고, 두루뭉술한 미사여구로 뭉개지 마세요. 여기 없는 수치·사실은 지어내지 마세요.` : "",
     voice ? `\n■ 이 제품의 목소리(문체): ${voice} 이 목소리를 모든 문장에 일관되게 입히세요.` : "",
     hasImg ? `\n참고: 사용자가 실제 제품 사진 ${i.images.length}장을 제공했습니다. 세 컷 모두 이 제품의 실제 모양·색·라벨을 그대로 유지하도록, imagePrompts.direction에 "keep the exact product from the reference identical across all cuts"를 포함하세요.` : "",
     `\n위 정보로 상세페이지 JSON을 작성해 주세요.`,
@@ -1252,7 +1386,7 @@ function renderThemePicker(){
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
-  return `. Mood: ${style}. Shot as premium editorial commercial photography for a high-end Korean e-commerce detail page: soft natural window light, warm and airy atmosphere, tasteful negative space (leave a calm, evenly-toned empty area — usually the upper third — so headline text can sit over it), gentle realistic depth of field, natural skin tones, believable real-world scene. Vertical 4:5 composition. Absolutely NO text, letters, captions, logos, watermarks or borders anywhere in the image. Ultra high resolution, photorealistic.`;
+  return `. Mood: ${style}. Shot as premium editorial commercial photography for a high-end Korean e-commerce detail page: soft natural window light, warm and airy atmosphere, tasteful negative space (leave a calm, evenly-toned empty area — usually the upper third — so headline text can sit over it), gentle realistic depth of field, natural skin tones, believable real-world scene. Vertical 4:5 composition. CRITICAL: render absolutely NO readable text, letters, numbers, captions, logos, watermarks or borders anywhere. If the product itself carries text (e.g. a book cover or a label), keep that text softly out of focus, angled away, or partly cropped so no letters are legible — never attempt to spell words. Garbled or misspelled text ruins the image. Ultra high resolution, photorealistic.`;
 }
 function fullImagePrompt(base, refImages){
   const dir = state.result?.copy?.imagePrompts?.direction || "";
@@ -1894,6 +2028,7 @@ function bindChips(groupId,field){
     const v=chip.getAttribute("data-v"); const was=chip.getAttribute("aria-pressed")==="true";
     grp.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed","false"));
     chip.setAttribute("aria-pressed", was?"false":"true"); state.input[field]= was?"":v;
+    if(field==="category"){ state.input.categoryManual=!was; renderCategoryFields(); }
   }));
 }
 function syncEngineUI(eng){
@@ -1927,6 +2062,7 @@ function saveSettings(){
 function init(){
   loadSettings();
   bindChips("f-cat","category"); bindChips("f-tone","tone"); bindChips("f-plat","platform");
+  { let t; $("f-name").addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(applyGuessedCategory,400); }); }
   const drop=$("drop"), file=$("file");
   drop.addEventListener("click",()=>file.click());
   file.addEventListener("change",e=>{ handleFiles(e.target.files); file.value=""; });
