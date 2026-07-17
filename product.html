@@ -916,7 +916,7 @@
   <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;">
     <button class="x" onclick="app.closeModal('m-sns')">×</button>
     <h3>📱 SNS 세트 — 인스타 바로 올리기</h3>
-    <p class="lead">피드 4장(4:5) + 스토리 1장(9:16). 카피가 얹힌 완성 컷이라 그대로 업로드하면 됩니다. 테마·문구를 바꾼 뒤 다시 열면 새로 반영돼요.</p>
+    <p class="lead">피드 4장(4:5) + 스토리 1장(9:16). <b>사진·누끼 중심</b>의 완성 컷이라 그대로 업로드하면 됩니다. 제품 배경이 단색이면 누끼로 따서, 아니면 사진 풀블리드로 구성해요. 테마·문구를 바꾼 뒤 다시 열면 새로 반영됩니다.</p>
     <div class="sns-grid" id="sns-grid"></div>
     <button class="btn btn-accent" style="width:100%;" onclick="app.saveSnsAll()">🖼 5장 모두 저장</button>
     <div class="sep"></div>
@@ -2004,90 +2004,100 @@ function withA(col,a){
 
 async function buildSnsCards(){
   const c=state.result.copy, T=snsTokens();
-  await document.fonts.ready;
+  await document.fonts.ready.catch(()=>{});
   const [hero,life,detail]=await Promise.all([loadImg(state.result.images.hero),loadImg(state.result.images.lifestyle),loadImg(state.result.images.detail)]);
-  const name=state.input.name||"제품";
+  const uploaded = state.input.images && state.input.images[0] ? await loadImg(state.input.images[0]) : null;
+  // 누끼 소스: 업로드한 실제 제품 → 디테일 → 히어로 → 라이프
+  let cut=null; for(const s of [uploaded,detail,hero,life]){ if(s){ cut=makeCutout(s); if(cut) break; } }
+  const anyImg = hero||life||detail||(cut&&cut.canvas);
+  const name=state.input.name||"제품", eyebrow=thumbEyebrow(c);
   const cards=[];
   const mk=(w,h)=>{ const cv=document.createElement("canvas"); cv.width=w; cv.height=h; return [cv,cv.getContext("2d")]; };
-  const brandFoot=(ctx,W,H,color)=>{ ctx.font=`600 26px ${T.mono}`; ctx.fillStyle=color; ctx.textAlign="center"; ctx.fillText(name.toUpperCase().slice(0,28), W/2, H-56); ctx.textAlign="left"; };
+  const brandFoot=(ctx,W,H,color)=>{ ctx.font=`600 26px ${T.mono}`; ctx.fillStyle=color; ctx.textAlign="center"; ctx.fillText(name.toUpperCase().slice(0,28), W/2, H-54); ctx.textAlign="left"; };
+  const pill=(ctx,txt,x,y,fs)=>{ ctx.font=`700 ${fs}px ${T.mono}`; const w=ctx.measureText(txt).width+ (fs*1.7); rr(ctx,x,y,w,fs*2,fs); ctx.fillStyle=T.ac; ctx.fill(); ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(txt,x+fs*0.85,y+fs); ctx.textBaseline="alphabetic"; return w; };
+  const roundImg=(ctx,im,x,y,w,h,r)=>{ ctx.save(); rr(ctx,x,y,w,h,r); ctx.clip(); coverDraw(ctx,im,x,y,w,h); ctx.restore(); };
+  // 누끼 제품을 그림자·바닥그림자와 함께 영역에 contain 배치
+  const drawCut=(ctx,bx,by,bw,bh)=>{ const b=cut.box, r=Math.min(bw/b.w,bh/b.h), nw=b.w*r, nh=b.h*r, dx=bx+(bw-nw)/2, dy=by+(bh-nh)/2;
+    const gy=dy+nh-4, grd=ctx.createRadialGradient(dx+nw/2,gy,4,dx+nw/2,gy,nw*0.55);
+    grd.addColorStop(0,"rgba(20,16,10,.28)"); grd.addColorStop(1,"rgba(20,16,10,0)");
+    ctx.save(); ctx.translate(dx+nw/2,gy); ctx.scale(1,0.15); ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(0,0,nw*0.55,0,7); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.shadowColor="rgba(20,16,10,.26)"; ctx.shadowBlur=40; ctx.shadowOffsetY=20;
+    ctx.drawImage(cut.canvas,b.x,b.y,b.w,b.h,dx,dy,nw,nh); ctx.restore(); };
+  const scrim=(ctx,W,H,from,a)=>{ const g=ctx.createLinearGradient(0,H*from,0,H); g.addColorStop(0,"rgba(10,9,7,0)"); g.addColorStop(1,`rgba(10,9,7,${a})`); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); };
+  const eyeBadge=(ctx,x,y)=>{ if(eyebrow) pill(ctx,eyebrow,x,y,26); };
 
-  /* 1. 커버 — KV + 태그라인 + 헤드카피 */
+  /* 1. 커버 — KV 풀블리드 + 태그라인 + 헤드카피 */
   { const [cv,ctx]=mk(1080,1350);
-    if(hero) coverDraw(ctx,hero,0,0,1080,1350); else { ctx.fillStyle=T.dk; ctx.fillRect(0,0,1080,1350); }
-    const gr=ctx.createLinearGradient(0,540,0,1350); gr.addColorStop(0,"rgba(10,9,7,0)"); gr.addColorStop(1,"rgba(10,9,7,.78)");
-    ctx.fillStyle=gr; ctx.fillRect(0,0,1080,1350);
-    ctx.font=`600 30px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.85)";
-    ctx.fillText((c.tagline||"").toUpperCase(), 84, 1080);
-    ctx.font=`${T.headWt} 88px ${T.head}`; ctx.fillStyle="#fff";
-    const n1=wrapText(ctx,c.heroHeadline,912); n1.forEach((ln,i)=>ctx.fillText(ln,84,1170+i*104));
+    if(hero||life) coverDraw(ctx,hero||life,0,0,1080,1350); else if(cut){ const g=ctx.createLinearGradient(0,0,0,1350); g.addColorStop(0,T.bg0); g.addColorStop(1,T.bg1); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1350); drawCut(ctx,180,300,720,760); } else { ctx.fillStyle=T.dk; ctx.fillRect(0,0,1080,1350); }
+    scrim(ctx,1080,1350,.38,.8);
+    eyeBadge(ctx,84,96);
+    ctx.font=`600 30px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.85)"; ctx.fillText((c.tagline||"").toUpperCase(), 84, 1058);
+    ctx.font=`${T.headWt} 88px ${T.head}`; ctx.fillStyle="#fff"; ctx.textBaseline="top";
+    wrapText(ctx,c.heroHeadline,912).slice(0,3).forEach((ln,i)=>ctx.fillText(ln,84,1096+i*100));
+    ctx.textBaseline="alphabetic";
     cards.push({name:"01-cover",canvas:cv}); }
 
-  /* 2. 훅 — 페인포인트 타이포 카드 */
+  /* 2. 훅 — 페인포인트 + 제품(누끼 우선, 없으면 라운드 사진) */
   { const [cv,ctx]=mk(1080,1350);
-    ctx.fillStyle=T.bg1; ctx.fillRect(0,0,1080,1350);
-    ctx.fillStyle=T.ac; ctx.fillRect(84,150,120,10);
-    ctx.font=`${Math.min(T.headWt,800)} 84px ${T.head}`; ctx.textBaseline="top";
-    drawRichLines(ctx,c.hook?.question||"",84,300,912,116,T.tx,T.ac2,"left");
-    ctx.font=`400 40px ${T.sans}`; ctx.fillStyle=T.tx2;
-    wrapText(ctx,c.hook?.empathy||"",860).slice(0,5).forEach((ln,i)=>ctx.fillText(ln,84,830+i*62));
+    const g=ctx.createLinearGradient(0,0,0,1350); g.addColorStop(0,T.bg0); g.addColorStop(1,T.bg1); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1350);
+    const rg=ctx.createRadialGradient(540,470,60,540,470,640); rg.addColorStop(0,withA(T.ac,.12)); rg.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=rg; ctx.fillRect(0,0,1080,1350);
+    ctx.fillStyle=T.ac; ctx.fillRect(84,150,116,10);
+    ctx.font=`${Math.min(T.headWt,800)} 82px ${T.head}`; ctx.textBaseline="top";
+    const qlines=drawRichLines(ctx,c.hook?.question||"",84,214,912,112,T.tx,T.ac2,"left");
+    let py=214+qlines*112+18;
+    ctx.font=`400 38px ${T.sans}`; ctx.fillStyle=T.tx2;
+    const emp=wrapText(ctx,c.hook?.empathy||"",900).slice(0,3); emp.forEach((ln,i)=>ctx.fillText(ln,84,py+i*56)); py+=emp.length*56+30;
+    const imgTop=Math.max(py, 560), imgH=1250-imgTop;
+    if(cut) drawCut(ctx,140,imgTop,800,imgH);
+    else if(life||detail||hero) roundImg(ctx,life||detail||hero,120,imgTop,840,imgH,34);
     ctx.textBaseline="alphabetic"; brandFoot(ctx,1080,1350,T.tx2);
     cards.push({name:"02-hook",canvas:cv}); }
 
-  /* 3. USP·베네핏 — 디테일 컷 + 뱃지 */
+  /* 3. USP·베네핏 — 풀블리드 사진 + 하단 뱃지 */
   { const [cv,ctx]=mk(1080,1350);
-    ctx.fillStyle=T.bg0; ctx.fillRect(0,0,1080,1350);
-    if(detail||life) coverDraw(ctx,detail||life,0,0,1080,640); else { ctx.fillStyle=T.bg1; ctx.fillRect(0,0,1080,640); }
+    const bgim=detail||life||hero;
+    if(bgim) coverDraw(ctx,bgim,0,0,1080,1350); else if(cut){ const g=ctx.createLinearGradient(0,0,0,1350); g.addColorStop(0,T.bg0); g.addColorStop(1,T.bg1); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1350); drawCut(ctx,180,240,720,720); } else { ctx.fillStyle=T.bg1; ctx.fillRect(0,0,1080,1350); }
+    const onPhoto=!!bgim; if(onPhoto) scrim(ctx,1080,1350,.34,.84);
     ctx.textBaseline="top";
-    let y=716;
-    (c.usp||[]).slice(0,3).forEach((u)=>{
-      ctx.font=`700 34px ${T.mono}`;
-      const w=ctx.measureText(u).width+56;
-      rr(ctx,84,y,w,64,32); ctx.fillStyle=T.ac; ctx.fill();
-      ctx.fillStyle=T.onAc; ctx.fillText(u,84+28,y+14); y+=84; });
-    y+=22;
-    (c.features||[]).slice(0,3).forEach(f=>{
-      ctx.fillStyle=T.ac; ctx.beginPath(); ctx.arc(100,y+26,8,0,7); ctx.fill();
-      ctx.font=`800 44px ${T.sans}`; ctx.fillStyle=T.tx; ctx.fillText(f.title,132,y); y+=74; });
-    ctx.textBaseline="alphabetic"; brandFoot(ctx,1080,1350,T.tx2);
+    let y=760;
+    (c.usp||[]).slice(0,3).forEach((u)=>{ const w=pill(ctx,String(u).slice(0,22),84,y,32); y+=92; });
+    y+=14;
+    (c.features||[]).slice(0,2).forEach(f=>{
+      ctx.fillStyle=T.ac; ctx.beginPath(); ctx.arc(102,y+30,9,0,7); ctx.fill();
+      ctx.font=`800 46px ${T.sans}`; ctx.fillStyle=onPhoto?"#fff":T.tx; ctx.fillText(String(f.title).slice(0,22),136,y); y+=78; });
+    ctx.textBaseline="alphabetic"; brandFoot(ctx,1080,1350,onPhoto?"rgba(255,255,255,.7)":T.tx2);
     cards.push({name:"03-usp",canvas:cv}); }
 
-  /* 4. CTA — 다크 마감 카드 */
+  /* 4. CTA — 사진 위 마감 */
   { const [cv,ctx]=mk(1080,1350);
-    ctx.fillStyle=T.dk; ctx.fillRect(0,0,1080,1350);
-    const rg=ctx.createRadialGradient(540,0,80,540,0,900);
-    rg.addColorStop(0,withA(T.ac,.33)); rg.addColorStop(1,"rgba(0,0,0,0)");
-    ctx.fillStyle=rg; ctx.fillRect(0,0,1080,1350);
+    const bgim=hero||life||detail;
+    if(bgim){ coverDraw(ctx,bgim,0,0,1080,1350); ctx.fillStyle="rgba(10,9,7,.34)"; ctx.fillRect(0,0,1080,1350); scrim(ctx,1080,1350,.3,.9); }
+    else if(cut){ const g=ctx.createLinearGradient(0,0,0,1350); g.addColorStop(0,T.dk); g.addColorStop(1,"#000"); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1350); drawCut(ctx,220,180,640,620); }
+    else { ctx.fillStyle=T.dk; ctx.fillRect(0,0,1080,1350); }
     ctx.textAlign="center"; ctx.textBaseline="top";
-    ctx.font=`${T.headWt} 80px ${T.head}`; ctx.fillStyle=T.dkTx;
-    let yy=430;
-    String(c.cta?.headline||"").split(/\n/).forEach(seg=>{
-      wrapText(ctx,seg,880).forEach(ln=>{ ctx.fillText(ln,540,yy); yy+=104; }); });
-    const btn=c.cta?.button||"구매하기";
-    ctx.font=`800 44px ${T.sans}`;
-    const bw=ctx.measureText(btn).width+140;
-    rr(ctx,540-bw/2,yy+70,bw,110,55); ctx.fillStyle=T.ac; ctx.fill();
-    ctx.fillStyle=T.onAc; ctx.fillText(btn,540,yy+100);
-    ctx.font=`500 30px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.55)";
-    ctx.fillText(c.cta?.fine||"",540,yy+240);
+    ctx.font=`${T.headWt} 82px ${T.head}`; ctx.fillStyle="#fff";
+    let yy=880; String(c.cta?.headline||"").split(/\n/).forEach(seg=>{ wrapText(ctx,seg,900).forEach(ln=>{ ctx.fillText(ln,540,yy); yy+=100; }); });
+    const btn=c.cta?.button||"구매하기"; ctx.font=`800 44px ${T.sans}`;
+    const bw=ctx.measureText(btn).width+140; rr(ctx,540-bw/2,yy+40,bw,112,56); ctx.fillStyle=T.ac; ctx.fill();
+    ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(btn,540,yy+40+56);
+    ctx.textBaseline="top"; ctx.font=`500 30px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.62)";
+    if(c.cta?.fine) ctx.fillText(c.cta.fine,540,yy+186);
     ctx.textAlign="left"; ctx.textBaseline="alphabetic";
     cards.push({name:"04-cta",canvas:cv}); }
 
   /* 5. 스토리 9:16 — 풀블리드 KV */
   { const [cv,ctx]=mk(1080,1920);
-    const im=hero||life;
-    if(im) coverDraw(ctx,im,0,0,1080,1920); else { ctx.fillStyle=T.dk; ctx.fillRect(0,0,1080,1920); }
-    const gr=ctx.createLinearGradient(0,900,0,1920); gr.addColorStop(0,"rgba(10,9,7,0)"); gr.addColorStop(1,"rgba(10,9,7,.82)");
-    ctx.fillStyle=gr; ctx.fillRect(0,0,1080,1920);
+    const im=hero||life||detail;
+    if(im) coverDraw(ctx,im,0,0,1080,1920); else if(cut){ const g=ctx.createLinearGradient(0,0,0,1920); g.addColorStop(0,T.bg0); g.addColorStop(1,T.bg1); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1920); drawCut(ctx,180,560,720,820); } else { ctx.fillStyle=T.dk; ctx.fillRect(0,0,1080,1920); }
+    scrim(ctx,1080,1920,.46,.84);
     ctx.textAlign="center"; ctx.textBaseline="top";
-    ctx.font=`600 30px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.85)";
-    ctx.fillText((c.tagline||"").toUpperCase(),540,1430);
+    if(eyebrow){ ctx.font=`700 28px ${T.mono}`; const w=ctx.measureText(eyebrow).width+50; rr(ctx,540-w/2,1352,w,54,27); ctx.fillStyle=T.ac; ctx.fill(); ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(eyebrow,540,1352+27); ctx.textBaseline="top"; }
+    ctx.font=`600 30px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.85)"; ctx.fillText((c.tagline||"").toUpperCase(),540,1440);
     ctx.font=`${T.headWt} 84px ${T.head}`; ctx.fillStyle="#fff";
-    let sy=1500; wrapText(ctx,c.heroHeadline,900).forEach(ln=>{ ctx.fillText(ln,540,sy); sy+=100; });
-    const btn=c.cta?.button||"구매하기";
-    ctx.font=`800 40px ${T.sans}`;
-    const bw=ctx.measureText(btn).width+130;
-    rr(ctx,540-bw/2,sy+40,bw,100,50); ctx.fillStyle=T.ac; ctx.fill();
-    ctx.fillStyle=T.onAc; ctx.fillText(btn,540,sy+68);
+    let sy=1502; wrapText(ctx,c.heroHeadline,900).slice(0,2).forEach(ln=>{ ctx.fillText(ln,540,sy); sy+=96; });
+    const btn=c.cta?.button||"구매하기"; ctx.font=`800 40px ${T.sans}`;
+    const bw=ctx.measureText(btn).width+130; rr(ctx,540-bw/2,sy+34,bw,100,50); ctx.fillStyle=T.ac; ctx.fill();
+    ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(btn,540,sy+34+50);
     ctx.textAlign="left"; ctx.textBaseline="alphabetic";
     cards.push({name:"05-story",canvas:cv}); }
 
