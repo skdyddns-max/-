@@ -464,6 +464,16 @@ details.adv .inner{padding-bottom:12px;}
               <input type="range" id="moodStrength" min="0" max="100" value="100">
             </div>
           </div>
+          <div class="sec">
+            <h3>🎬 LUT (.cube)</h3>
+            <p class="note" style="margin-bottom:8px;">라이트룸·다빈치·프리미어용 .cube LUT를 불러와 그대로 입혀요. 다른 보정과 함께 적용됩니다.</p>
+            <div class="chips" id="lutChips"></div>
+            <div class="knob" id="lutAmountBox" style="display:none;">
+              <div class="lab"><span class="l">LUT 강도</span><span class="val" id="lutAmountVal">100%</span></div>
+              <input type="range" id="lutAmount" min="0" max="100" value="100">
+            </div>
+            <input type="file" id="lutFile" accept=".cube" hidden>
+          </div>
         </div>
 
         <!-- 다듬기 -->
@@ -568,6 +578,9 @@ details.adv .inner{padding-bottom:12px;}
             <div class="rowbtns">
               <button class="sbtn" id="btnSaveOne">💾 이 사진 저장</button>
               <button class="sbtn" id="btnSaveAll">💾 전체 저장</button>
+            </div>
+            <div class="rowbtns" style="margin-top:8px;">
+              <button class="sbtn" id="btnLutExport">🎬 현재 톤을 .cube LUT로 내보내기</button>
             </div>
             <p class="note" style="margin-top:10px;">저장 시 원본은 그대로 두고 새 파일(JPG)로 내려받습니다. 위치정보 등 EXIF는 자동 제거됩니다.</p>
           </div>
@@ -722,7 +735,69 @@ const RECIPE_DEFS = [
   ["hslBlue",       "파랑(하늘) 채도",-100,100, 0],
   ["hslMagenta",    "자홍 채도",   -100, 100, 0],
 ];
-function defaultRecipe(){ const r={}; for(const d of RECIPE_DEFS) r[d[0]]=d[4]; r.masks=[]; return r; }
+function defaultRecipe(){ const r={}; for(const d of RECIPE_DEFS) r[d[0]]=d[4]; r.masks=[]; r.lutId=""; r.lutAmount=100; return r; }
+
+/* ---------- 3D LUT 레지스트리 (.cube) ---------- */
+const LUTS = {};   // id → {name, size, data: Float32Array(0~1)}
+let lutSeq = 0;
+function registerLut(name, size, data){
+  const id = "lut" + (++lutSeq);
+  LUTS[id] = { name: String(name || "LUT").replace(/\.cube$/i, "").slice(0, 24), size, data };
+  return id;
+}
+function parseCube(text){
+  let size = 0;
+  const vals = [];
+  for(const raw of text.split(/\r?\n/)){
+    const t = raw.trim();
+    if(!t || t.startsWith("#")) continue;
+    if(/^LUT_1D_SIZE/i.test(t)) throw new Error("1D LUT는 지원하지 않아요. 3D LUT(.cube)를 사용해 주세요.");
+    const m = t.match(/^LUT_3D_SIZE\s+(\d+)/i);
+    if(m){ size = parseInt(m[1], 10); continue; }
+    if(/^[A-Za-z]/.test(t)) continue; // TITLE, DOMAIN_MIN/MAX 등은 무시
+    const parts = t.split(/\s+/).map(Number);
+    if(parts.length === 3 && parts.every(Number.isFinite)) vals.push(parts[0], parts[1], parts[2]);
+  }
+  if(!size || vals.length !== size*size*size*3) throw new Error("LUT 형식이 올바르지 않아요. (.cube 3D LUT인지 확인)");
+  let data = Float32Array.from(vals, v => Math.max(0, Math.min(1, v)));
+  if(size > 64){ ({ size, data } = resampleLut(size, data, 33)); } // 텍스처 한계 보호
+  return { size, data };
+}
+function resampleLut(srcN, src, N){
+  const out = new Float32Array(N*N*N*3);
+  const at = (r,g,b,ch) => src[((b*srcN + g)*srcN + r)*3 + ch];
+  const sample = (fr,fg,fb,ch) => {
+    const x=fr*(srcN-1), y=fg*(srcN-1), z=fb*(srcN-1);
+    const x0=Math.floor(x), y0=Math.floor(y), z0=Math.floor(z);
+    const x1=Math.min(x0+1,srcN-1), y1=Math.min(y0+1,srcN-1), z1=Math.min(z0+1,srcN-1);
+    const tx=x-x0, ty=y-y0, tz=z-z0;
+    const lerp=(a,b,t)=>a+(b-a)*t;
+    return lerp(
+      lerp(lerp(at(x0,y0,z0,ch),at(x1,y0,z0,ch),tx), lerp(at(x0,y1,z0,ch),at(x1,y1,z0,ch),tx), ty),
+      lerp(lerp(at(x0,y0,z1,ch),at(x1,y0,z1,ch),tx), lerp(at(x0,y1,z1,ch),at(x1,y1,z1,ch),tx), ty), tz);
+  };
+  for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){
+    const i=((b*N+g)*N+r)*3;
+    out[i]=sample(r/(N-1),g/(N-1),b/(N-1),0);
+    out[i+1]=sample(r/(N-1),g/(N-1),b/(N-1),1);
+    out[i+2]=sample(r/(N-1),g/(N-1),b/(N-1),2);
+  }
+  return { size:N, data:out };
+}
+/* 프리셋 저장/공유용 직렬화 (8비트) */
+function lutToB64(data){
+  const u = new Uint8Array(data.length);
+  for(let i=0;i<data.length;i++) u[i] = Math.max(0, Math.min(255, Math.round(data[i]*255)));
+  let s = "";
+  for(let i=0;i<u.length;i+=0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i+0x8000));
+  return btoa(s);
+}
+function lutFromB64(b64){
+  const s = atob(b64);
+  const f = new Float32Array(s.length);
+  for(let i=0;i<s.length;i++) f[i] = s.charCodeAt(i)/255;
+  return f;
+}
 const MASK_TYPES = ["radial","linear","lumDark","lumBright"];
 function clampMasks(list){
   if(!Array.isArray(list)) return [];
@@ -745,11 +820,14 @@ function clampRecipe(r){
     if(r && typeof r[k] === "number" && isFinite(r[k])) out[k] = Math.max(mn, Math.min(mx, Math.round(r[k])));
   }
   out.masks = clampMasks(r?.masks);
+  out.lutId = (typeof r?.lutId === "string") ? r.lutId : "";
+  out.lutAmount = (typeof r?.lutAmount === "number" && isFinite(r.lutAmount))
+    ? Math.max(0, Math.min(100, Math.round(r.lutAmount))) : 100;
   return out;
 }
 function isDefaultRecipe(r){
   const d = defaultRecipe();
-  return RECIPE_DEFS.every(([k])=>r[k]===d[k]) && !(r.masks||[]).length;
+  return RECIPE_DEFS.every(([k])=>r[k]===d[k]) && !(r.masks||[]).length && !r.lutId;
 }
 
 /* ============================================================
@@ -772,6 +850,9 @@ uniform float u_sat,u_vib,u_clarity,u_sharpen,u_fade,u_grain,u_halation,u_vignet
 uniform float u_skinSmooth,u_skinPore,u_skinGlow;
 uniform vec3 u_shadowTint,u_highTint; /* 색상 벡터 * 강도, JS에서 계산 */
 uniform float u_hsl[6];
+/* 3D LUT (N*N x N 2D 타일 패킹) */
+uniform sampler2D u_lutTex;
+uniform float u_lutSize, u_lutAmount;
 /* 부분 보정 마스크 (최대 3개) */
 uniform float u_maskN;
 uniform vec4 u_maskGeo[3];  /* radial: cx,cy,r,feather | linear: dir,pos,feather,- */
@@ -790,6 +871,18 @@ vec3 rgb2hsv(vec3 c){
 float hueDist(float a, float b){
   float d = abs(a-b);
   return min(d, 360.0-d);
+}
+vec3 applyLut(vec3 c){
+  float N = u_lutSize;
+  float b = clamp(c.b, 0.0, 1.0) * (N - 1.0);
+  float z0 = floor(b);
+  float z1 = min(z0 + 1.0, N - 1.0);
+  float f = b - z0;
+  float v = (clamp(c.g, 0.0, 1.0) * (N - 1.0) + 0.5) / N;
+  float uS = (clamp(c.r, 0.0, 1.0) * (N - 1.0) + 0.5) / N;
+  vec3 a0 = texture2D(u_lutTex, vec2((z0 + uS) / N, v)).rgb;
+  vec3 a1 = texture2D(u_lutTex, vec2((z1 + uS) / N, v)).rgb;
+  return mix(a0, a1, f);
 }
 void main(){
   vec3 raw = texture2D(u_tex, v_uv).rgb;
@@ -854,6 +947,10 @@ void main(){
   float f = u_fade*0.01;
   c = c + f*0.14*(1.0-c);
   c = mix(c, vec3(luma(c)), f*0.13);
+  /* 3D LUT */
+  if(u_lutAmount > 0.001){
+    c = mix(c, applyLut(clamp(c, 0.0, 1.0)), u_lutAmount);
+  }
   /* 할레이션(하이라이트 빛 번짐) */
   c += max(bL - 0.62, 0.0) * u_halation*0.01*0.95;
   /* 부분 보정 마스크 */
@@ -938,7 +1035,12 @@ class Engine {
     this.u.u_maskGeo = gl.getUniformLocation(prog, "u_maskGeo[0]");
     this.u.u_maskAdj = gl.getUniformLocation(prog, "u_maskAdj[0]");
     this.u.u_maskMeta = gl.getUniformLocation(prog, "u_maskMeta[0]");
+    this.u.u_lutTex = gl.getUniformLocation(prog, "u_lutTex");
+    this.u.u_lutSize = gl.getUniformLocation(prog, "u_lutSize");
+    this.u.u_lutAmount = gl.getUniformLocation(prog, "u_lutAmount");
     this.tex = this._mkTex(); this.texS = this._mkTex(); this.texL = this._mkTex();
+    this.lutTex = this._mkTex();
+    this._lutId = null;
     this.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
   }
   _mkTex(){
@@ -1026,6 +1128,33 @@ class Engine {
     gl.uniform4fv(u.u_maskGeo, geo);
     gl.uniform4fv(u.u_maskAdj, adj);
     gl.uniform2fv(u.u_maskMeta, meta);
+    // 3D LUT
+    const lut = r.lutId ? LUTS[r.lutId] : null;
+    let lutAmt = 0, lutSize = 2;
+    if(lut){
+      if(this._lutId !== r.lutId){
+        const N = lut.size;
+        const px = new Uint8Array(N*N * N * 4);
+        for(let b=0; b<N; b++) for(let g=0; g<N; g++) for(let rr=0; rr<N; rr++){
+          const src = ((b*N + g)*N + rr) * 3;
+          const dst = (g*(N*N) + b*N + rr) * 4;
+          px[dst]   = Math.max(0, Math.min(255, Math.round(lut.data[src]*255)));
+          px[dst+1] = Math.max(0, Math.min(255, Math.round(lut.data[src+1]*255)));
+          px[dst+2] = Math.max(0, Math.min(255, Math.round(lut.data[src+2]*255)));
+          px[dst+3] = 255;
+        }
+        gl.bindTexture(gl.TEXTURE_2D, this.lutTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N*N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        this._lutId = r.lutId;
+      }
+      lutAmt = (r.lutAmount ?? 100) / 100;
+      lutSize = lut.size;
+    }
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, this.lutTex);
+    gl.uniform1i(u.u_lutTex, 3);
+    gl.uniform1f(u.u_lutSize, lutSize);
+    gl.uniform1f(u.u_lutAmount, lutAmt);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 }
@@ -1319,6 +1448,15 @@ function loadSettings(){
     const p = JSON.parse(localStorage.getItem(LS_PRE));
     if(Array.isArray(p)) state.userPresets = p;
   }catch(e){}
+  // 프리셋에 내장된 LUT를 레지스트리에 복원
+  for(const pr of state.userPresets){
+    if(pr.lut?.b64 && typeof pr.lut.size === "number"){
+      try{ pr.recipe.lutId = registerLut(pr.lut.name || pr.name, pr.lut.size, lutFromB64(pr.lut.b64)); }
+      catch(e){ pr.recipe.lutId = ""; }
+    }else if(pr.recipe?.lutId){
+      pr.recipe.lutId = "";
+    }
+  }
 }
 function saveSettings(){ localStorage.setItem(LS_SET, JSON.stringify(state.settings)); }
 function savePresets(){ try{ localStorage.setItem(LS_PRE, JSON.stringify(state.userPresets)); }catch(e){ toast("저장 공간이 부족해 프리셋을 저장하지 못했어요."); } }
@@ -1494,6 +1632,7 @@ function selectPhoto(id){
   renderRetouchUI();
   setZoom(1);
   updateHistoryUI();
+  renderLutChips();
 }
 
 function removePhoto(id){
@@ -1611,6 +1750,7 @@ function applyRecipe(recipe, opts = {}){
   syncKnobs();
   renderStrip();
   renderMaskUI();
+  updateLutUI();
   if(!opts.silent) commitHistory(p, opts.label);
 }
 
@@ -1852,7 +1992,7 @@ async function sendChat(){
     const b64 = await imageToB64(srcBitmap(p));
     const res = await callClaudeVision(b64, chatPromptText(text, p.recipe), CHAT_SCHEMA);
     loadingEl.remove(); state.chat.pop();
-    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }), { label:"💬 대화 보정" });
+    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks, lutId: p.recipe.lutId, lutAmount: p.recipe.lutAmount }), { label:"💬 대화 보정" });
     pushMsg("ai", `<b>적용했어요.</b> ${esc(res.explanation || "")}`);
   }catch(e){
     console.error(e);
@@ -1963,7 +2103,7 @@ async function refAIMatch(){
   try{
     const [curB64, refB64] = await Promise.all([imageToB64(srcBitmap(p)), imageToB64(state.refBitmap, 768)]);
     const res = await callClaudeVision([curB64, refB64], refPromptText(p.recipe), CHAT_SCHEMA);
-    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks }), { label:"🖼 레퍼런스 매칭" });
+    applyRecipe(clampRecipe({ ...res.adjustments, masks: res.masks, lutId: p.recipe.lutId, lutAmount: p.recipe.lutAmount }), { label:"🖼 레퍼런스 매칭" });
     markCand(null);
     pushMsg("ai", `<b>🖼 레퍼런스 톤을 입혔어요.</b> ${esc(res.explanation || "")}`);
     toast("🖼 레퍼런스 톤을 입혔어요. 자세한 설명은 대화 탭에!", 3600);
@@ -2294,7 +2434,12 @@ function savePresetFlow(){
   if(isDefaultRecipe(p.recipe)){ toast("아직 보정한 내용이 없어요. 톤을 잡은 뒤 저장해 주세요."); return; }
   const name = prompt("이 톤의 이름을 지어 주세요:", "내 톤 " + (state.userPresets.length+1));
   if(!name) return;
-  state.userPresets.push({ id:"u"+Date.now(), name: name.trim().slice(0,20), recipe: structuredClone(p.recipe) });
+  const preset = { id:"u"+Date.now(), name: name.trim().slice(0,20), recipe: structuredClone(p.recipe) };
+  if(p.recipe.lutId && LUTS[p.recipe.lutId]){
+    const l = LUTS[p.recipe.lutId];
+    preset.lut = { name: l.name, size: l.size, b64: lutToB64(l.data) };
+  }
+  state.userPresets.push(preset);
   savePresets(); renderPresetList();
   toast(`⭐ "${name.trim()}" 프리셋으로 저장했어요. 내보내기 탭에서 적용·일괄 적용·파일 공유까지 할 수 있어요.`);
 }
@@ -2304,7 +2449,7 @@ function exportPresets(list){
   const data = {
     app: "tonemaker", type: "presets", version: 1,
     exported: new Date().toISOString().slice(0, 10),
-    presets: list.map(pr => ({ name: pr.name, recipe: pr.recipe })),
+    presets: list.map(pr => ({ name: pr.name, recipe: pr.recipe, ...(pr.lut ? { lut: pr.lut } : {}) })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const fname = list.length === 1 ? `톤메이커_프리셋_${list[0].name}.json` : `톤메이커_프리셋모음_${list.length}개.json`;
@@ -2324,13 +2469,24 @@ async function importPresetFile(file){
   let added = 0;
   for(const it of items){
     if(!it?.recipe || typeof it.recipe !== "object") continue;
-    state.userPresets.push({
+    const recipe = clampRecipe(it.recipe);
+    const entry = {
       id: "u" + Date.now() + "_" + added,
       name: String(it.name || "가져온 톤").slice(0, 20),
-      recipe: clampRecipe(it.recipe),
-    });
+      recipe,
+    };
+    if(it.lut?.b64 && typeof it.lut.size === "number"){
+      try{
+        recipe.lutId = registerLut(it.lut.name || entry.name, it.lut.size, lutFromB64(it.lut.b64));
+        entry.lut = it.lut;
+      }catch(e){ recipe.lutId = ""; }
+    }else if(recipe.lutId && !LUTS[recipe.lutId]){
+      recipe.lutId = ""; // 이 브라우저에 없는 LUT 참조는 제거
+    }
+    state.userPresets.push(entry);
     added++;
   }
+  renderLutChips();
   if(!added){ toast("유효한 프리셋이 없었어요."); return; }
   savePresets();
   renderPresetList();
@@ -2405,6 +2561,108 @@ async function saveAll(){
     }catch(e){ console.error(e); }
   }
   toast(`💾 ${ok}/${state.photos.length}장 저장 완료!`);
+}
+
+/* ============================================================
+   🎬 LUT 불러오기 / 적용 / .cube 내보내기
+   ============================================================ */
+async function importLutFile(file){
+  try{
+    const { size, data } = parseCube(await file.text());
+    const id = registerLut(file.name, size, data);
+    setLut(id);
+    renderLutChips();
+    toast(`🎬 "${LUTS[id].name}" LUT를 입혔어요 (${size}³). 강도 슬라이더로 세기를 조절해 보세요.`);
+  }catch(e){
+    toast("LUT 불러오기 실패: " + (e?.message || e), 4200);
+  }
+}
+function setLut(id){
+  const p = currentPhoto(); if(!p) return;
+  p.recipe.lutId = id;
+  p.recipe.lutAmount = 100;
+  requestRender(); syncKnobs(); markCand(null); renderStrip();
+  commitHistory(p, id ? `🎬 LUT: ${LUTS[id]?.name || ""}` : "🎬 LUT 해제");
+  updateLutUI();
+}
+function renderLutChips(){
+  const box = $("#lutChips");
+  box.innerHTML = "";
+  const open = document.createElement("button");
+  open.className = "chip"; open.textContent = "📂 .cube 불러오기";
+  open.onclick = () => $("#lutFile").click();
+  box.appendChild(open);
+  const cur = currentPhoto()?.recipe.lutId || "";
+  for(const [id, lut] of Object.entries(LUTS)){
+    const b = document.createElement("button");
+    b.className = "chip" + (id === cur ? " on" : "");
+    b.textContent = `🎬 ${lut.name}`;
+    b.onclick = () => setLut(id);
+    box.appendChild(b);
+  }
+  if(cur){
+    const off = document.createElement("button");
+    off.className = "chip"; off.textContent = "✕ LUT 해제";
+    off.onclick = () => setLut("");
+    box.appendChild(off);
+  }
+  updateLutUI();
+}
+function updateLutUI(){
+  const p = currentPhoto();
+  const active = !!(p?.recipe.lutId && LUTS[p.recipe.lutId]);
+  const box = $("#lutAmountBox");
+  box.style.display = active ? "block" : "none";
+  if(active){
+    $("#lutAmount").value = p.recipe.lutAmount;
+    $("#lutAmountVal").textContent = p.recipe.lutAmount + "%";
+    paintRange($("#lutAmount"));
+  }
+  $$("#lutChips .chip").forEach(c => {
+    if(c.textContent.startsWith("🎬")) c.classList.toggle("on", active && c.textContent === `🎬 ${LUTS[p.recipe.lutId].name}`);
+  });
+}
+/* 현재 톤을 .cube로 굽기 — 색 변환만 반영 (공간 효과·마스크 제외) */
+function exportCurrentCube(){
+  const p = currentPhoto();
+  if(!p){ toast("먼저 사진을 올리고 톤을 잡아 주세요."); return; }
+  if(isDefaultRecipe(p.recipe)){ toast("보정한 톤이 없어요. 톤을 잡은 뒤 내보내 주세요."); return; }
+  const N = 33;
+  // 색만 남긴 레시피 (선명도·그레인·비네트 등 위치 의존 효과는 LUT에 담을 수 없음)
+  const cr = structuredClone(p.recipe);
+  cr.clarity = 0; cr.sharpen = 0; cr.grain = 0; cr.vignette = 0; cr.halation = 0;
+  cr.skinSmooth = 0; cr.skinPore = 0; cr.masks = [];
+  // 항등 격자 (N*N x N 패킹, 셰이더 레이아웃과 동일)
+  const c = document.createElement("canvas");
+  c.width = N*N; c.height = N;
+  const x = c.getContext("2d");
+  const im = x.createImageData(N*N, N);
+  for(let b=0; b<N; b++) for(let g=0; g<N; g++) for(let r=0; r<N; r++){
+    const i = (g*(N*N) + b*N + r) * 4;
+    im.data[i]   = Math.round(r/(N-1)*255);
+    im.data[i+1] = Math.round(g/(N-1)*255);
+    im.data[i+2] = Math.round(b/(N-1)*255);
+    im.data[i+3] = 255;
+  }
+  x.putImageData(im, 0, 0);
+  const eng = new Engine(document.createElement("canvas"), 4096);
+  eng.setImage(c);
+  eng.render(cr);
+  const rc = document.createElement("canvas");
+  rc.width = N*N; rc.height = N;
+  const rx = rc.getContext("2d", { willReadFrequently:true });
+  rx.drawImage(eng.canvas, 0, 0);
+  const out = rx.getImageData(0, 0, N*N, N).data;
+  let txt = `# Created with ToneMaker\nTITLE "tonemaker"\nLUT_3D_SIZE ${N}\nDOMAIN_MIN 0.0 0.0 0.0\nDOMAIN_MAX 1.0 1.0 1.0\n`;
+  const f = v => (v/255).toFixed(6);
+  for(let b=0; b<N; b++) for(let g=0; g<N; g++) for(let r=0; r<N; r++){
+    const i = (g*(N*N) + b*N + r) * 4;
+    txt += `${f(out[i])} ${f(out[i+1])} ${f(out[i+2])}\n`;
+  }
+  const d = new Date();
+  downloadBlob(new Blob([txt], { type:"text/plain" }),
+    `톤메이커_LUT_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.cube`);
+  toast("🎬 .cube LUT로 내보냈어요! 프리미어·다빈치·포토샵에서 그대로 쓸 수 있어요. (색 변환만 포함, 그레인·비네트 등은 제외)", 5000);
 }
 
 /* ============================================================
@@ -2671,6 +2929,21 @@ function renderSnowItems(){
       };
       box.appendChild(b);
     }
+    // LUT
+    box.appendChild(snowChip("📂 LUT 불러오기", { onclick: () => $("#lutFile").click() }));
+    const curLut = p?.recipe.lutId || "";
+    for(const [id, lut] of Object.entries(LUTS)){
+      box.appendChild(snowChip(`🎬 ${lut.name}`, { on: id === curLut, onclick: () => {
+        setLut(id);
+        renderSnowItems();
+        showSnowSlider({
+          id:"lutAmount", label:"LUT 강도", min:0, max:100, def:100,
+          get: () => currentPhoto()?.recipe.lutAmount ?? 100,
+          set: v => { const pp = currentPhoto(); if(pp){ pp.recipe.lutAmount = Math.round(v); updateLutUI(); } },
+        });
+      } }));
+    }
+    if(curLut) box.appendChild(snowChip("✕ LUT 해제", { onclick: () => { setLut(""); renderSnowItems(); } }));
   } else if(cat === "mask"){
     const m = p?.recipe.masks[state.selMask];
     if(m){
@@ -2791,6 +3064,18 @@ function init(){
     if(state.lastMood) applyMood(state.lastMood.mood, v, { silent:true });
   });
   $("#moodStrength").addEventListener("change", () => commitHistory(null, `무드 강도 ${$("#moodStrength").value}%`));
+
+  // 🎬 LUT
+  renderLutChips();
+  $("#lutFile").onchange = e => { if(e.target.files[0]) importLutFile(e.target.files[0]); e.target.value = ""; };
+  $("#lutAmount").addEventListener("input", e => {
+    const p = currentPhoto(); if(!p) return;
+    p.recipe.lutAmount = Number(e.target.value);
+    $("#lutAmountVal").textContent = p.recipe.lutAmount + "%";
+    requestRender();
+  });
+  $("#lutAmount").addEventListener("change", () => commitHistory(null, `LUT 강도 ${$("#lutAmount").value}%`));
+  $("#btnLutExport").onclick = exportCurrentCube;
 
   // 실행 취소 / 다시 실행 / 히스토리
   $("#btnUndo").onclick = undoEdit;
