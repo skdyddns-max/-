@@ -206,6 +206,12 @@
   .dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .dash-table th, .dash-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
   .dash-table th { font-size: 11.5px; color: var(--sub); font-weight: 700; }
+  .dash-memo { border: 1px solid var(--line); border-left: 4px solid var(--sage); border-radius: 11px; padding: 10px 12px; margin: 10px 0; background: #FFFDFB; }
+  .dash-memo-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; margin-bottom: 6px; }
+  .dash-memo-date { font-weight: 700; color: var(--ink); }
+  .dash-memo-pct { font-weight: 700; } .dash-memo-pct em { font-style: normal; color: #b7aba0; font-size: 11px; font-weight: 400; }
+  .dash-memo-input { width: 100%; resize: vertical; font-family: inherit; font-size: 13px; line-height: 1.5; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink); }
+  .dash-memo-input:focus { outline: none; border-color: var(--sage); box-shadow: 0 0 0 2px var(--sage-soft); }
   @media (max-width: 520px) {
     .dash-bar-row { grid-template-columns: 96px 1fr; }
     .dash-bar-val { grid-column: 2; text-align: right; margin-top: -4px; }
@@ -602,6 +608,7 @@ const state = {
   projects: [],        // 프로젝트 라이브러리 [{id, createdAt, updatedAt, form, project, videos}]
   currentId: null,     // 작업 중 프로젝트의 라이브러리 id
   dashRows: [],        // 경과 대시보드용 세션 기록 [{date, child, question, attempts, firstTry}]
+  dashNotes: {},       // 회기 메모 { "아동 날짜": "메모 텍스트" }
 };
 
 function save() {
@@ -629,6 +636,7 @@ function load() {
   // 구버전(단일 프로젝트) 저장분 마이그레이션
   if (!Array.isArray(state.projects)) { state.projects = []; state.currentId = null; }
   if (!Array.isArray(state.dashRows)) state.dashRows = [];
+  if (!state.dashNotes || typeof state.dashNotes !== "object") state.dashNotes = {};
   if (state.project && !state.projects.some(p => p.id === state.currentId)) {
     const id = state.currentId || String(Date.now());
     state.currentId = id;
@@ -2004,8 +2012,9 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
 
   clearDash() {
     if (!state.dashRows.length) return;
-    if (!confirm("불러온 경과 기록을 모두 지울까요? (스튜디오에만 저장된 사본이며, 플레이어 원본 기록은 지워지지 않습니다.)")) return;
+    if (!confirm("불러온 경과 기록과 회기 메모를 모두 지울까요? (스튜디오에만 저장된 사본이며, 플레이어 원본 기록은 지워지지 않습니다.)")) return;
     state.dashRows = [];
+    state.dashNotes = {};
     dashChild = null;
     save();
     this.renderDashboard();
@@ -2014,11 +2023,11 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   },
 
   exportDashCSV() {
-    const rows = [["날짜", "아동", "질문", "활동", "시도 횟수", "첫 시도 정답"]];
+    const rows = [["날짜", "아동", "질문", "활동", "시도 횟수", "첫 시도 정답", "회기 메모"]];
     state.dashRows
       .slice()
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-      .forEach(r => rows.push([r.date, r.child, r.question, activityOf(r.question), r.attempts, r.firstTry ? "O" : "X"]));
+      .forEach(r => rows.push([r.date, r.child, r.question, activityOf(r.question), r.attempts, r.firstTry ? "O" : "X", getNote(r.child, r.date)]));
     const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n");
     downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "화용스튜디오_통합기록.csv");
     setStatus("dash-status", "info", "✅ 모든 아동의 통합 기록을 CSV로 저장했습니다.");
@@ -2145,6 +2154,21 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
             <tr><td>${esc(s.date)}</td><td>${s.total}</td><td>${s.correct}</td>
             <td><b style="color:${pctColor(s.pct)}">${s.pct}%</b></td></tr>`).join("")}
         </table>
+      </div>
+
+      <div class="card">
+        <h3>📝 회기 메모 <span class="muted" style="font-weight:400;">— 관찰·촉구 수준·목표 달성 등. 자동 저장되며 PDF 리포트에 함께 표시됩니다.</span></h3>
+        ${sessions.slice().reverse().map(s => {
+          const k = esc(noteKey(dashChild, s.date));
+          const note = getNote(dashChild, s.date);
+          return `
+          <div class="dash-memo">
+            <div class="dash-memo-head"><span class="dash-memo-date">${esc(s.date)}</span>
+              <span class="dash-memo-pct" style="color:${pctColor(s.pct)}">${s.pct}% <em>(${s.correct}/${s.total})</em></span></div>
+            <textarea class="dash-memo-input" data-key="${k}" rows="2"
+              oninput="app.saveDashNote(this)" placeholder="이 회기 관찰 메모를 입력하세요…">${esc(note)}</textarea>
+          </div>`;
+        }).join("")}
       </div>`;
 
     area.innerHTML = html;
@@ -2153,6 +2177,15 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   selectDashChild(name) {
     dashChild = name;
     this.renderDashboard();
+  },
+
+  // 회기 메모 자동 저장 (재렌더하지 않음 — 입력 포커스 유지)
+  saveDashNote(el) {
+    const key = el.dataset.key;
+    const val = el.value;
+    if (val.trim()) state.dashNotes[key] = val;
+    else delete state.dashNotes[key];
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
   },
 
   // 인쇄용 경과 리포트 (A4, 브라우저 인쇄 → PDF 저장). 새 탭으로 열고, 팝업 차단 시 다운로드로 대체
@@ -2200,6 +2233,14 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       <tr><td>${esc(s.date)}</td><td>${activitySummary(st.rows, s.date)}</td>
       <td>${s.correct} / ${s.total}</td><td style="color:${pctColor(s.pct)};font-weight:700">${s.pct}%</td></tr>`).join("");
 
+    // 회기 메모 (작성된 것만)
+    const memoList = st.sessions.slice().reverse()
+      .map(s => ({ date: s.date, pct: s.pct, note: getNote(st.child, s.date) }))
+      .filter(m => m.note.trim());
+    const memoSection = memoList.length ? `
+  <h2>회기 메모</h2>
+  ${memoList.map(m => `<div class="rmemo"><div class="rmemo-h"><b>${esc(m.date)}</b> <span style="color:${pctColor(m.pct)}">${m.pct}%</span></div><p>${esc(m.note)}</p></div>`).join("")}` : "";
+
     return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(st.child)} 경과 리포트</title>
@@ -2237,6 +2278,10 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
   th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); }
   th{ font-size:11px; color:var(--sub); background:#faf7f3; }
+  .rmemo{ border:1px solid var(--line); border-left:4px solid var(--sage); border-radius:9px; padding:9px 13px; margin:8px 0; }
+  .rmemo-h{ font-size:12px; color:var(--sub); margin-bottom:3px; }
+  .rmemo-h b{ color:var(--ink); }
+  .rmemo p{ margin:0; font-size:13px; white-space:pre-wrap; }
   .note{ border:1.5px dashed var(--line); border-radius:11px; padding:14px 15px; margin-top:6px; }
   .note .lines{ min-height:88px; background:repeating-linear-gradient(transparent,transparent 27px,var(--line) 27px,var(--line) 28px); }
   .sign{ display:flex; justify-content:flex-end; gap:28px; margin-top:16px; font-size:12.5px; color:var(--sub); }
@@ -2275,7 +2320,7 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
     <tr><th style="width:24%">날짜</th><th>활동</th><th style="width:16%">첫 시도 정답</th><th style="width:12%">정답률</th></tr>
     ${tableRows}
   </table>
-
+${memoSection}
   <h2>치료사 소견</h2>
   <div class="note"><div class="lines"></div></div>
   <div class="sign">담당 치료사 <span></span> 날짜 <span></span></div>
@@ -2366,6 +2411,10 @@ function activitySummary(rows, date) {
   const acts = Array.from(new Set(rows.filter(r => r.date === date).map(r => activityOf(r.question))));
   return esc(acts.join(" · "));
 }
+
+// 회기 메모 저장 키 (아동 + 날짜). 탭 문자로 구분해 충돌 방지
+function noteKey(child, date) { return String(child) + "\t" + String(date); }
+function getNote(child, date) { return (state.dashNotes && state.dashNotes[noteKey(child, date)]) || ""; }
 
 const ACT_COLOR = {
   "이야기 퀴즈": "#C4817E",
