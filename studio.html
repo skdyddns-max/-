@@ -2024,21 +2024,13 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
     setStatus("dash-status", "info", "✅ 모든 아동의 통합 기록을 CSV로 저장했습니다.");
   },
 
-  renderDashboard() {
-    const area = $("dash-body");
-    if (!area) return;
+  // 선택 아동의 통계 집계 (대시보드·리포트 공용)
+  dashStats(child) {
     const all = state.dashRows;
-    if (!all.length) {
-      area.innerHTML = '<div class="empty">📈<br>아직 불러온 기록이 없습니다.<br>플레이어의 준비 화면에서 <b>지난 기록 → ⬇️ 기록 CSV 내려받기</b>로 저장한 파일을 위에서 불러오세요.</div>';
-      return;
-    }
-
-    // 아동 목록
     const children = Array.from(new Set(all.map(r => r.child))).sort((a, b) => a.localeCompare(b, "ko"));
-    if (!dashChild || !children.includes(dashChild)) dashChild = children[0];
-    const rows = all.filter(r => r.child === dashChild);
+    if (!child || !children.includes(child)) child = children[0];
+    const rows = all.filter(r => r.child === child);
 
-    // 회기별(날짜별) 묶기
     const byDate = new Map();
     rows.forEach(r => {
       if (!byDate.has(r.date)) byDate.set(r.date, []);
@@ -2052,14 +2044,12 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       })
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
-    // 전체 요약
     const totalQ = rows.length;
     const totalC = rows.filter(r => r.firstTry).length;
-    const overall = Math.round((totalC / totalQ) * 100);
+    const overall = totalQ ? Math.round((totalC / totalQ) * 100) : 0;
     const first = sessions[0], last = sessions[sessions.length - 1];
     const trend = sessions.length >= 2 ? last.pct - first.pct : null;
 
-    // 활동 유형별 정답률
     const actMap = new Map();
     rows.forEach(r => {
       const a = activityOf(r.question);
@@ -2071,7 +2061,41 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       .map(([name, o]) => ({ name, total: o.total, correct: o.correct, pct: Math.round((o.correct / o.total) * 100) }))
       .sort((a, b) => b.total - a.total);
 
-    // ----- 렌더 -----
+    return { child, children, rows, sessions, totalQ, totalC, overall, first, last, trend, acts };
+  },
+
+  // 자동 소견 초안 (치료사가 검수·수정하도록 사실 위주로만 서술)
+  dashNarrative(st) {
+    if (!st.sessions.length) return "";
+    const p = [];
+    p.push(`총 ${st.sessions.length}회기 동안 ${st.totalQ}문항을 수행했으며, 전체 첫 시도 정답률은 ${st.overall}%입니다.`);
+    if (st.trend !== null) {
+      if (st.trend > 0) p.push(`첫 회기 ${st.first.pct}%에서 최근 회기 ${st.last.pct}%로 ${st.trend}%p 향상되었습니다.`);
+      else if (st.trend < 0) p.push(`첫 회기 ${st.first.pct}%에서 최근 회기 ${st.last.pct}%로 ${Math.abs(st.trend)}%p 낮아졌습니다. 과제 난이도·아동 컨디션 등을 함께 살펴볼 필요가 있습니다.`);
+      else p.push(`첫 회기와 최근 회기가 ${st.last.pct}%로 동일합니다.`);
+    }
+    if (st.acts.length >= 2) {
+      const strong = st.acts.reduce((a, b) => (b.pct > a.pct ? b : a));
+      const weak = st.acts.reduce((a, b) => (b.pct < a.pct ? b : a));
+      if (strong.name !== weak.name)
+        p.push(`활동별로는 「${strong.name}」(${strong.pct}%)가 가장 안정적이고, 「${weak.name}」(${weak.pct}%)는 추가 연습이 필요합니다.`);
+    }
+    return p.join(" ");
+  },
+
+  renderDashboard() {
+    const area = $("dash-body");
+    if (!area) return;
+    const all = state.dashRows;
+    if (!all.length) {
+      area.innerHTML = '<div class="empty">📈<br>아직 불러온 기록이 없습니다.<br>플레이어의 준비 화면에서 <b>지난 기록 → ⬇️ 기록 CSV 내려받기</b>로 저장한 파일을 위에서 불러오세요.</div>';
+      return;
+    }
+
+    const st = this.dashStats(dashChild);
+    dashChild = st.child;
+    const { children, sessions, totalQ, overall, last, trend, acts } = st;
+
     const sel = children.map(c => `<option value="${esc(c)}"${c === dashChild ? " selected" : ""}>${esc(c)}</option>`).join("");
 
     const trendChip = trend === null ? ""
@@ -2085,6 +2109,7 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
           <select id="dash-child" onchange="app.selectDashChild(this.value)">${sel}</select>
         </label>
         <div class="dash-actions">
+          <button class="btn btn-primary btn-sm" onclick="app.printDashReport()">📄 PDF 경과 리포트</button>
           <button class="btn btn-ghost btn-sm" onclick="app.exportDashCSV()">⬇️ 통합 CSV 내보내기</button>
           <button class="btn btn-ghost btn-sm" onclick="app.clearDash()">🗑 기록 지우기</button>
         </div>
@@ -2128,6 +2153,136 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   selectDashChild(name) {
     dashChild = name;
     this.renderDashboard();
+  },
+
+  // 인쇄용 경과 리포트 (A4, 브라우저 인쇄 → PDF 저장). 새 탭으로 열고, 팝업 차단 시 다운로드로 대체
+  printDashReport() {
+    if (!state.dashRows.length) { setStatus("dash-status", "warn", "먼저 기록 CSV를 불러오세요."); return; }
+    const st = this.dashStats(dashChild);
+    if (!st.sessions.length) { setStatus("dash-status", "warn", "선택한 아동의 회기 기록이 없습니다."); return; }
+    const html = this.buildDashReportHTML(st);
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if (w) {
+      setStatus("dash-status", "info", "📄 리포트를 새 탭에서 열었습니다. 상단 <b>🖨 인쇄 / PDF 저장</b> 버튼(또는 Ctrl/⌘+P) → 대상을 <b>‘PDF로 저장’</b>으로 선택하세요.");
+    } else {
+      downloadBlob(blob, sanitizeName(st.child) + "_경과리포트.html");
+      setStatus("dash-status", "info", "📄 리포트 HTML을 저장했습니다. 파일을 열고 🖨 인쇄 / PDF 저장을 선택하세요.");
+    }
+  },
+
+  buildDashReportHTML(st) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const period = st.sessions.length
+      ? `${st.first.date.slice(0, 10)} ~ ${st.last.date.slice(0, 10)}` : "—";
+    const trendText = st.trend === null ? "—"
+      : st.trend > 0 ? `▲ +${st.trend}%p`
+      : st.trend < 0 ? `▼ ${st.trend}%p` : "→ 0%p";
+
+    const cards = [
+      { v: st.sessions.length, l: "회기" },
+      { v: st.totalQ, l: "총 문항" },
+      { v: st.overall + "%", l: "전체 첫 시도 정답률", c: pctColor(st.overall) },
+      { v: st.last.pct + "%", l: "최근 회기 (" + trendText + ")", c: pctColor(st.last.pct) },
+    ].map(c => `<div class="rc"><b${c.c ? ` style="color:${c.c}"` : ""}>${c.v}</b><span>${c.l}</span></div>`).join("");
+
+    const bars = st.acts.map(a => `
+      <div class="rbar">
+        <span class="rbar-l"><i style="background:${ACT_COLOR[a.name] || "#999"}"></i>${esc(a.name)}</span>
+        <span class="rbar-t"><b style="width:${a.pct}%;background:${ACT_COLOR[a.name] || "#999"}"></b></span>
+        <span class="rbar-v">${a.pct}% <em>(${a.correct}/${a.total})</em></span>
+      </div>`).join("");
+
+    const tableRows = st.sessions.slice().reverse().map(s => `
+      <tr><td>${esc(s.date)}</td><td>${activitySummary(st.rows, s.date)}</td>
+      <td>${s.correct} / ${s.total}</td><td style="color:${pctColor(s.pct)};font-weight:700">${s.pct}%</td></tr>`).join("");
+
+    return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(st.child)} 경과 리포트</title>
+<style>
+  :root{ --rose:#C4817E; --rose-deep:#A85F5B; --sage:#8CA888; --ink:#3d3835; --sub:#8a7f75; --line:#e7ded5; --paper:#F8F4F0; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif; color:var(--ink);
+    background:var(--paper); margin:0; line-height:1.6; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .noprint{ position:sticky; top:0; z-index:9; background:#3d3835; color:#fff; text-align:center; padding:11px; font-size:13px; }
+  .noprint button{ border:none; border-radius:8px; background:var(--rose); color:#fff; font:inherit; font-weight:700;
+    padding:8px 18px; margin-left:10px; cursor:pointer; }
+  .page{ max-width:800px; margin:20px auto; background:#fff; padding:30px 34px 40px;
+    border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,.06); }
+  .rhead{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    border-bottom:3px solid var(--rose); padding-bottom:14px; margin-bottom:20px; flex-wrap:wrap; }
+  .rhead h1{ font-size:20px; margin:0 0 4px; }
+  .rhead .sub{ color:var(--sub); font-size:12.5px; }
+  .rmeta{ font-size:12.5px; color:var(--sub); text-align:right; line-height:1.9; }
+  .rmeta b{ color:var(--ink); }
+  h2{ font-size:14px; margin:24px 0 10px; padding-left:9px; border-left:4px solid var(--sage); }
+  .rcards{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .rc{ border:1.5px solid var(--line); border-radius:11px; padding:12px 8px; text-align:center; }
+  .rc b{ display:block; font-size:23px; color:var(--ink); }
+  .rc span{ display:block; font-size:11px; color:var(--sub); margin-top:4px; }
+  .summary{ background:#FBF7F3; border:1px solid var(--line); border-radius:11px; padding:13px 15px; font-size:13.5px; margin-top:4px; }
+  svg{ width:100%; height:auto; display:block; }
+  .dash-svg-tick{ font-size:10px; fill:#b7aba0; } .dash-svg-val{ font-size:11px; font-weight:700; fill:var(--ink); }
+  .dash-svg-date{ font-size:10.5px; fill:var(--sub); } .dash-svg-date2{ font-size:9px; fill:#b7aba0; }
+  .rbar{ display:grid; grid-template-columns:120px 1fr auto; align-items:center; gap:10px; margin:8px 0; font-size:12.5px; }
+  .rbar-l{ display:flex; align-items:center; gap:6px; font-weight:700; }
+  .rbar-l i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .rbar-t{ background:#efeae4; border-radius:999px; height:13px; overflow:hidden; }
+  .rbar-t b{ display:block; height:100%; border-radius:999px; }
+  .rbar-v{ color:var(--sub); white-space:nowrap; } .rbar-v em{ font-style:normal; color:#b7aba0; }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); }
+  th{ font-size:11px; color:var(--sub); background:#faf7f3; }
+  .note{ border:1.5px dashed var(--line); border-radius:11px; padding:14px 15px; margin-top:6px; }
+  .note .lines{ min-height:88px; background:repeating-linear-gradient(transparent,transparent 27px,var(--line) 27px,var(--line) 28px); }
+  .sign{ display:flex; justify-content:flex-end; gap:28px; margin-top:16px; font-size:12.5px; color:var(--sub); }
+  .sign span{ border-bottom:1px solid var(--ink); min-width:120px; display:inline-block; margin-left:6px; }
+  .foot{ margin-top:26px; text-align:center; color:#b7aba0; font-size:11px; }
+  @page{ margin:14mm; }
+  @media print{ .noprint{ display:none; } body{ background:#fff; } .page{ margin:0; max-width:none; box-shadow:none; border-radius:0; padding:0; } h2{ page-break-after:avoid; } tr,.rbar{ page-break-inside:avoid; } }
+</style></head>
+<body>
+<div class="noprint">인쇄 화면에서 대상을 ‘PDF로 저장’으로 선택하세요 <button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>
+<div class="page">
+  <div class="rhead">
+    <div>
+      <h1>🎬 화용 스튜디오 · 경과 리포트</h1>
+      <div class="sub">비디오 모델링 화용언어치료 · 첫 시도 정답률 기준</div>
+    </div>
+    <div class="rmeta">
+      아동 <b>${esc(st.child)}</b><br>
+      평가 기간 <b>${esc(period)}</b><br>
+      총 회기 <b>${st.sessions.length}회</b> · 발행일 <b>${today}</b>
+    </div>
+  </div>
+
+  <h2>요약</h2>
+  <div class="rcards">${cards}</div>
+  <div class="summary">${esc(this.dashNarrative(st))}</div>
+
+  <h2>회기별 첫 시도 정답률</h2>
+  ${this.dashLineChart(st.sessions)}
+
+  <h2>활동 유형별 정답률</h2>
+  ${bars || '<p style="color:#8a7f75;font-size:13px">활동 데이터가 없습니다.</p>'}
+
+  <h2>회기 기록</h2>
+  <table>
+    <tr><th style="width:24%">날짜</th><th>활동</th><th style="width:16%">첫 시도 정답</th><th style="width:12%">정답률</th></tr>
+    ${tableRows}
+  </table>
+
+  <h2>치료사 소견</h2>
+  <div class="note"><div class="lines"></div></div>
+  <div class="sign">담당 치료사 <span></span> 날짜 <span></span></div>
+
+  <div class="foot">화용 스튜디오 · 마음터칭 — 이 리포트는 플레이어 세션 기록(첫 시도 정답률)을 바탕으로 자동 생성되었으며, 치료사의 임상적 해석과 함께 활용해야 합니다.</div>
+</div>
+</body></html>`;
   },
 
   // 인라인 SVG 막대그래프 (외부 라이브러리 없이 CSP 친화적)
@@ -2204,6 +2359,12 @@ function activityOf(q) {
   if (q.startsWith("문제 해결")) return "어떻게 할까?";
   if (q.startsWith("말하기")) return "말하기";
   return "이야기 퀴즈";
+}
+
+// 특정 회기(날짜)에 포함된 활동 유형 목록 (리포트 표용)
+function activitySummary(rows, date) {
+  const acts = Array.from(new Set(rows.filter(r => r.date === date).map(r => activityOf(r.question))));
+  return esc(acts.join(" · "));
 }
 
 const ACT_COLOR = {
