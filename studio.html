@@ -151,6 +151,7 @@
   }
   .status.show { display: block; animation: rise .18s ease-out; }
   .status.info  { background: var(--sage-soft); color: var(--sage-deep); border-left-color: var(--sage); }
+  .status.warn  { background: #FBF3E3; color: #9A6B12; border-left-color: #D9A441; }
   .status.error { background: #F9ECEA; color: var(--danger); border-left-color: var(--danger); }
   .spinner {
     display: inline-block; width: 14px; height: 14px; border: 2px solid #C9D5C6;
@@ -175,6 +176,40 @@
   summary:hover { color: var(--rose-deep); }
   .checkline { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13.5px; }
   .checkline input { width: auto; accent-color: var(--rose); transform: scale(1.15); }
+
+  /* ---------- 경과 대시보드 ---------- */
+  .dash-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .dash-toolbar label { font-size: 12.5px; font-weight: 700; color: var(--sub); display: flex; flex-direction: column; gap: 5px; }
+  .dash-toolbar select { min-width: 180px; }
+  .dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dash-actions .btn-sm { margin-top: 0; }
+  .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .dash-stat { background: #FFFDFB; border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 12px; text-align: center; }
+  .dash-stat b { display: block; font-size: 26px; line-height: 1.1; color: var(--ink); }
+  .dash-stat span { display: block; font-size: 11.5px; color: var(--sub); margin-top: 5px; }
+  .dash-chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-left: 2px; }
+  .dash-chip.up { background: var(--sage-soft); color: var(--sage-deep); }
+  .dash-chip.down { background: #F9ECEA; color: var(--danger); }
+  .dash-chip.flat { background: #EFEAE4; color: var(--sub); }
+  .dash-svg { width: 100%; height: auto; display: block; }
+  .dash-svg-tick { font-size: 10px; fill: #B7ABA0; }
+  .dash-svg-val { font-size: 11px; font-weight: 700; fill: var(--ink); }
+  .dash-svg-date { font-size: 10.5px; fill: var(--sub); }
+  .dash-svg-date2 { font-size: 9px; fill: #B7ABA0; }
+  .dash-bar-row { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px; margin: 9px 0; font-size: 13px; }
+  .dash-bar-label { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink); }
+  .dash-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .dash-bar-track { background: #EFEAE4; border-radius: 999px; height: 14px; overflow: hidden; }
+  .dash-bar-fill { height: 100%; border-radius: 999px; min-width: 2px; transition: width .3s ease; }
+  .dash-bar-val { font-size: 12px; color: var(--sub); white-space: nowrap; }
+  .dash-bar-val em { font-style: normal; color: #B7ABA0; font-size: 11px; }
+  .dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dash-table th, .dash-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .dash-table th { font-size: 11.5px; color: var(--sub); font-weight: 700; }
+  @media (max-width: 520px) {
+    .dash-bar-row { grid-template-columns: 96px 1fr; }
+    .dash-bar-val { grid-column: 2; text-align: right; margin-top: -4px; }
+  }
   a { color: var(--rose-deep); text-decoration-color: rgba(165,98,95,.35); text-underline-offset: 2px; }
   footer { text-align: center; font-size: 12px; color: var(--sub); padding: 24px 16px 30px; line-height: 1.8; }
 
@@ -243,6 +278,7 @@
   <button data-step="7" onclick="app.go(7)">🃏 감정 카드</button>
   <button data-step="8" onclick="app.go(8)">🫧 마음 읽기</button>
   <button data-step="9" onclick="app.go(9)">🧭 어떻게 할까?</button>
+  <button data-step="10" onclick="app.go(10)">📈 경과</button>
   <button data-step="6" onclick="app.go(6)">⚙ 설정</button>
 </nav>
 
@@ -494,6 +530,18 @@
   </div>
 </section>
 
+<!-- 📈 경과 대시보드 -->
+<section class="step" id="step10">
+  <div class="card">
+    <h2>📈 경과 대시보드</h2>
+    <p class="muted">치료 플레이어의 <b>기록 CSV</b>를 불러오면 아동별 회기 추이가 그래프로 보입니다. 여러 프로젝트·여러 활동의 CSV를 함께 불러와 쌓을 수 있습니다. (플레이어 준비 화면 "지난 기록 → ⬇️ 기록 CSV 내려받기"에서 저장)</p>
+    <button class="btn btn-primary" onclick="document.getElementById('dash-file').click()">⬆️ 기록 CSV 불러오기</button>
+    <input type="file" id="dash-file" accept=".csv" multiple style="display:none" onchange="app.importDashCSV(this)">
+    <div class="status" id="dash-status"></div>
+    <div id="dash-body"></div>
+  </div>
+</section>
+
 <!-- ⚙ 설정 -->
 <section class="step" id="step6">
   <div class="card">
@@ -553,6 +601,7 @@ const state = {
   videos: {},          // sceneNo -> 메모(URL/파일명) (작업 중 프로젝트)
   projects: [],        // 프로젝트 라이브러리 [{id, createdAt, updatedAt, form, project, videos}]
   currentId: null,     // 작업 중 프로젝트의 라이브러리 id
+  dashRows: [],        // 경과 대시보드용 세션 기록 [{date, child, question, attempts, firstTry}]
 };
 
 function save() {
@@ -579,6 +628,7 @@ function load() {
   } catch (e) { /* 손상된 저장분은 무시 */ }
   // 구버전(단일 프로젝트) 저장분 마이그레이션
   if (!Array.isArray(state.projects)) { state.projects = []; state.currentId = null; }
+  if (!Array.isArray(state.dashRows)) state.dashRows = [];
   if (state.project && !state.projects.some(p => p.id === state.currentId)) {
     const id = state.currentId || String(Date.now());
     state.currentId = id;
@@ -1208,6 +1258,7 @@ const app = {
     this.renderQuiz();
     this.renderLibrary();
     this.renderEmotionUI();
+    this.renderDashboard();
     this.updateNavBadges();
   },
 
@@ -1889,9 +1940,283 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
     downloadBlob(new Blob([html], { type: "text/html" }), "감정카드_시트.html");
     setStatus("emo-status", "info", "✅ 카드 시트를 저장했습니다. 파일을 열고 인쇄한 뒤 점선을 따라 자르세요.");
   },
+
+  /* ---------- 경과 대시보드 ---------- */
+  async importDashCSV(input) {
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length) return;
+    setStatus("dash-status", "info", "기록 CSV를 읽는 중…");
+
+    const key = r => r.date + "|" + r.child + "|" + r.question + "|" + r.attempts;
+    const seen = new Set(state.dashRows.map(key));
+    let added = 0, skippedFiles = 0, scanned = 0;
+
+    for (const f of files) {
+      let text;
+      try { text = await f.text(); } catch (e) { skippedFiles++; continue; }
+      const rows = parseCSV(text).filter(r => r.length && r.some(c => c.trim() !== ""));
+      if (!rows.length) { skippedFiles++; continue; }
+
+      // 헤더 열 위치 파악 (열 순서가 달라도 대응)
+      const head = rows[0].map(c => c.trim());
+      const col = name => head.indexOf(name);
+      const iDate = col("날짜"), iChild = col("아동"), iQ = col("질문"),
+            iAtt = col("시도 횟수"), iFirst = col("첫 시도 정답");
+      const hasHeader = iDate >= 0 && iQ >= 0 && iFirst >= 0;
+      if (!hasHeader) { skippedFiles++; continue; }
+
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r];
+        const date = (row[iDate] || "").trim();
+        const question = (row[iQ] || "").trim();
+        if (!date || !question) continue;
+        const rec = {
+          date,
+          child: iChild >= 0 ? (row[iChild] || "").trim() || "(이름 없음)" : "(이름 없음)",
+          question,
+          attempts: iAtt >= 0 ? parseInt(row[iAtt], 10) || 0 : 0,
+          firstTry: /^(o|1|true|정답)/i.test((row[iFirst] || "").trim()),
+        };
+        scanned++;
+        const k = key(rec);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        state.dashRows.push(rec);
+        added++;
+      }
+    }
+
+    save();
+    // 새로 들어온 아동을 자동 선택
+    if (added) {
+      const last = state.dashRows[state.dashRows.length - 1];
+      if (last) dashChild = last.child;
+    }
+    this.renderDashboard();
+    this.updateNavBadges();
+
+    let msg = `✅ ${added}건을 추가했습니다.`;
+    if (scanned - added > 0) msg += ` (중복 ${scanned - added}건 제외)`;
+    if (skippedFiles) msg += ` · 형식이 맞지 않는 파일 ${skippedFiles}개는 건너뛰었습니다.`;
+    setStatus("dash-status", added ? "info" : "warn", msg);
+  },
+
+  clearDash() {
+    if (!state.dashRows.length) return;
+    if (!confirm("불러온 경과 기록을 모두 지울까요? (스튜디오에만 저장된 사본이며, 플레이어 원본 기록은 지워지지 않습니다.)")) return;
+    state.dashRows = [];
+    dashChild = null;
+    save();
+    this.renderDashboard();
+    this.updateNavBadges();
+    clearStatus("dash-status");
+  },
+
+  exportDashCSV() {
+    const rows = [["날짜", "아동", "질문", "활동", "시도 횟수", "첫 시도 정답"]];
+    state.dashRows
+      .slice()
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .forEach(r => rows.push([r.date, r.child, r.question, activityOf(r.question), r.attempts, r.firstTry ? "O" : "X"]));
+    const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n");
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "화용스튜디오_통합기록.csv");
+    setStatus("dash-status", "info", "✅ 모든 아동의 통합 기록을 CSV로 저장했습니다.");
+  },
+
+  renderDashboard() {
+    const area = $("dash-body");
+    if (!area) return;
+    const all = state.dashRows;
+    if (!all.length) {
+      area.innerHTML = '<div class="empty">📈<br>아직 불러온 기록이 없습니다.<br>플레이어의 준비 화면에서 <b>지난 기록 → ⬇️ 기록 CSV 내려받기</b>로 저장한 파일을 위에서 불러오세요.</div>';
+      return;
+    }
+
+    // 아동 목록
+    const children = Array.from(new Set(all.map(r => r.child))).sort((a, b) => a.localeCompare(b, "ko"));
+    if (!dashChild || !children.includes(dashChild)) dashChild = children[0];
+    const rows = all.filter(r => r.child === dashChild);
+
+    // 회기별(날짜별) 묶기
+    const byDate = new Map();
+    rows.forEach(r => {
+      if (!byDate.has(r.date)) byDate.set(r.date, []);
+      byDate.get(r.date).push(r);
+    });
+    const sessions = Array.from(byDate.entries())
+      .map(([date, rs]) => {
+        const total = rs.length;
+        const correct = rs.filter(r => r.firstTry).length;
+        return { date, total, correct, pct: Math.round((correct / total) * 100) };
+      })
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    // 전체 요약
+    const totalQ = rows.length;
+    const totalC = rows.filter(r => r.firstTry).length;
+    const overall = Math.round((totalC / totalQ) * 100);
+    const first = sessions[0], last = sessions[sessions.length - 1];
+    const trend = sessions.length >= 2 ? last.pct - first.pct : null;
+
+    // 활동 유형별 정답률
+    const actMap = new Map();
+    rows.forEach(r => {
+      const a = activityOf(r.question);
+      if (!actMap.has(a)) actMap.set(a, { total: 0, correct: 0 });
+      const o = actMap.get(a);
+      o.total++; if (r.firstTry) o.correct++;
+    });
+    const acts = Array.from(actMap.entries())
+      .map(([name, o]) => ({ name, total: o.total, correct: o.correct, pct: Math.round((o.correct / o.total) * 100) }))
+      .sort((a, b) => b.total - a.total);
+
+    // ----- 렌더 -----
+    const sel = children.map(c => `<option value="${esc(c)}"${c === dashChild ? " selected" : ""}>${esc(c)}</option>`).join("");
+
+    const trendChip = trend === null ? ""
+      : trend > 0 ? `<span class="dash-chip up">▲ 첫 회기보다 +${trend}%p</span>`
+      : trend < 0 ? `<span class="dash-chip down">▼ 첫 회기보다 ${trend}%p</span>`
+      : `<span class="dash-chip flat">→ 첫 회기와 동일</span>`;
+
+    let html = `
+      <div class="dash-toolbar">
+        <label>아동 선택
+          <select id="dash-child" onchange="app.selectDashChild(this.value)">${sel}</select>
+        </label>
+        <div class="dash-actions">
+          <button class="btn btn-ghost btn-sm" onclick="app.exportDashCSV()">⬇️ 통합 CSV 내보내기</button>
+          <button class="btn btn-ghost btn-sm" onclick="app.clearDash()">🗑 기록 지우기</button>
+        </div>
+      </div>
+
+      <div class="dash-cards">
+        <div class="dash-stat"><b>${sessions.length}</b><span>회기</span></div>
+        <div class="dash-stat"><b>${totalQ}</b><span>총 문항</span></div>
+        <div class="dash-stat"><b style="color:${pctColor(overall)}">${overall}%</b><span>전체 첫 시도 정답률</span></div>
+        <div class="dash-stat"><b style="color:${pctColor(last.pct)}">${last.pct}%</b><span>최근 회기 ${trendChip}</span></div>
+      </div>
+
+      <div class="card">
+        <h3>회기별 첫 시도 정답률</h3>
+        ${this.dashLineChart(sessions)}
+      </div>
+
+      <div class="card">
+        <h3>활동 유형별 정답률</h3>
+        ${acts.map(a => `
+          <div class="dash-bar-row">
+            <span class="dash-bar-label"><span class="dash-dot" style="background:${ACT_COLOR[a.name] || "#999"}"></span>${esc(a.name)}</span>
+            <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${a.pct}%;background:${ACT_COLOR[a.name] || "#999"}"></div></div>
+            <span class="dash-bar-val">${a.pct}% <em>(${a.correct}/${a.total})</em></span>
+          </div>`).join("")}
+      </div>
+
+      <div class="card">
+        <h3>회기 기록</h3>
+        <table class="dash-table">
+          <tr><th>날짜</th><th>문항</th><th>첫 시도 정답</th><th>정답률</th></tr>
+          ${sessions.slice().reverse().map(s => `
+            <tr><td>${esc(s.date)}</td><td>${s.total}</td><td>${s.correct}</td>
+            <td><b style="color:${pctColor(s.pct)}">${s.pct}%</b></td></tr>`).join("")}
+        </table>
+      </div>`;
+
+    area.innerHTML = html;
+  },
+
+  selectDashChild(name) {
+    dashChild = name;
+    this.renderDashboard();
+  },
+
+  // 인라인 SVG 막대그래프 (외부 라이브러리 없이 CSP 친화적)
+  dashLineChart(sessions) {
+    if (!sessions.length) return '<p class="muted">표시할 회기가 없습니다.</p>';
+    const W = 640, H = 220, padL = 34, padR = 14, padT = 14, padB = 46;
+    const cw = W - padL - padR, ch = H - padT - padB;
+    const n = sessions.length;
+    const barW = Math.min(56, cw / n * 0.62);
+    const step = cw / n;
+    const y = p => padT + ch - (p / 100) * ch;
+
+    let g = `<svg viewBox="0 0 ${W} ${H}" class="dash-svg" role="img" aria-label="회기별 첫 시도 정답률 그래프">`;
+    // 가로 눈금선 0/50/100
+    [0, 50, 100].forEach(v => {
+      g += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" stroke="#E7DED5" stroke-width="1"/>`;
+      g += `<text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end" class="dash-svg-tick">${v}</text>`;
+    });
+    // 추세선 (점 잇기)
+    if (n >= 2) {
+      const pts = sessions.map((s, i) => `${padL + step * i + step / 2},${y(s.pct)}`).join(" ");
+      g += `<polyline points="${pts}" fill="none" stroke="#c9beb4" stroke-width="2" stroke-dasharray="4 4"/>`;
+    }
+    // 막대 + 값 + 날짜
+    sessions.forEach((s, i) => {
+      const cx = padL + step * i + step / 2;
+      const bx = cx - barW / 2;
+      const by = y(s.pct);
+      g += `<rect x="${bx}" y="${by}" width="${barW}" height="${padT + ch - by}" rx="4" fill="${pctColor(s.pct)}"/>`;
+      g += `<text x="${cx}" y="${by - 5}" text-anchor="middle" class="dash-svg-val">${s.pct}%</text>`;
+      const d = s.date.slice(5, 10); // MM-DD
+      g += `<text x="${cx}" y="${H - padB + 16}" text-anchor="middle" class="dash-svg-date">${esc(d)}</text>`;
+      const t = s.date.slice(11, 16); // HH:MM
+      if (t) g += `<text x="${cx}" y="${H - padB + 30}" text-anchor="middle" class="dash-svg-date2">${esc(t)}</text>`;
+    });
+    g += `</svg>`;
+    return g;
+  },
 };
 
+let dashChild = null;   // 대시보드에서 선택된 아동 (렌더 간 유지)
+
 function sanitizeName(s) { return String(s).replace(/[\\/:*?"<>|]/g, "_").slice(0, 40) || "화용스튜디오"; }
+
+/* ---------- 경과 대시보드 보조 ---------- */
+function parseCSV(text) {
+  text = String(text).replace(/^﻿/, "");
+  const rows = [];
+  let field = "", row = [], inQ = false, i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQ = false; i++; continue;
+      }
+      field += ch; i++; continue;
+    }
+    if (ch === '"') { inQ = true; i++; continue; }
+    if (ch === ',') { row.push(field); field = ""; i++; continue; }
+    if (ch === '\r') { i++; continue; }
+    if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+    field += ch; i++;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// 질문 접두어로 활동 유형 분류
+function activityOf(q) {
+  q = String(q || "");
+  if (q.startsWith("감정 읽기")) return "감정 읽기";
+  if (q.startsWith("마음 읽기")) return "마음 읽기";
+  if (q.startsWith("문제 해결")) return "어떻게 할까?";
+  if (q.startsWith("말하기")) return "말하기";
+  return "이야기 퀴즈";
+}
+
+const ACT_COLOR = {
+  "이야기 퀴즈": "#C4817E",
+  "감정 읽기": "#8CA888",
+  "마음 읽기": "#7E9CC4",
+  "어떻게 할까?": "#D9A441",
+  "말하기": "#B58AC4",
+};
+
+function pctColor(p) {
+  return p >= 70 ? "#8CA888" : p >= 40 ? "#D9A441" : "#C4817E";
+}
 
 /* ---------- Gemini(Veo) 보조 ---------- */
 const veoResults = {};   // sceneNo -> { blob, url }  (세션 중에만 유지 — 저장 버튼으로 보관)
@@ -2978,6 +3303,7 @@ function fillFormUI() {
 
 load();
 window.app = app;
+window.state = state;
 buildSkillLibraryUI();
 app.loadSettingsUI();
 app.renderAll();
