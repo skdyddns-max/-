@@ -759,6 +759,7 @@
       <div class="sp"></div>
       <button class="btn btn-line btn-sm hide-sm" id="btn-recopy" onclick="app.regenCopy()" disabled>문구 다시</button>
       <button class="btn btn-line btn-sm" id="btn-html" onclick="app.exportHTML()" disabled>HTML 저장</button>
+      <button class="btn btn-line btn-sm" id="btn-split" onclick="app.saveSplit()" disabled title="상세페이지를 스마트스토어·블로그용 분할 이미지로 저장">📑 분할저장</button>
       <button class="btn btn-ink btn-sm" id="btn-imgs" onclick="app.saveAllImages()" disabled>이미지 저장</button>
       <button class="btn btn-line btn-sm" onclick="app.openSettings()">⚙</button>
     </div>
@@ -1743,7 +1744,7 @@ function setByPath(obj,path,val){
   for(let k=0;k<parts.length-1;k++){ const key=parts[k]; if(o[key]==null) o[key]=/^\d+$/.test(parts[k+1])?[]:{}; o=o[key]; }
   o[parts[parts.length-1]]=val;
 }
-function enableExport(on){ ["btn-recopy","btn-html","btn-imgs","btn-sns"].forEach(id=>$(id).disabled=!on); }
+function enableExport(on){ ["btn-recopy","btn-html","btn-split","btn-imgs","btn-sns"].forEach(id=>$(id).disabled=!on); }
 
 /* ---------- 업로드 ---------- */
 function handleFiles(files){
@@ -1964,6 +1965,64 @@ function safeName(){ return (state.input.name||"product").replace(/[\/\\:*?"<>|]
 function saveImage(key){ const img=state.result?.images?.[key]; if(!img){ toast("아직 이미지가 없어요"); return; } const ext=(img.mime.split("/")[1]||"png").replace("jpeg","jpg"); saveBlob(b64ToBlob(img.data,img.mime),`${safeName()}-${key}.${ext}`); }
 function saveAllImages(){ const imgs=state.result?.images||{}; let n=0; ["hero","lifestyle","detail"].forEach(k=>{ if(imgs[k]){ setTimeout(()=>saveImage(k),n*250); n++; } }); toast(n?`${n}장 저장`:"저장할 이미지가 없어요"); }
 
+/* ---------- 분할 이미지 저장 (스마트스토어·블로그용) ----------
+   브라우저 네이티브 렌더링(SVG foreignObject) — CDN 의존 없이 미리보기
+   그대로 래스터화한 뒤, 섹션 경계에서 잘라 여러 장의 PNG로 저장 */
+async function saveSplit(){
+  if(!state.result){ toast("먼저 생성해 주세요"); return; }
+  const W = 1080, scale = 2, MAXH = 1500;   // 슬라이스 한 장 최대 높이(CSS px)
+  const btn = $("btn-split"); btn.disabled = true; const old = btn.textContent; btn.textContent = "만드는 중…";
+  try{
+    const src = $("dp-canvas");
+    const clone = src.cloneNode(true);
+    clone.querySelectorAll(".img-tools,.img-loading,.img-ph,.dp-sticky").forEach(n=>n.remove());
+    clone.querySelectorAll("[contenteditable]").forEach(n=>{ n.removeAttribute("contenteditable"); n.removeAttribute("spellcheck"); n.removeAttribute("data-edit"); });
+    clone.removeAttribute("id");
+    clone.style.width = W+"px";
+
+    // 오프스크린 배치 → 실제 높이·섹션 경계 측정
+    const holder = document.createElement("div");
+    holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${W}px;background:#fff;`;
+    holder.appendChild(clone); document.body.appendChild(holder);
+    await document.fonts.ready.catch(()=>{});
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    await Promise.all([...clone.querySelectorAll("img")].map(im=> im.complete ? null : new Promise(r=>{ im.onload=im.onerror=r; })));
+    const H = clone.scrollHeight;
+    const bounds = [...clone.children].map(k=>({ top:k.offsetTop, bottom:k.offsetTop+k.offsetHeight }));
+    document.body.removeChild(holder);
+
+    // 섹션 경계 기준으로 패널 묶기(MAXH 초과 시 컷)
+    const panels = []; let start = 0;
+    for(const b of bounds){ if(b.bottom-start > MAXH && b.top>start){ panels.push([start,b.top]); start=b.top; } }
+    panels.push([start, H]);
+
+    // foreignObject SVG로 전체를 한 번 래스터화
+    const styleTag = `<style>${extractDpCss()} .dp{width:${W}px;margin:0;} img{display:block;} *{-webkit-print-color-adjust:exact;}</style>`;
+    const xml = new XMLSerializer().serializeToString(clone);
+    const foreign = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;background:#fff;">${styleTag}${xml}</div>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject x="0" y="0" width="${W}" height="${H}">${foreign}</foreignObject></svg>`;
+    const url = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+    const big = await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error("render")); im.src=url; });
+
+    const full = document.createElement("canvas"); full.width=W*scale; full.height=H*scale;
+    const fx = full.getContext("2d"); fx.fillStyle="#fff"; fx.fillRect(0,0,full.width,full.height);
+    fx.drawImage(big, 0,0, full.width, full.height);
+
+    let n=0;
+    for(const [y0,y1] of panels){
+      const h = Math.max(1, y1-y0);
+      const pc = document.createElement("canvas"); pc.width=W*scale; pc.height=Math.round(h*scale);
+      pc.getContext("2d").drawImage(full, 0, Math.round(y0*scale), W*scale, Math.round(h*scale), 0, 0, W*scale, Math.round(h*scale));
+      const idx = String(++n).padStart(2,"0");
+      await new Promise(r=> pc.toBlob(b=>{ if(b) saveBlob(b, `${safeName()}-상세-${idx}.png`); r(); }, "image/png") );
+      await new Promise(r=>setTimeout(r,180));
+    }
+    toast(`${panels.length}장으로 나눠 저장했어요 — 순서대로 올리면 돼요`);
+  }catch(e){
+    console.warn(e); toast("분할 저장에 실패했어요. 다시 시도해 주세요.");
+  }finally{ btn.disabled=false; btn.textContent=old; }
+}
+
 function exportHTML(){
   if(!state.result){ toast("먼저 생성해 주세요"); return; }
   const src = $("dp-canvas");
@@ -2092,7 +2151,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit };
 init();
 </script>
 </body>
