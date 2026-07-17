@@ -427,7 +427,7 @@ const fmtDate = d => d || "";
 function loadAll(){
   try{ const s = JSON.parse(localStorage.getItem(LS_SET)); if(s) Object.assign(state.settings, s); }catch(e){}
   try{ const c = JSON.parse(localStorage.getItem(LS_CHILD)); if(Array.isArray(c)) state.children = c; }catch(e){}
-  try{ const x = JSON.parse(localStorage.getItem(LS_SESS)); if(Array.isArray(x)) state.sessions = x; }catch(e){}
+  try{ const x = JSON.parse(localStorage.getItem(LS_SESS)); if(Array.isArray(x)){ state.sessions = x; state.sessions.forEach(s=>{ if(s.result) normResult(s.result); }); } }catch(e){}
 }
 function saveSettings(){ localStorage.setItem(LS_SET, JSON.stringify(state.settings)); }
 function saveChildren(){ localStorage.setItem(LS_CHILD, JSON.stringify(state.children)); }
@@ -853,15 +853,26 @@ function computeStats(session){
   const scorable = total - unclear;
   const percent = scorable ? Math.round(correct/scorable*100) : 0;
   // 촉구: 독립이 아닌 문항 수 + 독립 정반응률(촉구 받은 정반응은 제외)
-  const prompted = items.filter(i=>(i.prompt_level||"독립")!=="독립").length;
-  const indepCorrect = items.filter(i=>i.result==="correct" && (i.prompt_level||"독립")==="독립").length;
+  const isIndep = i => (i.prompt_level||"독립")==="독립";
+  const prompted = items.filter(i=>!isIndep(i)).length;
+  const indepCorrect = items.filter(i=>i.result==="correct" && isIndep(i)).length;
   const indepPercent = scorable ? Math.round(indepCorrect/scorable*100) : 0;
-  return { total, unclear, noResp, correct, scorable, percent, prompted, indepCorrect, indepPercent };
+  // 촉구 의존도: 촉구를 받아 맞힌 문항 비율 (반올림 percent끼리 빼지 않고 직접 계산)
+  const depPercent = scorable ? Math.round((correct-indepCorrect)/scorable*100) : 0;
+  // 이 세션에 촉구가 기록됐는지 — 추이/판정에서 미측정 세션과 구분하는 데 사용
+  const hasPromptData = prompted > 0;
+  // 임상 판정(수행 수준·습득 기준)은 독립 정반응률 기준. 촉구 기록이 없으면 percent와 동일
+  const masteryPercent = indepPercent;
+  return { total, unclear, noResp, correct, scorable, percent, prompted, indepCorrect, indepPercent, depPercent, hasPromptData, masteryPercent };
 }
 
 /* 구버전 세션 호환: 문자열이던 필드를 구조화 형태로 승격 */
 function normResult(r){
-  r.items = (r.items||[]).map(it=>({ self_corrected:false, prompt_level:"독립", ...it }));
+  r.items = (r.items||[]).map(it=>{
+    const m = { self_corrected:false, prompt_level:"독립", ...it };
+    if(!PROMPT_CYCLE.includes(m.prompt_level)) m.prompt_level = "독립"; // enum 밖 값(복사 모드 등) 방어
+    return m;
+  });
   r.error_patterns = (r.error_patterns||[]).map(p=>({ condition:"", consistency:"", hypothesis:"", probe:"", ...p }));
   r.strengths = (r.strengths||[]).map(x=> typeof x==="string" ? { point:x, evidence:"" } : x);
   r.difficulties = (r.difficulties||[]).map(x=> typeof x==="string" ? { point:x, evidence:"" } : x);
@@ -914,7 +925,7 @@ function renderResult(){
   normResult(s.result);
   const st = computeStats(s);
   const ex = computeExtras(s);
-  const lv = levelOf(st.percent);
+  const lv = levelOf(st.masteryPercent);
   $("#resultHead").innerHTML = `
     <div class="card" style="padding:14px 18px">
       <b>${esc(childName(s.childId))}</b> · ${esc(fmtDate(s.date))} · <span class="badge gray">${esc(s.area)}</span><br>
@@ -928,9 +939,9 @@ function renderResult(){
     ? `<div class="irow"><span class="ik">수행 흐름</span><span>전반부 <b>${ex.firstPct}%</b> → 후반부 <b>${ex.secondPct}%</b> <span class="evi">— ${flowNote(ex)}</span></span></div>` : "";
   $("#insightBox").innerHTML = `
     <div class="insight">
-      <div class="irow"><span class="ik">수행 수준</span><span><span class="badge ${lv.cls}">${lv.name}</span> <span class="evi">${lv.desc}</span></span></div>
+      <div class="irow"><span class="ik">수행 수준</span><span><span class="badge ${lv.cls}">${lv.name}</span> <span class="evi">${lv.desc}${st.hasPromptData?" · 독립 정반응률 기준":""}</span></span></div>
       ${halves}
-      ${st.prompted ? `<div class="irow"><span class="ik">촉구</span><span>촉구 제공 <b>${st.prompted}문항</b> · 독립 정반응률 <b>${st.indepPercent}%</b> <span class="evi">— 촉구 포함 ${st.percent}%와의 차이가 촉구 의존도예요</span></span></div>` : ""}
+      ${st.prompted ? `<div class="irow"><span class="ik">촉구</span><span>촉구 제공 <b>${st.prompted}문항</b> · 독립 정반응률 <b>${st.indepPercent}%</b> <span class="evi">— 촉구 포함 ${st.percent}%와 ${st.depPercent}%p 차이(촉구 의존도)</span></span></div>` : ""}
       ${ex.topErr ? `<div class="irow"><span class="ik">주요 오류</span><span><b>${esc(ex.topErr.type)}</b> ${ex.topErr.count}회 <span class="evi">— 전체 오반응 ${ex.wrongCount}건 중 ${ex.topErr.share}%</span></span></div>` : ""}
       ${ex.selfCorr ? `<div class="irow"><span class="ik">자기수정</span><span><b>${ex.selfCorr}회</b> <span class="evi">— 스스로 오류를 점검·수정하는 모니터링 행동 관찰</span></span></div>` : ""}
     </div>`;
@@ -983,7 +994,7 @@ function starRow(percent){
   return "★".repeat(n) + "☆".repeat(5-n);
 }
 function briefTherapistHTML(s){
-  const r = s.result, st = computeStats(s), ex = computeExtras(s), lv = levelOf(st.percent);
+  const r = s.result, st = computeStats(s), ex = computeExtras(s), lv = levelOf(st.masteryPercent);
   const showPrompt = st.prompted > 0;
   const itemRows = (r.items||[]).map(it=>`
     <tr><td>${esc(it.no)}</td><td>${esc(it.question)}</td><td>${esc(it.expected)}</td><td>${esc(it.response)}${it.self_corrected?" ✎":""}</td>
@@ -1017,7 +1028,7 @@ function briefTherapistHTML(s){
     <h4>1. 수행 요약</h4>
     <div class="bf-score"><span class="big">${st.percent}%</span><span><span class="badge ${lv.cls}">${lv.name}</span> · 정반응 ${st.correct} / 채점 가능 ${st.scorable}문항 (전체 ${st.total}문항${st.unclear?`, 판독불가 ${st.unclear}`:""}${st.noResp?`, 무반응 ${st.noResp}`:""}${ex.selfCorr?`, 자기수정 ${ex.selfCorr}회`:""})</span></div>
     <div class="bf-bar"><i style="width:${st.percent}%"></i></div>
-    ${st.prompted?`<p><b>촉구 분석:</b> 촉구 제공 ${st.prompted}문항 — <b>독립 정반응률 ${st.indepPercent}%</b> (촉구 포함 ${st.percent}%, 차이 ${st.percent-st.indepPercent}%p가 현재 촉구 의존도)</p>`:""}
+    ${st.prompted?`<p><b>촉구 분석:</b> 촉구 제공 ${st.prompted}문항 — <b>독립 정반응률 ${st.indepPercent}%</b> (촉구 포함 ${st.percent}%, 차이 ${st.depPercent}%p가 현재 촉구 의존도). 아래 수행 수준은 독립 정반응률 기준입니다.</p>`:""}
     <p>${esc(r.task_summary||"")}</p>
     ${s.notes?`<p><b>수행 시 특이사항:</b> ${esc(s.notes)}</p>`:""}
   </div>
@@ -1067,7 +1078,7 @@ function briefParentHTML(s){
     <p>${esc(p.today_did||"")}</p>
     <p style="margin-top:6px">${st.prompted
       ? `혼자 힘으로 해낸 문제: <b>${st.scorable}문제 중 ${st.indepCorrect}문제</b>, 선생님과 함께 해낸 문제: <b>${st.correct-st.indepCorrect}문제</b>`
-      : `스스로 해낸 문제: <b>${st.scorable}문제 중 ${st.correct}문제</b>`} <span class="bf-stars">${starRow(st.percent)}</span></p>
+      : `스스로 해낸 문제: <b>${st.scorable}문제 중 ${st.correct}문제</b>`} <span class="bf-stars">${starRow(st.prompted ? st.indepPercent : st.percent)}</span></p>
   </div>
   <div class="bf-sec">
     <h4>🌟 이렇게 잘했어요</h4>
@@ -1183,11 +1194,11 @@ function renderRecords(){
 /* ---- CSV ---- */
 $("#btnCsv").addEventListener("click", ()=>{
   if(!state.sessions.length){ toast("내보낼 기록이 없어요."); return; }
-  const rows = [["아동","날짜","영역","과제","정반응","채점가능","전체문항","무반응","판독불가","정반응률(%)","촉구문항","독립정반응률(%)","오류유형"]];
+  const rows = [["아동","날짜","영역","과제","정반응","채점가능","전체문항","무반응","판독불가","정반응률(%)","오류유형","촉구문항","독립정반응률(%)"]];
   for(const s of [...state.sessions].sort((a,b)=>a.date.localeCompare(b.date))){
     const st = computeStats(s);
     const errs = (s.result.error_patterns||[]).map(p=>`${p.type}(${p.count})`).join("; ");
-    rows.push([childName(s.childId), s.date, s.area, s.task||s.result.task_summary||"", st.correct, st.scorable, st.total, st.noResp, st.unclear, st.percent, st.prompted, st.indepPercent, errs]);
+    rows.push([childName(s.childId), s.date, s.area, s.task||s.result.task_summary||"", st.correct, st.scorable, st.total, st.noResp, st.unclear, st.percent, errs, st.prompted, st.indepPercent]);
   }
   const csv = "﻿" + rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
   const a = document.createElement("a");
@@ -1228,8 +1239,9 @@ function lineChartSVG(list){
   const y = p => padT + (1-p/100)*ih;
   const stats = list.map(s=>computeStats(s));
   const pts = list.map((s,i)=>({ x:x(i), y:y(stats[i].percent), p:stats[i].percent, d:s.date }));
-  const hasPrompt = stats.some(st=>st.prompted>0);
-  const ipts = hasPrompt ? stats.map((st,i)=>({ x:x(i), y:y(st.indepPercent), p:st.indepPercent })) : [];
+  const hasPrompt = stats.some(st=>st.hasPromptData);
+  // 촉구가 실제로 기록된 세션에만 독립 정반응률 점을 찍는다 (미측정 세션은 percent와 겹쳐 오해를 부르므로 제외)
+  const ipts = hasPrompt ? stats.map((st,i)=>({ x:x(i), y:y(st.indepPercent), has:st.hasPromptData })).filter(p=>p.has) : [];
   const grid = [0,25,50,75,100].map(v=>
     `<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="#eceae2"/>
      <text x="${padL-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#8b98a0">${v}</text>`).join("");
@@ -1267,12 +1279,16 @@ function errorBarSVG(list){
 function renderTrendSummary(list){
   const box = $("#trendSummary");
   if(list.length < 2){ box.style.display="none"; return; }
-  const pcts = list.map(s=>computeStats(s).percent);
+  const stats = list.map(s=>computeStats(s));
+  const pcts = stats.map(st=>st.percent);
+  const anyPrompt = stats.some(st=>st.hasPromptData);
+  // 습득 판정은 독립 정반응률 기준 (촉구 없는 세션은 masteryPercent===percent)
+  const mpcts = stats.map(st=>st.masteryPercent);
   const first = pcts[0], last = pcts[pcts.length-1];
   const diff = last-first;
   const lines = [];
 
-  // 수준·변화량
+  // 수준·변화량 (전체 정반응률 기준)
   let l1 = `첫 세션 ${first}% → 최근 세션 ${last}%`;
   if(diff>0) l1 += ` (▲${diff}%p 상승)`;
   else if(diff<0) l1 += ` (▼${Math.abs(diff)}%p — 과제 난이도·컨디션·촉구 조건 변화를 함께 살펴보세요)`;
@@ -1280,11 +1296,12 @@ function renderTrendSummary(list){
   l1 += ` · 총 ${list.length}회 · 최고 ${Math.max(...pcts)}%`;
   lines.push("🔎 " + l1);
 
-  // 최근 3회 평균 + 습득 기준(80%) 대비
-  const recent = pcts.slice(-3);
+  // 최근 3회 평균 + 습득 기준(80%) 대비 — 독립 정반응률 기준
+  const recent = mpcts.slice(-3);
   const avg3 = Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);
-  const overCnt = pcts.filter(p=>p>=80).length;
-  let l2 = `최근 ${recent.length}회 평균 ${avg3}% — 습득 기준(80%)을 ${avg3>=80?"충족":`${80-avg3}%p 남김`}`;
+  const overCnt = mpcts.filter(p=>p>=80).length;
+  const basis = anyPrompt ? "독립 정반응률" : "정반응률";
+  let l2 = `최근 ${recent.length}회 ${basis} 평균 ${avg3}% — 습득 기준(80%)을 ${avg3>=80?"충족":`${80-avg3}%p 남김`}`;
   l2 += ` · 기준 도달 세션 ${overCnt}/${list.length}회`;
   if(recent.length>=3 && recent.every(p=>p>=80)) l2 += " → 3회 연속 기준 충족: 유지·일반화 단계(새 자료·새 장면) 전환을 고려해 보세요";
   lines.push("🎯 " + l2);
@@ -1296,9 +1313,13 @@ function renderTrendSummary(list){
   if(up>=2) lines.push(`📈 ${up+1}회 연속 상승 흐름이에요.`);
   if(down>=2) lines.push(`📉 ${down+1}회 연속 하락 — 최근 회기 조건(과제 난이도·촉구·컨디션 기록)을 비교해 원인을 점검해 보세요.`);
 
-  // 촉구 의존도: 최근 세션에 촉구가 있으면 독립 정반응률 병기
-  const lastSt = computeStats(list[list.length-1]);
-  if(lastSt.prompted) lines.push(`🤝 최근 세션 촉구 제공 ${lastSt.prompted}문항 — 독립 정반응률 ${lastSt.indepPercent}% (촉구 포함 ${lastSt.percent}%). 점선(독립)이 실선(촉구 포함)에 가까워질수록 촉구가 줄고 있다는 뜻이에요.`);
+  // 촉구 의존도: 촉구가 기록된 가장 최근 세션 기준으로 병기 (차트 점선과 게이트 일치)
+  const lastPromptIdx = stats.map(st=>st.hasPromptData).lastIndexOf(true);
+  if(lastPromptIdx >= 0){
+    const ps = stats[lastPromptIdx];
+    const when = lastPromptIdx === stats.length-1 ? "최근 세션" : `${list[lastPromptIdx].date.slice(5).replace("-","/")} 세션`;
+    lines.push(`🤝 ${when} 촉구 제공 ${ps.prompted}문항 — 독립 정반응률 ${ps.indepPercent}% (촉구 포함 ${ps.percent}%). 점선(독립)이 실선(촉구 포함)에 가까워질수록 촉구가 줄고 있다는 뜻이에요.`);
+  }
 
   // 오류 유형 변화: 이전 세션들 vs 최근 세션
   const typesOf = s => new Set((s.result.error_patterns||[]).map(p=>p.type));
