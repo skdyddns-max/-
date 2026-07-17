@@ -960,7 +960,23 @@ function friendly(err){
    구글이 구형 모델을 신규 사용자에게 막는 경우("no longer available")가
    있어, 후보를 최신순으로 자동 시도하고 성공한 모델을 기억한다. */
 const TEXT_MODELS  = ["gemini-flash-latest","gemini-3-flash","gemini-3-flash-preview","gemini-2.5-flash"];
-const IMAGE_MODELS = ["gemini-3-pro-image-preview","gemini-2.5-flash-image","gemini-3-flash-image","gemini-3-pro-image","gemini-flash-latest-image"];
+const IMAGE_MODELS = ["gemini-2.5-flash-image","gemini-2.5-flash-image-preview","gemini-2.0-flash-preview-image-generation","gemini-2.0-flash-exp-image-generation","gemini-3-pro-image-preview","gemini-flash-latest-image"];
+
+/* 계정이 실제 접근 가능한 모델 목록 조회(한 번만) — 추측 대신 사실로 */
+let _modelsPromise = null;
+async function availableModels(){
+  if(state._models) return state._models;
+  if(_modelsPromise) return _modelsPromise;
+  _modelsPromise = (async()=>{
+    const key = state.settings.geminiKey, out = [];
+    try{
+      const r = await fetch(`${GEMINI_BASE}/models?pageSize=1000`, { headers:{ "x-goog-api-key":key } });
+      if(r.ok){ const j = await r.json(); (j.models||[]).forEach(m=>{ const n=(m.name||"").replace(/^models\//,""); if(n) out.push(n); }); }
+    }catch(e){}
+    state._models = out; return out;
+  })();
+  return _modelsPromise;
+}
 function modelCandidates(kind){
   const list = kind==="image" ? IMAGE_MODELS : TEXT_MODELS;
   const cached = state.settings["model_"+kind];
@@ -978,7 +994,19 @@ function modelGone(status, msg){
 async function geminiGenerate(kind, body){
   const key = state.settings.geminiKey;
   const errors = [], tried = [];
-  for (const model of modelCandidates(kind)){
+  let order = modelCandidates(kind);
+  try{
+    const models = await availableModels();
+    if(models && models.length){
+      const isImg = n=>/image/i.test(n);
+      const avail = models.filter(n=> kind==="image" ? isImg(n) : (/gemini/i.test(n) && !isImg(n) && !/embedding|aqa/i.test(n)));
+      if(avail.length){
+        const cached = state.settings["model_"+kind];
+        order = [...new Set([ ...(cached&&avail.includes(cached)?[cached]:[]), ...order.filter(m=>avail.includes(m)), ...avail ])];
+      }
+    }
+  }catch(e){}
+  for (const model of order){
     tried.push(model);
     let res = null;
     try{
@@ -1260,20 +1288,35 @@ async function generate(){
     setStatus("work",`<span class="spin"></span>구매를 부르는 카피를 쓰는 중…`);
     const copy = await callText(buildCopyPrompt(), COPY_SYSTEM);
     state.result = { copy, images:{ hero:null, lifestyle:null, detail:null } };
-    render(); enableExport(true);
+    // 올린 사진(책 표지·자료 등)을 먼저 배치 — AI가 성공하면 연출 컷으로 대체, 실패해도 표지는 남는다
+    const ups = state.input.images;
+    if(ups.length){
+      state.result.images.hero      = { mime:ups[0].mime, data:ups[0].data };
+      state.result.images.lifestyle = { mime:(ups[1]||ups[0]).mime, data:(ups[1]||ups[0]).data };
+      state.result.images.detail    = { mime:(ups[2]||ups[1]||ups[0]).mime, data:(ups[2]||ups[1]||ups[0]).data };
+    }
+    render(); renderImages(); enableExport(true);
     $("stage-tag").textContent = (state.input.name||"제품").slice(0,20);
 
     const slots=[["hero",copy.imagePrompts?.hero,"히어로"],["lifestyle",copy.imagePrompts?.lifestyle,"라이프스타일"],["detail",copy.imagePrompts?.detail,"디테일"]];
-    let done=0;
+    let done=0, aiOk=0, imgErr=null;
     for(const [key,prompt,label] of slots){
-      setStatus("work",`<span class="spin"></span>이미지 생성 중… (${done}/3) · ${label} 컷`);
+      setStatus("work",`<span class="spin"></span>이미지 연출 중… (${done}/3) · ${label} 컷`);
       markImgLoading(key,true);
-      try{ state.result.images[key] = await callImage(fullImagePrompt(prompt||("the product, "+state.input.name), state.input.images), state.input.images); }
-      catch(e){ console.warn("이미지 실패",key,e); markImgLoading(key,false); }
+      try{ state.result.images[key] = await callImage(fullImagePrompt(prompt||("the product, "+state.input.name), state.input.images), state.input.images); aiOk++; }
+      catch(e){ console.warn("이미지 실패",key,e); imgErr=e; markImgLoading(key,false); }   // 업로드본/빈칸 유지
       renderImages(); done++;
     }
-    setStatus("ok","✅ 완성! 문구는 클릭해 수정, 이미지는 마우스를 올려 재생성·저장할 수 있어요.");
-    setTimeout(clearStatus,5000);
+    if(aiOk===3){
+      setStatus("ok","✅ 완성! 문구는 클릭해 수정, 이미지는 마우스를 올려 재생성·저장할 수 있어요.");
+      setTimeout(clearStatus,5000);
+    } else if(aiOk>0){
+      setStatus("ok",`✅ ${aiOk}컷 연출 완료. 나머지는 ${ups.length?"올려주신 사진을 그대로 뒀어요":"빈 자리"} — 자리에 마우스 올려 재생성하거나 직접 올릴 수 있어요.`);
+    } else if(ups.length){
+      setStatus("work",`올려주신 사진을 그대로 넣었어요. ✨ 감성 연출 컷을 원하면: ⚙에서 <b>GPT 엔진</b>으로 바꾸거나, 각 이미지 자리에서 <b>재생성</b>을 눌러 주세요. <span style="opacity:.8">(${friendly(imgErr||new Error("이미지 모델 사용 불가"))})</span>`);
+    } else {
+      setStatus("err",`이미지 생성을 쓸 수 없어요: ${friendly(imgErr||new Error("이미지 모델 사용 불가"))} · 이미지 자리를 클릭해 <b>직접 올리거나</b>, ⚙에서 <b>GPT 엔진</b>을 써보세요.`);
+    }
   }catch(e){ setStatus("err","생성 실패: "+friendly(e)); }
   finally{ btn.disabled=false; }
 }
