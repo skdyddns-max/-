@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#17150F">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@700;800&family=Gaegu:wght@700&display=swap">
 <style>
   :root{
     --ink:#17150F;
@@ -602,6 +602,15 @@
   .thumb-grid .cell:hover canvas{box-shadow:0 6px 22px rgba(0,0,0,.16);transform:translateY(-2px);}
   .thumb-grid .cell.sel canvas{outline:2.5px solid var(--accent);outline-offset:1px;}
   .thumb-grid .tag{position:absolute;left:6px;bottom:6px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;background:rgba(23,21,15,.72);color:#fff;padding:3px 7px;border-radius:6px;}
+  .style-sec{margin:14px 0;}
+  .style-sec .style-lab{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .sw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  @media(max-width:520px){ .sw-grid{grid-template-columns:repeat(3,1fr);} }
+  .sw-grid .sw{position:relative;border:1px solid var(--line);border-radius:10px;padding:0;overflow:hidden;cursor:pointer;background:#fff;height:52px;display:flex;flex-direction:column;}
+  .sw-grid .sw i{display:block;height:22px;}
+  .sw-grid .sw b{display:block;flex:1;}
+  .sw-grid .sw span{position:absolute;left:0;right:0;bottom:0;font-size:10px;text-align:center;color:var(--ink);background:rgba(255,255,255,.82);padding:2px 0;font-weight:600;}
+  .sw-grid .sw.on{outline:2.5px solid var(--accent);outline-offset:1px;border-color:transparent;}
   .thumb-grid .cctrl{position:absolute;top:5px;left:5px;right:5px;display:flex;gap:4px;opacity:0;transition:opacity .13s;}
   .thumb-grid .cell:hover .cctrl{opacity:1;}
   .thumb-grid .cctrl button{width:24px;height:24px;border:none;border-radius:7px;background:rgba(23,21,15,.82);color:#fff;font-size:11px;cursor:pointer;display:grid;place-items:center;line-height:1;padding:0;}
@@ -926,6 +935,7 @@
         <span class="mono" id="stage-tag"></span>
         <div class="sp"></div>
         <div class="theme-picker" id="theme-picker" title="디자인 테마 — 클릭해서 갈아입히기"></div>
+        <button class="btn btn-line btn-sm" id="btn-style" onclick="app.openStyle()" title="무드×팔레트×타이포로 수백 가지 스타일">🎨 스타일</button>
         <button class="btn btn-line btn-sm" id="btn-ab" onclick="app.toggleAB()" hidden title="헤드카피 A안/B안 전환 (A/B 테스트)">A/B</button>
         <button class="btn btn-dark btn-sm" id="btn-sns" onclick="app.openSns()" disabled title="인스타 피드·스토리용 완성 컷 + 캡션">📱 SNS 세트</button>
         <button class="btn btn-dark btn-sm" id="btn-carousel" onclick="app.openCarousel()" disabled title="인스타 캐러셀 — 상세를 스와이프 슬라이드로, 큰 글씨로">🎞️ 캐러셀</button>
@@ -1015,6 +1025,19 @@
   </div>
 </div>
 
+<!-- 스타일 엔진 모달 -->
+<div class="modal-bg" id="m-style">
+  <div class="modal" style="max-width:600px;max-height:92vh;overflow-y:auto;">
+    <button class="x" onclick="app.closeModal('m-style')">×</button>
+    <h3>🎨 스타일 — 무드 × 팔레트 × 타이포</h3>
+    <p class="lead">세 축을 조합해 <b id="style-count">0</b>가지 스타일. 골라서 즉시 갈아입히거나, <b>🎲 셔플</b>로 새 조합을 뽑아 보세요.</p>
+    <div class="style-sec"><span class="style-lab">무드</span><div class="chips" id="style-mood"></div></div>
+    <div class="style-sec"><span class="style-lab">팔레트</span><div class="sw-grid" id="style-pal"></div></div>
+    <div class="style-sec"><span class="style-lab">타이포</span><div class="chips" id="style-font"></div></div>
+    <button class="btn btn-accent" style="width:100%;margin-top:6px;" onclick="app.shuffleStyle()">🎲 스타일 셔플</button>
+  </div>
+</div>
+
 <!-- 인스타 캐러셀 모달 -->
 <div class="modal-bg" id="m-carousel">
   <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;">
@@ -1053,6 +1076,8 @@ const state = {
   input: { name:"", category:"", desc:"", target:"", price:"", tone:"", platform:"", images:[], details:{}, categoryManual:false, place:"", people:"", model:"", props:"", mood:"", real:"", style:"", surface:"" },
   result: null,
   theme: null,   // null = 톤에서 자동, 문자열 = 사용자가 고른 테마
+  palette: null, // 팔레트 오버레이(색) — null이면 무드 기본
+  font: null,    // 타이포 오버레이 — null이면 무드 기본
 };
 
 const $ = id => document.getElementById(id);
@@ -1535,20 +1560,74 @@ function clearHarmonize(cv){
   ["--bg0","--bg1","--card","--ln","--tx","--tx2","--tx3","--ph","--dk","--dk-tx","--dk-tx2","--dk-ln","--ac","--ac2","--on-ac","--star"].forEach(k=>cv.style.removeProperty(k));
   cv.removeAttribute("data-harmonized");
 }
-function setTheme(k){
-  state.theme = k;
-  const cv = document.getElementById("dp-canvas");
-  if (cv){
-    cv.className = ("dp " + (k==="auto"?"":k)).trim();
-    if (k==="auto") harmonizeFromImages(); else clearHarmonize(cv);
-  }
-  renderThemePicker();
+/* ── 조합형 스타일 엔진 ── 무드(테마) × 팔레트 × 타이포를 곱해 수백 가지 스타일 ── */
+const PALETTES = [
+  ["탠저린",   {ac:"#C77A12",ac2:"#9C5E0A",onAc:"#fff",   bg0:"#FBF8F2",bg1:"#F3EDE2",dk:"#1a1712"}],
+  ["딥그린",   {ac:"#2F7D4F",ac2:"#1F5C39",onAc:"#fff",   bg0:"#F5F8F3",bg1:"#E9F0E6",dk:"#14201a"}],
+  ["코럴",     {ac:"#E5695B",ac2:"#B94438",onAc:"#fff",   bg0:"#FDF6F3",bg1:"#F8E9E4",dk:"#241715"}],
+  ["오션블루", {ac:"#2E6FB0",ac2:"#1E5288",onAc:"#fff",   bg0:"#F2F6FA",bg1:"#E4EEF5",dk:"#121a24"}],
+  ["와인",     {ac:"#8E2F45",ac2:"#6E2033",onAc:"#fff",   bg0:"#FAF4F5",bg1:"#F0E4E7",dk:"#1f1215"}],
+  ["머스타드", {ac:"#C99A16",ac2:"#8F6C05",onAc:"#241a00", bg0:"#FBF8EE",bg1:"#F2ECD9",dk:"#1e1a10"}],
+  ["라벤더",   {ac:"#7B62C4",ac2:"#57419A",onAc:"#fff",   bg0:"#F7F5FB",bg1:"#EDE9F5",dk:"#181523"}],
+  ["차콜모노", {ac:"#3a3a3a",ac2:"#1f1f1f",onAc:"#fff",   bg0:"#F6F6F5",bg1:"#EAEAE8",dk:"#141414"}],
+  ["테라코타", {ac:"#B85C38",ac2:"#8E4327",onAc:"#fff",   bg0:"#FBF5F1",bg1:"#F1E5DC",dk:"#211611"}],
+  ["민트",     {ac:"#1F9E8A",ac2:"#137463",onAc:"#fff",   bg0:"#F1F9F7",bg1:"#E1F0EC",dk:"#0f201d"}],
+  ["로즈골드", {ac:"#BE7488",ac2:"#8E4E60",onAc:"#fff",   bg0:"#FBF6F7",bg1:"#F3E7EB",dk:"#20161a"}],
+  ["레드팝",   {ac:"#E3352E",ac2:"#B81E1E",onAc:"#fff",   bg0:"#FFFBEF",bg1:"#FDF3D6",dk:"#1c1206"}],
+];
+const TYPES = [
+  ["기본 산세리프", {head:'"Pretendard Variable",Pretendard,sans-serif', wt:850, tr:"-.03em"}],
+  ["임팩트 볼드",   {head:'"Black Han Sans",sans-serif', wt:400, tr:"-.01em"}],
+  ["콘덴스 헤비",   {head:'"Do Hyeon",sans-serif', wt:400, tr:"-.02em"}],
+  ["라운드 팝",     {head:'"Jua",sans-serif', wt:400, tr:"0", sans:'"Jua","Pretendard Variable",sans-serif'}],
+  ["모던 명조",     {head:'"Nanum Myeongjo",serif', wt:800, tr:"-.01em", sans:'"Gowun Batang",serif'}],
+  ["클래식 세리프", {head:'"Gowun Batang",serif', wt:700, tr:"0", sans:'"Gowun Batang",serif'}],
+  ["핸드 감성",     {head:'"Gaegu",cursive', wt:700, tr:"0"}],
+];
+const PAL_KEYS = ["--bg0","--bg1","--card","--tx","--tx2","--tx3","--ln","--ac","--ac2","--on-ac","--dk","--dk-tx","--star"];
+const FONT_KEYS = ["--head","--head-wt","--head-tr","--sans"];
+function applyStyleOverrides(cv){
+  cv = cv || document.getElementById("dp-canvas"); if(!cv) return;
+  const P = PALETTES.find(p=>p[0]===state.palette);
+  if(P){ const v=P[1]; const m={ "--bg0":v.bg0,"--bg1":v.bg1,"--card":v.bg0,"--tx":"#1c1a17","--tx2":"#5f5a52","--tx3":"#8a8377","--ln":"rgba(20,18,14,.11)","--ac":v.ac,"--ac2":v.ac2,"--on-ac":v.onAc,"--dk":v.dk,"--dk-tx":"#ece7dd","--star":v.ac };
+    PAL_KEYS.forEach(k=>cv.style.setProperty(k,m[k])); }   // 팔레트 미선택이면 무드/조화 색을 그대로 둠
+  const T = TYPES.find(t=>t[0]===state.font);
+  FONT_KEYS.forEach(k=>cv.style.removeProperty(k));
+  if(T){ const v=T[1]; cv.style.setProperty("--head",v.head); cv.style.setProperty("--head-wt",v.wt); cv.style.setProperty("--head-tr",v.tr); if(v.sans) cv.style.setProperty("--sans",v.sans); }
+}
+/* 무드 색 기반(테마 클래스 or 이미지 조화)을 다시 깔고 그 위에 팔레트·폰트를 얹는다 */
+function reapplyStyle(){
+  const cv = document.getElementById("dp-canvas"); if(!cv) return;
+  const t = effectiveTheme();
+  cv.className = ("dp " + (t==="auto"?"":t)).trim();
+  // 팔레트를 고르면 그 색이 우선 — 이미지 조화(비동기)가 덮어쓰지 않도록 조화를 끈다
+  if(t==="auto" && !state.palette) harmonizeFromImages(); else clearHarmonize(cv);
+  applyStyleOverrides(cv);
+}
+function setTheme(k){ state.theme = k; reapplyStyle(); renderThemePicker(); renderStylePanel(); }
+function setPalette(k){ state.palette = (state.palette===k? null : k); reapplyStyle(); renderStylePanel(); }
+function setFont(k){ state.font = (state.font===k? null : k); reapplyStyle(); renderStylePanel(); }
+function shuffleStyle(){
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  state.theme = pick(THEMES.filter(t=>t[0]!=="auto"))[0];
+  state.palette = pick(PALETTES)[0];
+  state.font = pick(TYPES)[0];
+  reapplyStyle(); renderThemePicker(); renderStylePanel();
+  toast(`스타일 셔플 — ${THEMES.find(t=>t[0]===state.theme)?.[1]} · ${state.palette} · ${state.font}`);
 }
 function renderThemePicker(){
   const el = document.getElementById("theme-picker"); if(!el) return;
   const cur = effectiveTheme();
   el.innerHTML = THEMES.map(([k,label]) =>
     `<button class="tp-chip${k===cur?" on":""}" onclick="app.setTheme('${k}')">${label}</button>`).join("");
+}
+function openStyle(){ $("m-style").classList.add("show"); renderStylePanel(); }
+function renderStylePanel(){
+  const combos = (THEMES.length) * (PALETTES.length+1) * (TYPES.length);
+  const moodEl=$("style-mood"); if(moodEl) moodEl.innerHTML = THEMES.map(([k,l])=>`<button class="chip${effectiveTheme()===k?" on":""}" aria-pressed="${effectiveTheme()===k}" onclick="app.setTheme('${k}')">${l}</button>`).join("");
+  const palEl=$("style-pal"); if(palEl) palEl.innerHTML = PALETTES.map(([n,v])=>`<button class="sw${state.palette===n?" on":""}" title="${n}" onclick="app.setPalette('${n}')"><i style="background:${v.ac}"></i><b style="background:${v.bg1}"></b><span>${n}</span></button>`).join("");
+  const fontEl=$("style-font"); if(fontEl) fontEl.innerHTML = TYPES.map(([n,v])=>`<button class="chip${state.font===n?" on":""}" aria-pressed="${state.font===n}" style="font-family:${v.head};" onclick="app.setFont('${n}')">${n}</button>`).join("");
+  const cnt=$("style-count"); if(cnt) cnt.textContent = combos.toLocaleString();
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
@@ -1648,7 +1727,7 @@ async function generate(){
         if(key!=="texture" && !uploaded.length && !lockRef.length) lockRef=[img];   // 첫 성공 컷을 기준으로 고정
       }
       catch(e){ console.warn("이미지 실패",key,e); imgErr=e; markImgLoading(key,false); }   // 업로드본/빈칸 유지
-      renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages(); done++;
+      renderImages(); if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides(); done++;
     }
     if(aiOk===N){
       setStatus("ok","✅ 완성! 문구는 클릭해 수정, 이미지는 마우스를 올려 재생성·저장할 수 있어요.");
@@ -1693,7 +1772,7 @@ async function regenImage(key){
   if(!requireKey()) return;
   const prompt = state.result.copy.imagePrompts?.[key] || ("the product, "+state.input.name);
   markImgLoading(key,true);
-  try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, refs), refs); renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages(); toast("이미지를 새로 생성했어요"); }
+  try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, refs), refs); renderImages(); if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides(); toast("이미지를 새로 생성했어요"); }
   catch(e){ markImgLoading(key,false); toast("이미지 생성 실패: "+friendly(e)); }
 }
 /* 실사진 워크플로 — 올린 제품 사진의 배경을 제거(누끼)해 팔레트 위 깔끔한 스튜디오컷으로 합성.
@@ -1714,7 +1793,7 @@ async function cutoutSlot(key){
     x.save(); x.translate(dx+nw/2,gy); x.scale(1,0.16); x.fillStyle=grd; x.beginPath(); x.arc(0,0,nw*0.55,0,7); x.fill(); x.restore();
     x.save(); x.shadowColor="rgba(20,16,10,.28)"; x.shadowBlur=44; x.shadowOffsetY=24; x.drawImage(cut.canvas,b.x,b.y,b.w,b.h,dx,dy,nw,nh); x.restore();
     state.result.images[key]={mime:"image/png",data:cv.toDataURL("image/png").split(",")[1]};
-    renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages();
+    renderImages(); if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides();
     toast("배경을 제거해 깔끔한 제품컷으로 바꿨어요");
   }catch(e){ console.warn(e); markImgLoading(key,false); toast("배경 제거에 실패했어요"); }
 }
@@ -1993,7 +2072,8 @@ function render(){
   bindEditables();
   renderThemePicker();
   $("btn-ab").hidden = !(state.result?.copy?.heroHeadlineAlt);
-  if (effectiveTheme()==="auto") harmonizeFromImages();
+  if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides();
+  applyStyleOverrides();
 }
 
 function renderImages(){
@@ -2819,7 +2899,7 @@ function exportHTML(){
 <title>${esc(seoTitle||"상세페이지")}</title>
 ${seoMeta}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@700;800&family=Gaegu:wght@700&display=swap">
 <style>
 :root{--mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"Roboto Mono",monospace;--char:#17150F;--sans:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -2916,7 +2996,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, shuffleStyle, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
 init();
 </script>
 </body>
