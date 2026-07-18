@@ -1625,6 +1625,28 @@ async function regenImage(key){
   try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, refs), refs); renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages(); toast("이미지를 새로 생성했어요"); }
   catch(e){ markImgLoading(key,false); toast("이미지 생성 실패: "+friendly(e)); }
 }
+/* 실사진 워크플로 — 올린 제품 사진의 배경을 제거(누끼)해 팔레트 위 깔끔한 스튜디오컷으로 합성.
+   AI 없이 실제 사진만으로 레퍼런스급 제품컷을 만드는 길. */
+async function cutoutSlot(key){
+  const img=state.result?.images?.[key]; if(!img){ toast("먼저 사진을 올려주세요"); return; }
+  markImgLoading(key,true);
+  try{
+    const im=await loadImg(img);
+    const cut=makeCutout(im);
+    if(!cut){ markImgLoading(key,false); toast("배경이 단색일 때 가장 잘 돼요 — 흰 배경 제품컷을 올려보세요"); return; }
+    const T=snsTokens(), W=1080, H=1350;
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H; const x=cv.getContext("2d");
+    const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,T.bg0); g.addColorStop(1,T.bg1); x.fillStyle=g; x.fillRect(0,0,W,H);
+    const rg=x.createRadialGradient(W/2,H*0.42,60,W/2,H*0.42,H*0.52); rg.addColorStop(0,withA(T.ac,.10)); rg.addColorStop(1,"rgba(0,0,0,0)"); x.fillStyle=rg; x.fillRect(0,0,W,H);
+    const b=cut.box, bw=W*0.72, bh=H*0.66, r=Math.min(bw/b.w,bh/b.h), nw=b.w*r, nh=b.h*r, dx=(W-nw)/2, dy=(H-nh)/2;
+    const gy=dy+nh-6, grd=x.createRadialGradient(dx+nw/2,gy,4,dx+nw/2,gy,nw*0.55); grd.addColorStop(0,"rgba(20,16,10,.26)"); grd.addColorStop(1,"rgba(20,16,10,0)");
+    x.save(); x.translate(dx+nw/2,gy); x.scale(1,0.16); x.fillStyle=grd; x.beginPath(); x.arc(0,0,nw*0.55,0,7); x.fill(); x.restore();
+    x.save(); x.shadowColor="rgba(20,16,10,.28)"; x.shadowBlur=44; x.shadowOffsetY=24; x.drawImage(cut.canvas,b.x,b.y,b.w,b.h,dx,dy,nw,nh); x.restore();
+    state.result.images[key]={mime:"image/png",data:cv.toDataURL("image/png").split(",")[1]};
+    renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages();
+    toast("배경을 제거해 깔끔한 제품컷으로 바꿨어요");
+  }catch(e){ console.warn(e); markImgLoading(key,false); toast("배경 제거에 실패했어요"); }
+}
 
 /* ---------- 프롬프트 복사 모드 (키 없음 · ChatGPT 구독 활용) ---------- */
 function openManual(){
@@ -1669,7 +1691,7 @@ function imgSlot(key){
   const lazy = key==="hero" ? "" : ` loading="lazy" decoding="async"`;
   const inner = img ? `<img class="img" src="data:${img.mime};base64,${img.data}" alt="${esc(imgAlt(key))}"${lazy}>`
                     : `<div class="img-ph" onclick="app.uploadSlot('${key}')" style="cursor:pointer;">이미지 생성 대기 · 클릭해 직접 올리기</div>`;
-  const tools = `<div class="img-tools"><button onclick="app.regenImage('${key}')">재생성</button><button onclick="app.uploadSlot('${key}')">올리기</button>${img?`<button onclick="app.saveImage('${key}')">저장</button>`:""}</div>`;
+  const tools = `<div class="img-tools"><button onclick="app.regenImage('${key}')">재생성</button><button onclick="app.uploadSlot('${key}')">올리기</button>${img&&key!=="texture"?`<button onclick="app.cutoutSlot('${key}')" title="배경을 제거해 깔끔한 제품컷으로">배경제거</button>`:""}${img?`<button onclick="app.saveImage('${key}')">저장</button>`:""}</div>`;
   return `<div class="img-slot" data-slot="${key}">${inner}${tools}</div>`;
 }
 
@@ -1919,7 +1941,7 @@ function renderImages(){
         if(ph) ph.replaceWith(n); else slotEl.insertBefore(n, slotEl.firstChild);
       }
       const tools = slotEl.querySelector(".img-tools");
-      if(tools && !tools.querySelector("[data-save]")) tools.innerHTML = `<button onclick="app.regenImage('${key}')">재생성</button><button onclick="app.uploadSlot('${key}')">올리기</button><button data-save onclick="app.saveImage('${key}')">저장</button>`;
+      if(tools && !tools.querySelector("[data-save]")) tools.innerHTML = `<button onclick="app.regenImage('${key}')">재생성</button><button onclick="app.uploadSlot('${key}')">올리기</button>${key!=="texture"?`<button onclick="app.cutoutSlot('${key}')" title="배경을 제거해 깔끔한 제품컷으로">배경제거</button>`:""}<button data-save onclick="app.saveImage('${key}')">저장</button>`;
     }
     const l = slotEl.querySelector(".img-loading"); if(l) l.remove();
   });
@@ -2823,7 +2845,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
 init();
 </script>
 </body>
