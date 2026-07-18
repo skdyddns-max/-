@@ -212,6 +212,17 @@
   .dash-memo-pct { font-weight: 700; } .dash-memo-pct em { font-style: normal; color: #b7aba0; font-size: 11px; font-weight: 400; }
   .dash-memo-input { width: 100%; resize: vertical; font-family: inherit; font-size: 13px; line-height: 1.5; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink); }
   .dash-memo-input:focus { outline: none; border-color: var(--sage); box-shadow: 0 0 0 2px var(--sage-soft); }
+  .dash-goal { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; background: #FFFDFB; }
+  .dash-goal-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .dash-goal-name { font-weight: 700; font-size: 14px; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .goal-domain { font-size: 10.5px; font-weight: 600; color: var(--sub); background: #F0EAE3; border-radius: 999px; padding: 2px 8px; }
+  .goal-badge { font-size: 11px; font-weight: 700; color: #fff; border-radius: 999px; padding: 3px 11px; white-space: nowrap; flex: none; }
+  .dash-goal-body { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .dash-spark { width: 200px; height: 44px; flex: none; }
+  .dash-goal-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--sub); }
+  .dash-goal-meta b { color: var(--ink); font-size: 14px; }
+  .dash-goal-meta em { font-style: normal; font-size: 11px; color: #b7aba0; }
+  @media (max-width: 520px) { .dash-spark { width: 100%; } }
   @media (max-width: 520px) {
     .dash-bar-row { grid-template-columns: 96px 1fr; }
     .dash-bar-val { grid-column: 2; text-align: right; margin-top: -4px; }
@@ -608,7 +619,7 @@ const state = {
   projects: [],        // 프로젝트 라이브러리 [{id, createdAt, updatedAt, form, project, videos}]
   currentId: null,     // 작업 중 프로젝트의 라이브러리 id
   dashRows: [],        // 경과 대시보드용 세션 기록 [{date, child, question, attempts, firstTry}]
-  dashNotes: {},       // 회기 메모 { "아동 날짜": "메모 텍스트" }
+  dashNotes: {},       // 회기 메모 { "아동+날짜": "메모 텍스트" }
 };
 
 function save() {
@@ -1970,7 +1981,8 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       const head = rows[0].map(c => c.trim());
       const col = name => head.indexOf(name);
       const iDate = col("날짜"), iChild = col("아동"), iQ = col("질문"),
-            iAtt = col("시도 횟수"), iFirst = col("첫 시도 정답");
+            iAtt = col("시도 횟수"), iFirst = col("첫 시도 정답"),
+            iGoal = col("목표"), iDomain = col("영역");   // 구버전 CSV엔 없음(하위 호환)
       const hasHeader = iDate >= 0 && iQ >= 0 && iFirst >= 0;
       if (!hasHeader) { skippedFiles++; continue; }
 
@@ -1979,16 +1991,26 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
         const date = (row[iDate] || "").trim();
         const question = (row[iQ] || "").trim();
         if (!date || !question) continue;
+        const goal = iGoal >= 0 ? (row[iGoal] || "").trim() : "";
+        const domain = iDomain >= 0 ? (row[iDomain] || "").trim() : "";
         const rec = {
           date,
           child: iChild >= 0 ? (row[iChild] || "").trim() || "(이름 없음)" : "(이름 없음)",
           question,
           attempts: iAtt >= 0 ? parseInt(row[iAtt], 10) || 0 : 0,
           firstTry: /^(o|1|true|정답)/i.test((row[iFirst] || "").trim()),
+          goal, domain,
         };
         scanned++;
         const k = key(rec);
-        if (seen.has(k)) continue;
+        if (seen.has(k)) {
+          // 이미 있는 행이 목표 정보가 없고 이번엔 있으면 보강(업그레이드)
+          if (goal) {
+            const ex = state.dashRows.find(x => key(x) === k);
+            if (ex && !ex.goal) { ex.goal = goal; ex.domain = domain; }
+          }
+          continue;
+        }
         seen.add(k);
         state.dashRows.push(rec);
         added++;
@@ -2023,11 +2045,11 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   },
 
   exportDashCSV() {
-    const rows = [["날짜", "아동", "질문", "활동", "시도 횟수", "첫 시도 정답", "회기 메모"]];
+    const rows = [["날짜", "아동", "목표", "영역", "질문", "활동", "시도 횟수", "첫 시도 정답", "회기 메모"]];
     state.dashRows
       .slice()
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-      .forEach(r => rows.push([r.date, r.child, r.question, activityOf(r.question), r.attempts, r.firstTry ? "O" : "X", getNote(r.child, r.date)]));
+      .forEach(r => rows.push([r.date, r.child, r.goal || "", r.domain || "", r.question, activityOf(r.question), r.attempts, r.firstTry ? "O" : "X", getNote(r.child, r.date)]));
     const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n");
     downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "화용스튜디오_통합기록.csv");
     setStatus("dash-status", "info", "✅ 모든 아동의 통합 기록을 CSV로 저장했습니다.");
@@ -2070,7 +2092,35 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       .map(([name, o]) => ({ name, total: o.total, correct: o.correct, pct: Math.round((o.correct / o.total) * 100) }))
       .sort((a, b) => b.total - a.total);
 
-    return { child, children, rows, sessions, totalQ, totalC, overall, first, last, trend, acts };
+    // 목표(화용 기술)별 진전 — 목표별로 회기(날짜) 추이·숙달 수준 집계
+    const goalMap = new Map();
+    rows.forEach(r => {
+      const g = goalOf(r);
+      if (!goalMap.has(g)) goalMap.set(g, { name: g, domain: r.domain || "", byDate: new Map(), total: 0, correct: 0 });
+      const o = goalMap.get(g);
+      if (r.domain && !o.domain) o.domain = r.domain;
+      o.total++; if (r.firstTry) o.correct++;
+      if (!o.byDate.has(r.date)) o.byDate.set(r.date, { total: 0, correct: 0 });
+      const d = o.byDate.get(r.date);
+      d.total++; if (r.firstTry) d.correct++;
+    });
+    const goals = Array.from(goalMap.values()).map(o => {
+      const gsessions = Array.from(o.byDate.entries())
+        .map(([date, d]) => ({ date, total: d.total, correct: d.correct, pct: Math.round((d.correct / d.total) * 100) }))
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+      const gf = gsessions[0], gl = gsessions[gsessions.length - 1];
+      return {
+        name: o.name, domain: o.domain,
+        sessions: gsessions,
+        totalQ: o.total, correct: o.correct,
+        overall: o.total ? Math.round((o.correct / o.total) * 100) : 0,
+        recent: gl.pct,
+        trend: gsessions.length >= 2 ? gl.pct - gf.pct : null,
+        mastery: goalMastery(gl.pct),
+      };
+    }).sort((a, b) => b.sessions.length - a.sessions.length || b.totalQ - a.totalQ);
+
+    return { child, children, rows, sessions, totalQ, totalC, overall, first, last, trend, acts, goals };
   },
 
   // 자동 소견 초안 (치료사가 검수·수정하도록 사실 위주로만 서술)
@@ -2089,6 +2139,14 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       if (strong.name !== weak.name)
         p.push(`활동별로는 「${strong.name}」(${strong.pct}%)가 가장 안정적이고, 「${weak.name}」(${weak.pct}%)는 추가 연습이 필요합니다.`);
     }
+    // 목표(기술)별 숙달 요약 — 목표 정보가 있는 경우만
+    const namedGoals = (st.goals || []).filter(g => g.name !== "미지정");
+    if (namedGoals.length) {
+      const done = namedGoals.filter(g => g.mastery.label === "달성").map(g => g.name);
+      const intro = namedGoals.filter(g => g.mastery.label === "도입").map(g => g.name);
+      if (done.length) p.push(`목표 중 「${done.join("」, 「")}」은(는) 달성 수준(최근 80% 이상)에 도달했습니다.`);
+      if (intro.length) p.push(`「${intro.join("」, 「")}」은(는) 아직 도입 단계로 집중 지도가 필요합니다.`);
+    }
     return p.join(" ");
   },
 
@@ -2103,7 +2161,7 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
 
     const st = this.dashStats(dashChild);
     dashChild = st.child;
-    const { children, sessions, totalQ, overall, last, trend, acts } = st;
+    const { children, sessions, totalQ, overall, last, trend, acts, goals } = st;
 
     const sel = children.map(c => `<option value="${esc(c)}"${c === dashChild ? " selected" : ""}>${esc(c)}</option>`).join("");
 
@@ -2134,6 +2192,11 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       <div class="card">
         <h3>회기별 첫 시도 정답률</h3>
         ${this.dashLineChart(sessions)}
+      </div>
+
+      <div class="card">
+        <h3>🎯 목표별 진전 <span class="muted" style="font-weight:400;">— 목표 화용 기술별 회기 추이·숙달 수준</span></h3>
+        ${goals.map(g => this.dashGoalHTML(g)).join("")}
       </div>
 
       <div class="card">
@@ -2177,6 +2240,44 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   selectDashChild(name) {
     dashChild = name;
     this.renderDashboard();
+  },
+
+  // 목표 1개의 진전 블록 (헤더 + 스파크라인 + 통계)
+  dashGoalHTML(g) {
+    const trendText = g.trend === null ? "회기 1회"
+      : g.trend > 0 ? `▲ +${g.trend}%p` : g.trend < 0 ? `▼ ${g.trend}%p` : "→ 유지";
+    const domainChip = g.domain ? `<span class="goal-domain">${esc(g.domain)}</span>` : "";
+    return `
+      <div class="dash-goal">
+        <div class="dash-goal-head">
+          <div class="dash-goal-name">${esc(g.name)}${domainChip}</div>
+          <span class="goal-badge" style="background:${g.mastery.color}">${g.mastery.label}</span>
+        </div>
+        <div class="dash-goal-body">
+          ${this.dashSparkline(g.sessions)}
+          <div class="dash-goal-meta">
+            <span><b>${g.sessions.length}</b> 회기</span>
+            <span>전체 <b style="color:${pctColor(g.overall)}">${g.overall}%</b></span>
+            <span>최근 <b style="color:${pctColor(g.recent)}">${g.recent}%</b> <em>${trendText}</em></span>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  // 목표별 미니 막대 스파크라인 (회기 추이). 라벨 없는 컴팩트 SVG
+  dashSparkline(sessions) {
+    const n = sessions.length;
+    const W = 200, H = 44, gap = 3;
+    const bw = Math.max(4, (W - gap * (n - 1)) / n);
+    let g = `<svg viewBox="0 0 ${W} ${H}" class="dash-spark" preserveAspectRatio="none" role="img" aria-label="회기 추이">`;
+    g += `<line x1="0" y1="${H - 1}" x2="${W}" y2="${H - 1}" stroke="#E7DED5" stroke-width="1"/>`;
+    sessions.forEach((s, i) => {
+      const h = Math.max(2, (s.pct / 100) * (H - 4));
+      const x = i * (bw + gap);
+      g += `<rect x="${x.toFixed(1)}" y="${(H - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${pctColor(s.pct)}"><title>${esc(s.date)} · ${s.pct}%</title></rect>`;
+    });
+    g += `</svg>`;
+    return g;
   },
 
   // 회기 메모 자동 저장 (재렌더하지 않음 — 입력 포커스 유지)
@@ -2233,6 +2334,19 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       <tr><td>${esc(s.date)}</td><td>${activitySummary(st.rows, s.date)}</td>
       <td>${s.correct} / ${s.total}</td><td style="color:${pctColor(s.pct)};font-weight:700">${s.pct}%</td></tr>`).join("");
 
+    // 목표별 진전
+    const goalRep = (st.goals || []).map(g => {
+      const t = g.trend === null ? "회기 1회"
+        : g.trend > 0 ? `▲ +${g.trend}%p` : g.trend < 0 ? `▼ ${g.trend}%p` : "→ 유지";
+      return `
+      <div class="rgoal">
+        <div class="rgoal-h"><b>${esc(g.name)}</b>${g.domain ? `<span class="rgoal-dom">${esc(g.domain)}</span>` : ""}
+          <span class="rgoal-badge" style="background:${g.mastery.color}">${g.mastery.label}</span></div>
+        <div class="rgoal-b">${this.dashSparkline(g.sessions)}
+          <span class="rgoal-meta">${g.sessions.length}회기 · 전체 <b style="color:${pctColor(g.overall)}">${g.overall}%</b> · 최근 <b style="color:${pctColor(g.recent)}">${g.recent}%</b> <em>${t}</em></span></div>
+      </div>`;
+    }).join("");
+
     // 회기 메모 (작성된 것만)
     const memoList = st.sessions.slice().reverse()
       .map(s => ({ date: s.date, pct: s.pct, note: getNote(st.child, s.date) }))
@@ -2275,6 +2389,13 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   .rbar-t{ background:#efeae4; border-radius:999px; height:13px; overflow:hidden; }
   .rbar-t b{ display:block; height:100%; border-radius:999px; }
   .rbar-v{ color:var(--sub); white-space:nowrap; } .rbar-v em{ font-style:normal; color:#b7aba0; }
+  .rgoal{ border:1px solid var(--line); border-radius:10px; padding:9px 12px; margin:8px 0; }
+  .rgoal-h{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  .rgoal-h b{ font-size:13px; } .rgoal-dom{ font-size:10px; color:var(--sub); background:#f0eae3; border-radius:999px; padding:1px 7px; }
+  .rgoal-badge{ font-size:10px; font-weight:700; color:#fff; border-radius:999px; padding:2px 9px; margin-left:auto; }
+  .rgoal-b{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .dash-spark{ width:180px; height:40px; flex:none; }
+  .rgoal-meta{ font-size:12px; color:var(--sub); } .rgoal-meta b{ font-size:13px; } .rgoal-meta em{ font-style:normal; color:#b7aba0; font-size:11px; }
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
   th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); }
   th{ font-size:11px; color:var(--sub); background:#faf7f3; }
@@ -2311,6 +2432,9 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
 
   <h2>회기별 첫 시도 정답률</h2>
   ${this.dashLineChart(st.sessions)}
+
+  <h2>목표별 진전</h2>
+  ${goalRep}
 
   <h2>활동 유형별 정답률</h2>
   ${bars || '<p style="color:#8a7f75;font-size:13px">활동 데이터가 없습니다.</p>'}
@@ -2415,6 +2539,16 @@ function activitySummary(rows, date) {
 // 회기 메모 저장 키 (아동 + 날짜). 탭 문자로 구분해 충돌 방지
 function noteKey(child, date) { return String(child) + "\t" + String(date); }
 function getNote(child, date) { return (state.dashNotes && state.dashNotes[noteKey(child, date)]) || ""; }
+
+// 목표 화용 기술 (구버전 CSV는 정보 없음 → 미지정)
+function goalOf(r) { return (r.goal && r.goal.trim()) || "미지정"; }
+
+// 목표 숙달 수준 (최근 정답률 기준)
+function goalMastery(pct) {
+  if (pct >= 80) return { label: "달성", color: "#8CA888" };
+  if (pct >= 50) return { label: "습득 중", color: "#D9A441" };
+  return { label: "도입", color: "#C4817E" };
+}
 
 const ACT_COLOR = {
   "이야기 퀴즈": "#C4817E",
@@ -2798,6 +2932,8 @@ ${quizPage}
    (독립 실행형 — 영상 파일은 사용자가 열어서 지정)
    ============================================================ */
 function buildPlayerHTML(project, emotionCards = [], mindReadingCards = [], solvingCards = []) {
+  const goal = state.form?.skill || "";
+  const domain = domainForSkill(goal)?.label || "";
   const data = JSON.stringify(project).replace(/</g, "\\u003c");
   const cardsData = JSON.stringify(emotionCards).replace(/</g, "\\u003c");
   const mindData = JSON.stringify(mindReadingCards).replace(/</g, "\\u003c");
@@ -2897,6 +3033,8 @@ function buildPlayerHTML(project, emotionCards = [], mindReadingCards = [], solv
 
 <script>
 var PROJECT = ${data};
+var GOAL = ${JSON.stringify(goal)};       // 목표 화용 기술
+var DOMAIN = ${JSON.stringify(domain)};   // 화용 영역
 var CARDS = ${cardsData};   // 감정 카드 [{ko, mime, data}]
 var MINDCARDS = ${mindData};   // 마음 읽기 카드 [{situation, surface, ...}]
 var SOLVECARDS = ${solveData};   // 어떻게 할까? 카드 [{situation, question, choices}]
@@ -2945,10 +3083,10 @@ function renderLogs() {
 }
 
 function downloadCSV() {
-  var rows = [["날짜", "아동", "질문", "시도 횟수", "첫 시도 정답"]];
+  var rows = [["날짜", "아동", "목표", "영역", "질문", "시도 횟수", "첫 시도 정답"]];
   loadLogs().forEach(function(g){
     g.results.forEach(function(r){
-      rows.push([g.date.slice(0, 16).replace("T", " "), g.child, r.question, r.attempts, r.firstTry ? "O" : "X"]);
+      rows.push([g.date.slice(0, 16).replace("T", " "), g.child, GOAL, DOMAIN, r.question, r.attempts, r.firstTry ? "O" : "X"]);
     });
   });
   var csv = "\\uFEFF" + rows.map(function(r){
