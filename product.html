@@ -1562,12 +1562,20 @@ async function generate(){
     const slots=[["hero",copy.imagePrompts?.hero,"히어로"],["lifestyle",copy.imagePrompts?.lifestyle,"라이프스타일"],["detail",copy.imagePrompts?.detail,"디테일"]];
     if((copy.ingredients||[]).length && copy.imagePrompts?.texture) slots.push(["texture",copy.imagePrompts.texture,"성분·제형"]);
     const N=slots.length;
+    // 아트디렉션 락 — 제품이 컷마다 달라지지 않도록 '기준 컷'을 고정해 모든 컷에 레퍼런스로 전달.
+    // 업로드한 실제 제품 사진이 있으면 그걸, 없으면 처음 생성된 컷(주로 히어로)을 기준으로 삼는다.
+    const uploaded = (state.input.images||[]).slice(0,2);
+    let lockRef = uploaded.slice();
     let done=0, aiOk=0, imgErr=null;
     for(const [key,prompt,label] of slots){
-      const refs = key==="texture" ? [] : state.input.images;   // 성분 컷은 제품 패키지 없이 순수 매크로
+      const refs = key==="texture" ? [] : lockRef;   // 성분 컷은 제품 패키지 없이 순수 매크로
       setStatus("work",`<span class="spin"></span>이미지 연출 중… (${done}/${N}) · ${label} 컷`);
       markImgLoading(key,true);
-      try{ state.result.images[key] = await callImage(fullImagePrompt(prompt||("the product, "+state.input.name), refs), refs); aiOk++; }
+      try{
+        const img = await callImage(fullImagePrompt(prompt||("the product, "+state.input.name), refs), refs);
+        state.result.images[key] = img; aiOk++;
+        if(key!=="texture" && !uploaded.length && !lockRef.length) lockRef=[img];   // 첫 성공 컷을 기준으로 고정
+      }
       catch(e){ console.warn("이미지 실패",key,e); imgErr=e; markImgLoading(key,false); }   // 업로드본/빈칸 유지
       renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages(); done++;
     }
@@ -1593,10 +1601,20 @@ async function regenCopy(){
     render(); renderImages(); setStatus("ok","✅ 문구를 새로 생성했어요."); setTimeout(clearStatus,3500);
   }catch(e){ setStatus("err","재생성 실패: "+friendly(e)); }
 }
+/* 아트디렉션 락 — 이 컷을 만들 때 참고할 '기준 제품 컷'. 업로드가 있으면 그것,
+   없으면 이미 만든 히어로를 기준으로 삼아 제품이 컷마다 달라지지 않게 한다. */
+function lockRefFor(key){
+  if(key==="texture") return [];
+  const up=(state.input.images||[]).slice(0,2);
+  if(up.length) return up;
+  const hero=state.result?.images?.hero;
+  return (key!=="hero" && hero) ? [hero] : [];
+}
 async function regenImage(key){
   if(!state.result) return;
+  const refs = lockRefFor(key);
   if(state.settings.engine==="manual"){
-    const pr = fullImagePrompt(state.result.copy.imagePrompts?.[key]||("the product, "+state.input.name), state.input.images);
+    const pr = fullImagePrompt(state.result.copy.imagePrompts?.[key]||("the product, "+state.input.name), refs);
     try{ await navigator.clipboard.writeText(pr); toast("이미지 프롬프트 복사됨 — 챗봇에서 만든 뒤 '올리기'로 넣어주세요"); }
     catch(e){ toast("클립보드 복사에 실패했어요"); }
     return;
@@ -1604,7 +1622,7 @@ async function regenImage(key){
   if(!requireKey()) return;
   const prompt = state.result.copy.imagePrompts?.[key] || ("the product, "+state.input.name);
   markImgLoading(key,true);
-  try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, state.input.images), state.input.images); renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages(); toast("이미지를 새로 생성했어요"); }
+  try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, refs), refs); renderImages(); if(effectiveTheme()==="auto") harmonizeFromImages(); toast("이미지를 새로 생성했어요"); }
   catch(e){ markImgLoading(key,false); toast("이미지 생성 실패: "+friendly(e)); }
 }
 
