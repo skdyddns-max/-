@@ -859,6 +859,7 @@
         <div class="theme-picker" id="theme-picker" title="디자인 테마 — 클릭해서 갈아입히기"></div>
         <button class="btn btn-line btn-sm" id="btn-ab" onclick="app.toggleAB()" hidden title="헤드카피 A안/B안 전환 (A/B 테스트)">A/B</button>
         <button class="btn btn-dark btn-sm" id="btn-sns" onclick="app.openSns()" disabled title="인스타 피드·스토리용 완성 컷 + 캡션">📱 SNS 세트</button>
+        <button class="btn btn-dark btn-sm" id="btn-carousel" onclick="app.openCarousel()" disabled title="인스타 캐러셀 — 상세를 스와이프 슬라이드로, 큰 글씨로">🎞️ 캐러셀</button>
         <span class="mono hide-sm" style="color:var(--muted-2);">문구 클릭 수정 · 이미지 위 재생성</span>
       </div>
       <div class="stage empty-mode" id="stage">
@@ -941,6 +942,26 @@
     <div class="row">
       <button class="btn btn-line" style="flex:1;" onclick="app.saveThumbAll()">3종 모두 저장</button>
       <button class="btn btn-accent" style="flex:1;" onclick="app.saveThumbSel()">선택 컷 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 인스타 캐러셀 모달 -->
+<div class="modal-bg" id="m-carousel">
+  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;">
+    <button class="x" onclick="app.closeModal('m-carousel')">×</button>
+    <h3>🎞️ 인스타 캐러셀 — 스와이프 슬라이드</h3>
+    <p class="lead">긴 상세를 <b>넘겨 보는 4:5 슬라이드</b>로 재구성했어요. 카드마다 큰 글씨로 정보를 압축해, 피드에서 축소돼도 잘 읽힙니다. 페이지 번호·스와이프 힌트까지 얹은 완성본이라 순서대로 올리면 됩니다.</p>
+    <div class="thumb-grid" id="carousel-grid" style="grid-template-columns:repeat(4,1fr);"></div>
+    <button class="btn btn-accent" style="width:100%;" onclick="app.saveCarouselAll()">🖼 전체 저장 (순서대로)</button>
+    <div class="sep"></div>
+    <label class="f"><span>캡션 — 첫 줄이 훅, 마지막에 행동 유도</span>
+      <textarea id="carousel-caption" style="min-height:110px;font-size:12.5px;"></textarea></label>
+    <label class="f"><span>해시태그</span>
+      <textarea id="carousel-tags" style="min-height:56px;font-size:12.5px;"></textarea></label>
+    <div class="row">
+      <button class="btn btn-line" onclick="app.copyCarouselCaption()">캡션 복사</button>
+      <button class="btn btn-line" onclick="app.copyCarouselTags()">해시태그 복사</button>
     </div>
   </div>
 </div>
@@ -1901,7 +1922,7 @@ function setByPath(obj,path,val){
   for(let k=0;k<parts.length-1;k++){ const key=parts[k]; if(o[key]==null) o[key]=/^\d+$/.test(parts[k+1])?[]:{}; o=o[key]; }
   o[parts[parts.length-1]]=val;
 }
-function enableExport(on){ ["btn-recopy","btn-html","btn-split","btn-imgs","btn-sns","btn-thumb"].forEach(id=>$(id).disabled=!on); }
+function enableExport(on){ ["btn-recopy","btn-html","btn-split","btn-imgs","btn-sns","btn-thumb","btn-carousel"].forEach(id=>$(id).disabled=!on); }
 
 /* ---------- 업로드 ---------- */
 function handleFiles(files){
@@ -2314,6 +2335,145 @@ function saveThumbSel(){
   toast(`'${card.label}' 컷 저장 — 대표이미지로 등록하세요`);
 }
 
+/* ───────── 인스타 캐러셀 — 상세를 스와이프 슬라이드(4:5)로, 큰 글씨로 ───────── */
+let carouselCards=[];
+async function buildCarousel(){
+  const c=state.result.copy, T=snsTokens();
+  await document.fonts.ready.catch(()=>{});
+  const hero=await loadImg(state.result.images.hero);
+  const life=await loadImg(state.result.images.lifestyle);
+  const detail=await loadImg(state.result.images.detail);
+  const uploaded = state.input.images && state.input.images[0] ? await loadImg(state.input.images[0]) : null;
+  let cut=null; for(const s of [uploaded,detail,hero,life]){ if(s){ cut=makeCutout(s); if(cut) break; } }
+  const S=1080, Hh=1350, M=84, MW=S-2*M;
+  const name=(state.input.name||"제품"), price=String(state.input.price||"").trim(), eyebrow=thumbEyebrow(c);
+  const rrp=(ctx,x,y,w,h,r)=>{ ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h); };
+  const paletteBg=(ctx,alt)=>{ const g=ctx.createLinearGradient(0,0,0,Hh); g.addColorStop(0,alt?T.bg1:T.bg0); g.addColorStop(1,alt?T.bg0:T.bg1); ctx.fillStyle=g; ctx.fillRect(0,0,S,Hh); };
+  const scrim=(ctx,from,a)=>{ const g=ctx.createLinearGradient(0,Hh*from,0,Hh); g.addColorStop(0,"rgba(10,9,7,0)"); g.addColorStop(1,`rgba(10,9,7,${a})`); ctx.fillStyle=g; ctx.fillRect(0,0,S,Hh); };
+  const roundImg=(ctx,im,x,y,w,h,r)=>{ ctx.save(); rrp(ctx,x,y,w,h,r); ctx.clip(); coverDraw(ctx,im,x,y,w,h); ctx.restore(); };
+  const drawCut=(ctx,bx,by,bw,bh)=>{ if(!cut)return; const b=cut.box,r=Math.min(bw/b.w,bh/b.h),nw=b.w*r,nh=b.h*r,dx=bx+(bw-nw)/2,dy=by+(bh-nh)/2;
+    const gy=dy+nh-4,grd=ctx.createRadialGradient(dx+nw/2,gy,4,dx+nw/2,gy,nw*0.55); grd.addColorStop(0,"rgba(20,16,10,.26)"); grd.addColorStop(1,"rgba(20,16,10,0)");
+    ctx.save(); ctx.translate(dx+nw/2,gy); ctx.scale(1,0.15); ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(0,0,nw*0.55,0,7); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.shadowColor="rgba(20,16,10,.24)"; ctx.shadowBlur=38; ctx.shadowOffsetY=18; ctx.drawImage(cut.canvas,b.x,b.y,b.w,b.h,dx,dy,nw,nh); ctx.restore(); };
+  const eyeAt=(ctx,txt,x,y)=>{ if(!txt) return y; ctx.font=`700 26px ${T.mono}`; const w=ctx.measureText(txt).width+52; rrp(ctx,x,y,w,54,27); ctx.fillStyle=T.ac; ctx.fill(); ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(txt,x+26,y+27); ctx.textBaseline="top"; return y+54+22; };
+  const frame=(ctx,idx,total,dark)=>{ const ink=dark?"rgba(255,255,255,.9)":T.tx2, faint=dark?"rgba(255,255,255,.32)":withA(T.tx2,.34);
+    ctx.font=`600 22px ${T.mono}`; ctx.fillStyle=ink; ctx.textAlign="left"; ctx.textBaseline="alphabetic"; ctx.fillText(name.toUpperCase().slice(0,20),M,72);
+    ctx.textAlign="right"; ctx.fillText(`${idx+1} / ${total}`,S-M,72); ctx.textAlign="left";
+    const dotY=Hh-62,gap=26,x0=S/2-(total-1)*gap/2; for(let i=0;i<total;i++){ ctx.beginPath(); ctx.arc(x0+i*gap,dotY,i===idx?6:4,0,7); ctx.fillStyle=i===idx?T.ac:faint; ctx.fill(); } };
+
+  const defs=[{key:"cover",label:"커버"}];
+  if(c.hook&&c.hook.question) defs.push({key:"hook",label:"공감"});
+  if(c.solution&&(c.solution.title||c.solution.body)) defs.push({key:"solution",label:"해결"});
+  if((c.features||[]).length) defs.push({key:"features",label:"핵심"});
+  if(c.material&&(c.material.items||[]).length) defs.push({key:"material",label:"성분"});
+  if(c.scene&&(c.scene.title||c.scene.body)) defs.push({key:"usage",label:"사용법"});
+  if((c.reviews||[]).length) defs.push({key:"reviews",label:"후기"});
+  defs.push({key:"cta",label:"구매"});
+  const total=defs.length, cards=[];
+
+  defs.forEach((def,idx)=>{
+    const cv=document.createElement("canvas"); cv.width=S; cv.height=Hh; const ctx=cv.getContext("2d"); let dark=false;
+    ctx.textBaseline="top";
+    if(def.key==="cover"){ dark=true;
+      const base=hero||life||detail;
+      if(base) coverDraw(ctx,base,0,0,S,Hh); else { paletteBg(ctx,false); drawCut(ctx,160,320,S-320,720); }
+      scrim(ctx,.3,.9);
+      if(eyebrow){ ctx.font=`700 26px ${T.mono}`; const w=ctx.measureText(eyebrow).width+52; rrp(ctx,M,150,w,54,27); ctx.fillStyle=T.ac; ctx.fill(); ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(eyebrow,M+26,177); ctx.textBaseline="top"; }
+      ctx.font=`${T.headWt} 80px ${T.head}`; const hl=wrapText(ctx,c.heroHeadline||name,MW).slice(0,3); const hS=Hh-190-hl.length*88;
+      ctx.font=`600 26px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.85)"; ctx.fillText((c.tagline||"").toUpperCase().slice(0,26),M,hS-48);
+      ctx.font=`${T.headWt} 80px ${T.head}`; ctx.fillStyle="#fff"; hl.forEach((ln,i)=>ctx.fillText(ln,M,hS+i*88));
+      ctx.font=`700 24px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.92)"; ctx.fillText("밀어서 넘겨보세요  →",M,Hh-120);
+    }
+    else if(def.key==="hook"){ paletteBg(ctx,false);
+      ctx.fillStyle=T.ac; ctx.fillRect(M,168,108,10);
+      ctx.font=`700 28px ${T.mono}`; ctx.fillStyle=T.ac2; ctx.fillText("이런 고민, 있으셨죠?",M,206);
+      ctx.font=`${Math.min(T.headWt,800)} 64px ${T.head}`; const qn=drawRichLines(ctx,c.hook.question,M,296,MW,84,T.tx,T.ac2,"left");
+      let yy=296+qn*84+34; ctx.font=`400 36px ${T.sans}`; ctx.fillStyle=T.tx2;
+      wrapText(ctx,c.hook.empathy||"",MW).slice(0,5).forEach((ln,i)=>ctx.fillText(ln,M,yy+i*54));
+    }
+    else if(def.key==="solution"){ paletteBg(ctx,true);
+      let y=eyeAt(ctx,(c.solution.eyebrow||"SOLUTION").toUpperCase().slice(0,16),M,180); y+=20;
+      ctx.font=`${T.headWt} 58px ${T.head}`; ctx.fillStyle=T.tx; const st=wrapText(ctx,c.solution.title||"",MW).slice(0,3); st.forEach((ln,i)=>ctx.fillText(ln,M,y+i*70)); y+=st.length*70+34;
+      ctx.font=`400 37px ${T.sans}`; ctx.fillStyle=T.tx2; wrapText(ctx,c.solution.body||"",MW).slice(0,7).forEach((ln,i)=>ctx.fillText(ln,M,y+i*56));
+    }
+    else if(def.key==="features"){ paletteBg(ctx,false);
+      let y=eyeAt(ctx,"핵심 포인트",M,180); ctx.font=`${T.headWt} 52px ${T.head}`; ctx.fillStyle=T.tx; ctx.fillText("이건 꼭 아셔야 해요",M,y); y+=104;
+      (c.features||[]).slice(0,3).forEach((f,i)=>{
+        ctx.beginPath(); ctx.arc(M+27,y+24,27,0,7); ctx.fillStyle=T.ac; ctx.fill();
+        ctx.font=`800 30px ${T.sans}`; ctx.fillStyle=T.onAc; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(String(i+1),M+27,y+26); ctx.textAlign="left"; ctx.textBaseline="top";
+        ctx.font=`800 40px ${T.sans}`; ctx.fillStyle=T.tx; ctx.fillText(String(f.title||"").slice(0,20),M+82,y-2);
+        ctx.font=`400 32px ${T.sans}`; ctx.fillStyle=T.tx2; const dl=wrapText(ctx,f.desc||"",MW-82).slice(0,2); dl.forEach((ln,k)=>ctx.fillText(ln,M+82,y+48+k*46));
+        y+=48+dl.length*46+52;
+      });
+    }
+    else if(def.key==="material"){ paletteBg(ctx,true);
+      const mim=detail||life||hero; if(mim) roundImg(ctx,mim,M,150,MW,420,28);
+      let y=612; y=eyeAt(ctx,(c.material.eyebrow||"INGREDIENTS").toUpperCase().slice(0,18),M,y);
+      ctx.font=`${T.headWt} 46px ${T.head}`; ctx.fillStyle=T.tx; const mt=wrapText(ctx,c.material.title||"",MW).slice(0,2); mt.forEach((ln,i)=>ctx.fillText(ln,M,y+i*56)); y+=mt.length*56+26;
+      (c.material.items||[]).slice(0,2).forEach(it=>{
+        ctx.font=`800 34px ${T.sans}`; ctx.fillStyle=T.tx; ctx.fillText(String(it.label||"").slice(0,24),M,y);
+        ctx.font=`600 27px ${T.mono}`; ctx.fillStyle=T.ac2; ctx.fillText(String(it.value||"").slice(0,32),M,y+44);
+        ctx.font=`400 30px ${T.sans}`; ctx.fillStyle=T.tx2; const nl=wrapText(ctx,it.note||"",MW).slice(0,2); nl.forEach((ln,k)=>ctx.fillText(ln,M,y+86+k*44)); y+=86+nl.length*44+38;
+      });
+    }
+    else if(def.key==="usage"){ paletteBg(ctx,false);
+      const uim=life||detail||hero; if(uim) roundImg(ctx,uim,M,150,MW,440,28);
+      let y=632; y=eyeAt(ctx,(c.scene.eyebrow||"HOW TO").toUpperCase().slice(0,16),M,y);
+      ctx.font=`${T.headWt} 44px ${T.head}`; ctx.fillStyle=T.tx; const stt=wrapText(ctx,c.scene.title||"",MW).slice(0,2); stt.forEach((ln,i)=>ctx.fillText(ln,M,y+i*54)); y+=stt.length*54+24;
+      ctx.font=`400 34px ${T.sans}`; ctx.fillStyle=T.tx2; wrapText(ctx,c.scene.body||"",MW).slice(0,4).forEach((ln,i)=>ctx.fillText(ln,M,y+i*50)); y+=Math.min(4,wrapText(ctx,c.scene.body||"",MW).length)*50+22;
+      if(c.scene.sizeNote){ ctx.font=`600 24px ${T.mono}`; const w=Math.min(MW,ctx.measureText(c.scene.sizeNote).width+44); rrp(ctx,M,y,w,52,12); ctx.fillStyle=withA(T.ac,.14); ctx.fill(); ctx.fillStyle=T.ac2; ctx.textBaseline="middle"; ctx.fillText(String(c.scene.sizeNote).slice(0,30),M+22,y+26); ctx.textBaseline="top"; }
+    }
+    else if(def.key==="reviews"){ paletteBg(ctx,true);
+      let y=eyeAt(ctx,"REAL REVIEW",M,180); ctx.font=`${T.headWt} 50px ${T.head}`; ctx.fillStyle=T.tx; ctx.fillText("먼저 써본 분들",M,y); y+=104;
+      (c.reviews||[]).slice(0,3).forEach(r=>{
+        ctx.font=`600 33px ${T.sans}`; const ql=wrapText(ctx,'"'+String(r.quote||"")+'"',MW-60).slice(0,2); const ch=54+ql.length*44+52;
+        rrp(ctx,M,y,MW,ch,24); ctx.fillStyle=T.bg0; ctx.fill();
+        ctx.font=`600 24px ${T.sans}`; ctx.fillStyle=T.ac; ctx.fillText("★★★★★",M+30,y+24);
+        ctx.font=`600 33px ${T.sans}`; ctx.fillStyle=T.tx; ql.forEach((ln,k)=>ctx.fillText(ln,M+30,y+58+k*44));
+        ctx.font=`500 25px ${T.sans}`; ctx.fillStyle=T.tx2; ctx.fillText((String(r.author||"")+(r.tag?"  ·  "+r.tag:"")).slice(0,28),M+30,y+58+ql.length*44+4);
+        y+=ch+22;
+      });
+    }
+    else if(def.key==="cta"){ dark=true;
+      const g=ctx.createLinearGradient(0,0,0,Hh); g.addColorStop(0,T.dk); g.addColorStop(1,"#000"); ctx.fillStyle=g; ctx.fillRect(0,0,S,Hh);
+      const rg=ctx.createRadialGradient(S/2,120,60,S/2,120,720); rg.addColorStop(0,withA(T.ac,.28)); rg.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=rg; ctx.fillRect(0,0,S,Hh);
+      ctx.textAlign="center";
+      let y=224; ctx.font=`${T.headWt} 64px ${T.head}`; ctx.fillStyle="#fff";
+      String(c.cta?.headline||c.value?.title||"지금 만나보세요").split(/\n/).forEach(seg=>{ wrapText(ctx,seg,MW).forEach(ln=>{ ctx.fillText(ln,S/2,y); y+=78; }); }); y+=26;
+      (c.value?.included||[]).slice(0,3).forEach(it=>{ ctx.font=`500 34px ${T.sans}`; ctx.fillStyle="rgba(255,255,255,.85)"; ctx.fillText("+ "+String(it).slice(0,24),S/2,y); y+=52; });
+      if(price){ y+=18; ctx.font=`800 48px ${T.sans}`; ctx.fillStyle=T.ac; ctx.fillText(price.slice(0,24),S/2,y); y+=82; } else y+=20;
+      const btn=c.cta?.button||"구매하기"; ctx.font=`800 40px ${T.sans}`; const bw=ctx.measureText(btn).width+130; rrp(ctx,S/2-bw/2,y,bw,104,52); ctx.fillStyle=T.ac; ctx.fill(); ctx.fillStyle=T.onAc; ctx.textBaseline="middle"; ctx.fillText(btn,S/2,y+52); ctx.textBaseline="top";
+      ctx.font=`500 27px ${T.mono}`; ctx.fillStyle="rgba(255,255,255,.66)"; ctx.fillText("프로필 링크에서 구매하세요",S/2,y+140);
+      ctx.textAlign="left";
+    }
+    frame(ctx,idx,total,dark);
+    cards.push({name:String(idx+1).padStart(2,"0")+"-"+def.key,label:def.label,canvas:cv});
+  });
+  return cards;
+}
+
+async function openCarousel(){
+  if(!state.result){ toast("먼저 상세페이지를 생성해 주세요"); return; }
+  const c=state.result.copy;
+  $("m-carousel").classList.add("show");
+  $("carousel-grid").innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:13px;"><span class="spin"></span> 스와이프 슬라이드를 만드는 중…</div>`;
+  $("carousel-caption").value = c.sns?.caption || [c.hook?.question?.replace(/<\/?hl>/g,""), "", c.solution?.body, "", "👉 밀어서 전체 보기", c.cta?.headline?.replace(/\n/g," ")].filter(Boolean).join("\n");
+  $("carousel-tags").value = (c.sns?.hashtags||[]).map(t=>"#"+String(t).replace(/^#/,"")).join(" ");
+  try{
+    carouselCards = await buildCarousel();
+    const grid=$("carousel-grid"); grid.innerHTML="";
+    carouselCards.forEach(card=>{ const cell=document.createElement("div"); cell.className="cell"; cell.appendChild(card.canvas);
+      const t=document.createElement("span"); t.className="tag"; t.textContent=card.label; cell.appendChild(t); grid.appendChild(cell); });
+  }catch(e){ console.warn(e); $("carousel-grid").innerHTML=`<div style="grid-column:1/-1;color:var(--warn);font-size:13px;">캐러셀 생성에 실패했어요 — 다시 열어 주세요.</div>`; }
+}
+function saveCarouselAll(){
+  if(!carouselCards.length){ toast("아직 준비 중이에요"); return; }
+  carouselCards.forEach((card,i)=>setTimeout(()=>{ card.canvas.toBlob(b=>saveBlob(b,`${safeName()}-캐러셀-${card.name}.png`),"image/png"); }, i*280));
+  toast(`${carouselCards.length}장 저장 — 번호 순서대로 올리면 됩니다`);
+}
+async function copyCarouselCaption(){ try{ await navigator.clipboard.writeText($("carousel-caption").value); toast("캡션 복사됨"); }catch(e){ toast("복사 실패"); } }
+async function copyCarouselTags(){ try{ await navigator.clipboard.writeText($("carousel-tags").value); toast("해시태그 복사됨"); }catch(e){ toast("복사 실패"); } }
+
 /* ---------- 내보내기 ---------- */
 function saveBlob(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
 function b64ToBlob(b64,mime){ const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return new Blob([bytes],{type:mime}); }
@@ -2526,7 +2686,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, openThumb, saveThumbAll, saveThumbSel };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags };
 init();
 </script>
 </body>
