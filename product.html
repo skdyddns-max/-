@@ -877,6 +877,44 @@
       <div class="thumbs" id="thumbs"></div>
 
       <div class="sep"></div>
+      <div class="grp"><span class="n">3</span> 연출 브리핑 <span style="text-transform:none;letter-spacing:0;color:var(--accent);">(골라서 찍는 사진 · 채울수록 리얼)</span></div>
+      <div class="grp-hint">이미지를 "실제로 촬영한 사진"처럼 만들기 위한 촬영 지시예요. 스타일·배경을 고르고, 아는 만큼 적어 주세요 — 구체적일수록 실물에 가까워집니다.</div>
+      <label class="f"><span>촬영 스타일</span>
+        <div class="chips" id="b-style">
+          <button class="chip" data-v="clean-studio">클린 스튜디오</button>
+          <button class="chip" data-v="rustic-wood">러스틱·따뜻한</button>
+          <button class="chip" data-v="natural-light">자연광 감성</button>
+          <button class="chip" data-v="dark-mood">다크·무드</button>
+          <button class="chip" data-v="flatlay">플랫레이(탑뷰)</button>
+          <button class="chip" data-v="minimal">미니멀</button>
+        </div></label>
+      <label class="f"><span>배경 재질</span>
+        <div class="chips" id="b-surface">
+          <button class="chip" data-v="wood">원목</button>
+          <button class="chip" data-v="marble">대리석</button>
+          <button class="chip" data-v="linen">리넨·패브릭</button>
+          <button class="chip" data-v="concrete">콘크리트</button>
+          <button class="chip" data-v="nature">야외 자연</button>
+          <button class="chip" data-v="seamless">단색 배경</button>
+        </div></label>
+      <label class="f"><span>배경 · 장소 <span style="text-transform:none;letter-spacing:0;color:var(--muted-2);">(더 구체적으로)</span></span>
+        <input type="text" id="b-place" placeholder="예) 밝은 욕실 대리석 선반 / 시골 밥상 원목 식탁 / 흰 스튜디오 배경"></label>
+      <label class="f"><span>등장 인물</span>
+        <div class="chips" id="b-people">
+          <button class="chip" data-v="제품만 (인물 없음)">제품만</button>
+          <button class="chip" data-v="손만 등장">손만</button>
+          <button class="chip" data-v="얼굴 포함 인물">얼굴 포함</button>
+        </div></label>
+      <label class="f"><span>인물 상세 <span style="text-transform:none;letter-spacing:0;color:var(--muted-2);">(인물 있을 때)</span></span>
+        <input type="text" id="b-model" placeholder="예) 20대 후반 여성, 자연스러운 민낯, 니트 차림"></label>
+      <label class="f"><span>함께 놓을 소품</span>
+        <input type="text" id="b-props" placeholder="예) 흰 수건, 유리컵, 유칼립투스 한 줄기"></label>
+      <label class="f"><span>분위기 · 조명</span>
+        <input type="text" id="b-mood" placeholder="예) 아침 창가 햇살, 청결하고 차분한, 물방울 디테일"></label>
+      <label class="f"><span>실물 디테일 <span style="text-transform:none;letter-spacing:0;color:var(--muted-2);">(형태·색·재질·크기)</span></span>
+        <input type="text" id="b-real" placeholder="예) 무광 화이트 튜브 100ml · 민트색 캡 · 짜는 타입"></label>
+
+      <div class="sep"></div>
       <button class="btn btn-accent gen" id="gen-btn" onclick="app.generate()">✦ 상세페이지 생성</button>
       <div class="status" id="status"></div>
     </div>
@@ -1012,7 +1050,7 @@ const LS_KEY = "detail-studio-settings";
 
 const state = {
   settings: { engine:"gemini", geminiKey:"", openaiKey:"" },
-  input: { name:"", category:"", desc:"", target:"", price:"", tone:"", platform:"", images:[], details:{}, categoryManual:false },
+  input: { name:"", category:"", desc:"", target:"", price:"", tone:"", platform:"", images:[], details:{}, categoryManual:false, place:"", people:"", model:"", props:"", mood:"", real:"", style:"", surface:"" },
   result: null,
   theme: null,   // null = 톤에서 자동, 문자열 = 사용자가 고른 테마
 };
@@ -1457,6 +1495,7 @@ function buildCopyPrompt(){
     details ? `\n[${i.category} 세부 정보 — 아래 사실을 결과물의 핵심 재료로 삼으세요]\n${details}\n※ 각 항목을 관련 섹션에 구체적으로 살려 쓰세요: 스펙(specs)·성분/구성(material·value)·혜택(features)·적합성(fit)에 실제 수치와 표현으로 반영하고, 두루뭉술한 미사여구로 뭉개지 마세요. 여기 없는 수치·사실은 지어내지 마세요.` : "",
     voice ? `\n■ 이 제품의 목소리(문체): ${voice} 이 목소리를 모든 문장에 일관되게 입히세요.` : "",
     hasImg ? `\n참고: 사용자가 실제 제품 사진 ${i.images.length}장을 제공했습니다. 세 컷 모두 이 제품의 실제 모양·색·라벨을 그대로 유지하도록, imagePrompts.direction에 "keep the exact product from the reference identical across all cuts"를 포함하세요.` : "",
+    (i.style||i.surface||i.place||i.people||i.model||i.props||i.mood||i.real) ? `\n[연출 브리핑 — 판매자가 알려준 실제 촬영 장면. imagePrompts의 direction·hero·lifestyle·detail을 반드시 이 실제 정보에 맞춰 '실제 촬영한 사진'처럼 묘사하세요. 지어내지 말고 이 사실을 그대로 반영]\n${[i.style&&`촬영 스타일: ${STYLE_PRESET[i.style]?.ko||i.style}`,i.surface&&`배경 재질: ${SURFACE_PRESET[i.surface]?.ko||i.surface}`,i.real&&`실물: ${i.real}`,i.place&&`배경·장소: ${i.place}`,(i.people||i.model)&&`인물: ${i.people}${i.model?` (${i.model})`:""}`,i.props&&`소품: ${i.props}`,i.mood&&`분위기·조명: ${i.mood}`].filter(Boolean).join("\n")}` : "",
     `\n위 정보로 상세페이지 JSON을 작성해 주세요.`,
   ].join("\n");
 }
@@ -1513,19 +1552,51 @@ function renderThemePicker(){
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
-  return `. Mood: ${style}. Shot as premium editorial commercial photography for a high-end Korean e-commerce detail page: soft natural window light, warm and airy atmosphere, tasteful negative space (leave a calm, evenly-toned empty area — usually the upper third — so headline text can sit over it), gentle realistic depth of field, natural skin tones, believable real-world scene. Vertical 4:5 composition. CRITICAL: render absolutely NO readable text, letters, numbers, captions, logos, watermarks or borders anywhere. If the product itself carries text (e.g. a book cover or a label), keep that text softly out of focus, angled away, or partly cropped so no letters are legible — never attempt to spell words. Garbled or misspelled text ruins the image. Ultra high resolution, photorealistic.`;
+  return `. Mood: ${style}. THIS MUST LOOK LIKE A REAL PHOTOGRAPH — indistinguishable from an actual product photoshoot, as if captured with a professional camera, not generated. Shot on a full-frame DSLR, 50mm or 85mm prime lens, aperture f/2–f/4 with true shallow depth of field and natural optical bokeh, soft natural window light, physically accurate soft shadows and real reflections, true-to-life color, authentic material textures and micro-details, real human skin with visible pores and subtle natural imperfections. Tasteful negative space (a calm, evenly-toned empty area, usually the upper third) so headline text can sit over it. Vertical 4:5 composition. HARD CONSTRAINTS — the result must NOT resemble any of these: illustration, drawing, painting, sketch, watercolor, 3D render, CGI, digital art, cartoon, anime, vector, clip-art, plastic/waxy CGI surfaces, airbrushed or over-smoothed skin, or any artificial "AI-art" look. CRITICAL: render absolutely NO readable text, letters, numbers, captions, logos, watermarks or borders anywhere. If the product carries text (e.g. a book cover or a label), keep it softly out of focus, angled away, or partly cropped so no letters are legible — never attempt to spell words. Ultra high resolution, photorealistic, with natural photographic grain and lifelike dynamic range.`;
 }
 function fullImagePrompt(base, refImages){
   const dir = state.result?.copy?.imagePrompts?.direction || "";
   const lead = (refImages && refImages.length)
-    ? "Use the EXACT product shown in the reference photo(s) — identical shape, color, label, wording and design, unchanged — perfectly composited and in sharp focus into this scene: "
-    : "Create a photorealistic product photograph: ";
+    ? "A real photograph. Take the EXACT product shown in the reference photo(s) — identical shape, color, label, wording and design, unchanged — and photograph it, perfectly and realistically composited in sharp focus, into this scene: "
+    : "A real, professionally shot photograph (never an illustration, render or CGI): ";
   const shared = dir ? ` Shared art direction (keep consistent across the whole set): ${dir}` : "";
-  return lead + base + shared + imgStyleSuffix();
+  return lead + base + briefDirection() + shared + imgStyleSuffix();
 }
 
 /* ---------- 생성 ---------- */
-function readInputs(){ const i=state.input; i.name=$("f-name").value.trim(); i.desc=$("f-desc").value.trim(); i.target=$("f-target").value.trim(); i.price=$("f-price").value.trim(); }
+function readInputs(){ const i=state.input; i.name=$("f-name").value.trim(); i.desc=$("f-desc").value.trim(); i.target=$("f-target").value.trim(); i.price=$("f-price").value.trim();
+  i.place=$("b-place").value.trim(); i.model=$("b-model").value.trim(); i.props=$("b-props").value.trim(); i.mood=$("b-mood").value.trim(); i.real=$("b-real").value.trim(); }
+/* 촬영 스타일·배경 재질 프리셋 → 실제 촬영 지시(영문) + 한글 라벨 */
+const STYLE_PRESET = {
+  "clean-studio":{ko:"클린 스튜디오",en:"clean seamless studio backdrop, crisp even soft-box lighting, minimal premium e-commerce packshot look"},
+  "rustic-wood":{ko:"러스틱·따뜻한",en:"rustic dark-wood table, warm earthy hand-made props, cozy appetizing home-kitchen mood, warm directional natural light"},
+  "natural-light":{ko:"자연광 감성",en:"soft natural window light, airy lifestyle mood, gentle realistic shadows, film-like warmth"},
+  "dark-mood":{ko:"다크·무드",en:"moody low-key lighting, deep rich shadows, dramatic single-source light, premium and intense"},
+  "flatlay":{ko:"플랫레이(탑뷰)",en:"top-down flat-lay composition shot straight from above, props neatly arranged around the product, even soft light"},
+  "minimal":{ko:"미니멀",en:"minimalist composition with generous empty space, one soft natural shadow, muted neutral palette"},
+};
+const SURFACE_PRESET = {
+  "wood":{ko:"원목",en:"on a natural solid-wood surface"},
+  "marble":{ko:"대리석",en:"on a clean marble surface"},
+  "linen":{ko:"리넨·패브릭",en:"on soft natural linen fabric"},
+  "concrete":{ko:"콘크리트",en:"on a raw concrete surface"},
+  "nature":{ko:"야외 자연",en:"in a natural outdoor setting with real daylight and greenery"},
+  "seamless":{ko:"단색 배경",en:"against a smooth solid seamless backdrop"},
+};
+/* 연출 브리핑 → 이미지 오더에 그대로 반영되는 '실제 촬영 지시' */
+function briefDirection(){
+  const i=state.input, parts=[];
+  const st=STYLE_PRESET[i.style], sf=SURFACE_PRESET[i.surface];
+  if(st) parts.push(`shooting style: ${st.en}`);
+  if(sf) parts.push(`surface/background: ${sf.en}`);
+  if(i.real)  parts.push(`the actual product looks exactly like this: ${i.real}`);
+  if(i.place) parts.push(`setting/location: ${i.place}`);
+  if(i.people)parts.push(`people in frame: ${i.people}${i.model?` (${i.model})`:""}`);
+  else if(i.model) parts.push(`person: ${i.model}`);
+  if(i.props) parts.push(`props alongside: ${i.props}`);
+  if(i.mood)  parts.push(`atmosphere & lighting: ${i.mood}`);
+  return parts.length ? ` The seller specified these REAL scene details — the photograph MUST match them faithfully: ${parts.join("; ")}.` : "";
+}
 function hasKey(){
   const e = state.settings.engine;
   if (e==="manual") return true;
@@ -2814,7 +2885,7 @@ function saveSettings(){
 /* ---------- 초기화 ---------- */
 function init(){
   loadSettings();
-  bindChips("f-cat","category"); bindChips("f-tone","tone"); bindChips("f-plat","platform");
+  bindChips("f-cat","category"); bindChips("f-tone","tone"); bindChips("f-plat","platform"); bindChips("b-people","people"); bindChips("b-style","style"); bindChips("b-surface","surface");
   { let t; $("f-name").addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(applyGuessedCategory,400); }); }
   const drop=$("drop"), file=$("file");
   drop.addEventListener("click",()=>file.click());
