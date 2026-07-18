@@ -582,6 +582,16 @@
   .thumb-grid .cell:hover canvas{box-shadow:0 6px 22px rgba(0,0,0,.16);transform:translateY(-2px);}
   .thumb-grid .cell.sel canvas{outline:2.5px solid var(--accent);outline-offset:1px;}
   .thumb-grid .tag{position:absolute;left:6px;bottom:6px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;background:rgba(23,21,15,.72);color:#fff;padding:3px 7px;border-radius:6px;}
+  .thumb-grid .cctrl{position:absolute;top:5px;left:5px;right:5px;display:flex;gap:4px;opacity:0;transition:opacity .13s;}
+  .thumb-grid .cell:hover .cctrl{opacity:1;}
+  .thumb-grid .cctrl button{width:24px;height:24px;border:none;border-radius:7px;background:rgba(23,21,15,.82);color:#fff;font-size:11px;cursor:pointer;display:grid;place-items:center;line-height:1;padding:0;}
+  .thumb-grid .cctrl button:last-child{margin-left:auto;background:rgba(180,40,30,.9);}
+  .thumb-grid .cctrl button:disabled{opacity:.32;cursor:default;}
+  @media(hover:none){ .thumb-grid .cctrl{opacity:1;} }
+  .carousel-ex{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:2px 0 14px;}
+  .carousel-ex .ex-lab{font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:.04em;}
+  .carousel-ex .ex-chip{border:1px dashed var(--line);background:#fff;color:var(--ink);border-radius:20px;padding:5px 12px;font-size:12.5px;cursor:pointer;}
+  .carousel-ex .ex-chip:hover{border-color:var(--accent);color:var(--accent);}
 
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:all .26s var(--ease);z-index:200;box-shadow:0 20px 50px -18px rgba(0,0,0,.6);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -952,8 +962,9 @@
   <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;">
     <button class="x" onclick="app.closeModal('m-carousel')">×</button>
     <h3>🎞️ 인스타 캐러셀 — 스와이프 슬라이드</h3>
-    <p class="lead">긴 상세를 <b>넘겨 보는 4:5 슬라이드</b>로 재구성했어요. 카드마다 큰 글씨로 정보를 압축해, 피드에서 축소돼도 잘 읽힙니다. 페이지 번호·스와이프 힌트까지 얹은 완성본이라 순서대로 올리면 됩니다.</p>
+    <p class="lead">긴 상세를 <b>넘겨 보는 4:5 슬라이드</b>로 재구성했어요. 카드 위 <b>◀ ▶</b>로 순서를 바꾸고 <b>✕</b>로 뺄 수 있어요 — 페이지 번호는 자동으로 다시 매겨집니다.</p>
     <div class="thumb-grid" id="carousel-grid" style="grid-template-columns:repeat(4,1fr);"></div>
+    <div class="carousel-ex" id="carousel-ex" style="display:none;"></div>
     <button class="btn btn-accent" style="width:100%;" onclick="app.saveCarouselAll()">🖼 전체 저장 (순서대로)</button>
     <div class="sep"></div>
     <label class="f"><span>캡션 — 첫 줄이 훅, 마지막에 행동 유도</span>
@@ -2337,15 +2348,34 @@ function saveThumbSel(){
 }
 
 /* ───────── 인스타 캐러셀 — 상세를 스와이프 슬라이드(4:5)로, 큰 글씨로 ───────── */
-let carouselCards=[];
-async function buildCarousel(){
-  const c=state.result.copy, T=snsTokens();
-  await document.fonts.ready.catch(()=>{});
+let carouselCards=[], carouselState=[], carouselAssets=null, carouselFor=null;
+/* 콘텐츠가 있는 카드 후보(기본 순서·전부 포함) */
+function carouselDefaultDefs(){
+  const c=state.result.copy; const defs=[{key:"cover",label:"커버"}];
+  if(c.hook&&c.hook.question) defs.push({key:"hook",label:"공감"});
+  if(c.solution&&(c.solution.title||c.solution.body)) defs.push({key:"solution",label:"해결"});
+  if((c.features||[]).length) defs.push({key:"features",label:"핵심"});
+  if(c.material&&(c.material.items||[]).length) defs.push({key:"material",label:"성분"});
+  if(c.scene&&(c.scene.title||c.scene.body)) defs.push({key:"usage",label:"사용법"});
+  if((c.reviews||[]).length) defs.push({key:"reviews",label:"후기"});
+  defs.push({key:"cta",label:"구매"});
+  return defs;
+}
+/* 이미지·누끼는 결과당 한 번만 로드해 재편집 때 재사용 */
+async function ensureCarouselAssets(){
+  if(carouselAssets && carouselFor===state.result) return carouselAssets;
   const hero=await loadImg(state.result.images.hero);
   const life=await loadImg(state.result.images.lifestyle);
   const detail=await loadImg(state.result.images.detail);
   const uploaded = state.input.images && state.input.images[0] ? await loadImg(state.input.images[0]) : null;
   let cut=null; for(const s of [uploaded,detail,hero,life]){ if(s){ cut=makeCutout(s); if(cut) break; } }
+  carouselAssets={hero,life,detail,cut}; carouselFor=state.result;
+  return carouselAssets;
+}
+async function buildCarousel(defs){
+  const c=state.result.copy, T=snsTokens();
+  await document.fonts.ready.catch(()=>{});
+  const {hero,life,detail,cut}=await ensureCarouselAssets();
   const S=1080, Hh=1350, M=84, MW=S-2*M;
   const name=(state.input.name||"제품"), price=String(state.input.price||"").trim(), eyebrow=thumbEyebrow(c);
   const rrp=(ctx,x,y,w,h,r)=>{ ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h); };
@@ -2362,14 +2392,6 @@ async function buildCarousel(){
     ctx.textAlign="right"; ctx.fillText(`${idx+1} / ${total}`,S-M,72); ctx.textAlign="left";
     const dotY=Hh-62,gap=26,x0=S/2-(total-1)*gap/2; for(let i=0;i<total;i++){ ctx.beginPath(); ctx.arc(x0+i*gap,dotY,i===idx?6:4,0,7); ctx.fillStyle=i===idx?T.ac:faint; ctx.fill(); } };
 
-  const defs=[{key:"cover",label:"커버"}];
-  if(c.hook&&c.hook.question) defs.push({key:"hook",label:"공감"});
-  if(c.solution&&(c.solution.title||c.solution.body)) defs.push({key:"solution",label:"해결"});
-  if((c.features||[]).length) defs.push({key:"features",label:"핵심"});
-  if(c.material&&(c.material.items||[]).length) defs.push({key:"material",label:"성분"});
-  if(c.scene&&(c.scene.title||c.scene.body)) defs.push({key:"usage",label:"사용법"});
-  if((c.reviews||[]).length) defs.push({key:"reviews",label:"후기"});
-  defs.push({key:"cta",label:"구매"});
   const total=defs.length, cards=[];
 
   defs.forEach((def,idx)=>{
@@ -2460,12 +2482,43 @@ async function openCarousel(){
   $("carousel-grid").innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:13px;"><span class="spin"></span> 스와이프 슬라이드를 만드는 중…</div>`;
   $("carousel-caption").value = c.sns?.caption || [c.hook?.question?.replace(/<\/?hl>/g,""), "", c.solution?.body, "", "👉 밀어서 전체 보기", c.cta?.headline?.replace(/\n/g," ")].filter(Boolean).join("\n");
   $("carousel-tags").value = (c.sns?.hashtags||[]).map(t=>"#"+String(t).replace(/^#/,"")).join(" ");
-  try{
-    carouselCards = await buildCarousel();
-    const grid=$("carousel-grid"); grid.innerHTML="";
-    carouselCards.forEach(card=>{ const cell=document.createElement("div"); cell.className="cell"; cell.appendChild(card.canvas);
-      const t=document.createElement("span"); t.className="tag"; t.textContent=card.label; cell.appendChild(t); grid.appendChild(cell); });
-  }catch(e){ console.warn(e); $("carousel-grid").innerHTML=`<div style="grid-column:1/-1;color:var(--warn);font-size:13px;">캐러셀 생성에 실패했어요 — 다시 열어 주세요.</div>`; }
+  // 결과가 바뀌었으면 편집 상태·자산 초기화
+  if(carouselFor!==state.result){ carouselAssets=null; carouselState=[]; }
+  if(!carouselState.length) carouselState = carouselDefaultDefs().map(d=>({...d,on:true}));
+  try{ await renderCarouselGrid(); }
+  catch(e){ console.warn(e); $("carousel-grid").innerHTML=`<div style="grid-column:1/-1;color:var(--warn);font-size:13px;">캐러셀 생성에 실패했어요 — 다시 열어 주세요.</div>`; }
+}
+async function renderCarouselGrid(){
+  const on = carouselState.filter(d=>d.on);
+  carouselCards = await buildCarousel(on);
+  const grid=$("carousel-grid"); grid.innerHTML="";
+  carouselCards.forEach((card,vi)=>{
+    const cell=document.createElement("div"); cell.className="cell"; cell.appendChild(card.canvas);
+    const t=document.createElement("span"); t.className="tag"; t.textContent=`${vi+1}. ${card.label}`; cell.appendChild(t);
+    const ctrl=document.createElement("div"); ctrl.className="cctrl";
+    const mk=(txt,title,fn,dis)=>{ const b=document.createElement("button"); b.textContent=txt; b.title=title; if(dis)b.disabled=true; b.onclick=e=>{e.stopPropagation();fn();}; return b; };
+    ctrl.appendChild(mk("◀","앞으로",()=>carouselMove(card.key,-1),vi===0));
+    ctrl.appendChild(mk("▶","뒤로",()=>carouselMove(card.key,1),vi===carouselCards.length-1));
+    ctrl.appendChild(mk("✕","이 카드 빼기",()=>carouselToggle(card.key)));
+    cell.appendChild(ctrl); grid.appendChild(cell);
+  });
+  // 제외된 카드 → 다시 넣기 칩
+  const ex=carouselState.filter(d=>!d.on);
+  const exWrap=$("carousel-ex"); exWrap.innerHTML="";
+  if(ex.length){ exWrap.style.display="flex"; const lab=document.createElement("span"); lab.className="ex-lab"; lab.textContent="뺀 카드:"; exWrap.appendChild(lab);
+    ex.forEach(d=>{ const b=document.createElement("button"); b.className="ex-chip"; b.textContent="+ "+d.label; b.title="다시 넣기"; b.onclick=()=>carouselToggle(d.key); exWrap.appendChild(b); });
+  } else exWrap.style.display="none";
+}
+function carouselToggle(key){
+  const d=carouselState.find(x=>x.key===key); if(!d) return;
+  if(d.on && carouselState.filter(x=>x.on).length<=1){ toast("최소 한 장은 남겨야 해요"); return; }
+  d.on=!d.on; renderCarouselGrid();
+}
+function carouselMove(key,dir){
+  const on=carouselState.filter(d=>d.on); const pos=on.findIndex(d=>d.key===key); if(pos<0) return;
+  const swap=pos+dir; if(swap<0||swap>=on.length) return;
+  const a=on[pos], b=on[swap], ia=carouselState.indexOf(a), ib=carouselState.indexOf(b);
+  carouselState[ia]=b; carouselState[ib]=a; renderCarouselGrid();
 }
 function saveCarouselAll(){
   if(!carouselCards.length){ toast("아직 준비 중이에요"); return; }
@@ -2687,7 +2740,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
 init();
 </script>
 </body>
