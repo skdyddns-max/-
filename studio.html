@@ -222,6 +222,16 @@
   .dash-goal-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--sub); }
   .dash-goal-meta b { color: var(--ink); font-size: 14px; }
   .dash-goal-meta em { font-style: normal; font-size: 11px; color: #b7aba0; }
+  .dash-goal.achieved { border-color: #B7D0B3; background: #F5FAF3; }
+  .goal-achieve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .goal-achieve-msg { font-size: 12.5px; color: var(--sage-deep); }
+  .goal-next { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+  .goal-next-label { font-size: 11.5px; font-weight: 700; color: var(--sub); }
+  .goal-next-chip { border: 1px solid var(--sage); background: #fff; color: var(--sage-deep); font-family: inherit; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 5px 11px; cursor: pointer; transition: background .12s; }
+  .goal-next-chip:hover { background: var(--sage-soft); }
+  .dash-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .dash-tag { border: 1px solid var(--line); background: #FBF8F4; color: var(--sub); font-family: inherit; font-size: 11.5px; border-radius: 999px; padding: 3px 9px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+  .dash-tag:hover { background: var(--rose-soft, #F6E9E7); color: var(--rose-deep); border-color: var(--rose); }
   @media (max-width: 520px) { .dash-spark { width: 100%; } }
   .dash-toolbar-left { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
   .dash-mode { display: inline-flex; background: #EFEAE4; border-radius: 10px; padding: 3px; gap: 2px; }
@@ -2116,11 +2126,19 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       const d = o.byDate.get(r.date);
       d.total++; if (r.firstTry) d.correct++;
     });
+    const childGoalNames = new Set(Array.from(goalMap.keys()).filter(n => n !== "미지정"));
     const goals = Array.from(goalMap.values()).map(o => {
       const gsessions = Array.from(o.byDate.entries())
         .map(([date, d]) => ({ date, total: d.total, correct: d.correct, pct: Math.round((d.correct / d.total) * 100) }))
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
       const gf = gsessions[0], gl = gsessions[gsessions.length - 1];
+      const mastery = goalMastery(gl.pct);
+      // 달성 시 같은 영역의 다음 목표 제안 (아직 다루지 않은 기술)
+      let suggestions = [];
+      if (mastery.label === "달성") {
+        const dom = domainByGoal(o.name, o.domain);
+        if (dom) suggestions = dom.skills.filter(s => s !== o.name && !childGoalNames.has(s)).slice(0, 3);
+      }
       return {
         name: o.name, domain: o.domain,
         sessions: gsessions,
@@ -2128,7 +2146,7 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
         overall: o.total ? Math.round((o.correct / o.total) * 100) : 0,
         recent: gl.pct,
         trend: gsessions.length >= 2 ? gl.pct - gf.pct : null,
-        mastery: goalMastery(gl.pct),
+        mastery, suggestions,
       };
     }).sort((a, b) => b.sessions.length - a.sessions.length || b.totalQ - a.totalQ);
 
@@ -2270,6 +2288,7 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
               <span class="dash-memo-pct" style="color:${pctColor(s.pct)}">${s.pct}% <em>(${s.correct}/${s.total})</em></span></div>
             <textarea class="dash-memo-input" data-key="${k}" rows="2"
               oninput="app.saveDashNote(this)" placeholder="이 회기 관찰 메모를 입력하세요…">${esc(note)}</textarea>
+            <div class="dash-tags">${MEMO_TAGS.map(t => `<button class="dash-tag" onclick="app.addMemoTag(this, '${esc(t)}')">${esc(t)}</button>`).join("")}</div>
           </div>`;
         }).join("")}
       </div>`;
@@ -2377,8 +2396,18 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
     const trendText = g.trend === null ? "회기 1회"
       : g.trend > 0 ? `▲ +${g.trend}%p` : g.trend < 0 ? `▼ ${g.trend}%p` : "→ 유지";
     const domainChip = g.domain ? `<span class="goal-domain">${esc(g.domain)}</span>` : "";
+    const achieved = g.mastery.label === "달성";
+    const achieveBox = achieved ? `
+        <div class="goal-achieve">
+          <span class="goal-achieve-msg">🎉 <b>목표 달성!</b> 최근 회기 ${g.recent}%로 숙달 수준에 도달했어요.</span>
+          ${g.suggestions && g.suggestions.length ? `
+          <div class="goal-next">
+            <span class="goal-next-label">다음 목표 제안</span>
+            ${g.suggestions.map(s => `<button class="goal-next-chip" onclick="app.startGoalFromDash('${esc(s).replace(/'/g, "\\'")}')">${esc(s)} →</button>`).join("")}
+          </div>` : ""}
+        </div>` : "";
     return `
-      <div class="dash-goal">
+      <div class="dash-goal${achieved ? " achieved" : ""}">
         <div class="dash-goal-head">
           <div class="dash-goal-name">${esc(g.name)}${domainChip}</div>
           <span class="goal-badge" style="background:${g.mastery.color}">${g.mastery.label}</span>
@@ -2391,7 +2420,21 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
             <span>최근 <b style="color:${pctColor(g.recent)}">${g.recent}%</b> <em>${trendText}</em></span>
           </div>
         </div>
+        ${achieveBox}
       </div>`;
+  },
+
+  // 추천 목표로 새 프로젝트 시작 — ① 목표 설정 폼에 채우고 이동
+  startGoalFromDash(skill) {
+    const preset = $("f-skill-preset");
+    if (preset) {
+      const has = Array.from(preset.options).some(o => o.value === skill);
+      preset.value = has ? skill : "";
+    }
+    $("f-skill").value = skill;
+    this.go(1);
+    setStatus("gen-status", "info", `🎯 목표를 «${esc(skill)}»(으)로 설정했어요. 아동 정보를 확인하고 시나리오를 생성하세요.`);
+    $("f-skill").focus();
   },
 
   // 목표별 미니 막대 스파크라인 (회기 추이). 라벨 없는 컴팩트 SVG
@@ -2417,6 +2460,17 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
     if (val.trim()) state.dashNotes[key] = val;
     else delete state.dashNotes[key];
     localStorage.setItem(LS_KEY, JSON.stringify(state));
+  },
+
+  // 빠른 태그를 해당 회기 메모에 삽입 (중복 태그는 무시)
+  addMemoTag(btn, tag) {
+    const ta = btn.closest(".dash-memo").querySelector(".dash-memo-input");
+    const cur = ta.value.trim();
+    // 이미 같은 태그가 있으면 추가하지 않음
+    if (cur.split(/\s*·\s*|\n/).map(s => s.trim()).includes(tag)) { ta.focus(); return; }
+    ta.value = cur ? cur + " · " + tag : tag;
+    this.saveDashNote(ta);
+    ta.focus();
   },
 
   // 인쇄용 경과 리포트 (A4, 브라우저 인쇄 → PDF 저장). 새 탭으로 열고, 팝업 차단 시 다운로드로 대체
@@ -2468,12 +2522,15 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
     const goalRep = (st.goals || []).map(g => {
       const t = g.trend === null ? "회기 1회"
         : g.trend > 0 ? `▲ +${g.trend}%p` : g.trend < 0 ? `▼ ${g.trend}%p` : "→ 유지";
+      const nextLine = (g.mastery.label === "달성" && g.suggestions && g.suggestions.length)
+        ? `<div class="rgoal-next">🎉 목표 달성 · 다음 목표 제안: ${g.suggestions.map(esc).join(", ")}</div>` : "";
       return `
       <div class="rgoal">
         <div class="rgoal-h"><b>${esc(g.name)}</b>${g.domain ? `<span class="rgoal-dom">${esc(g.domain)}</span>` : ""}
           <span class="rgoal-badge" style="background:${g.mastery.color}">${g.mastery.label}</span></div>
         <div class="rgoal-b">${this.dashSparkline(g.sessions)}
           <span class="rgoal-meta">${g.sessions.length}회기 · 전체 <b style="color:${pctColor(g.overall)}">${g.overall}%</b> · 최근 <b style="color:${pctColor(g.recent)}">${g.recent}%</b> <em>${t}</em></span></div>
+        ${nextLine}
       </div>`;
     }).join("");
 
@@ -2526,6 +2583,7 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   .rgoal-b{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .dash-spark{ width:180px; height:40px; flex:none; }
   .rgoal-meta{ font-size:12px; color:var(--sub); } .rgoal-meta b{ font-size:13px; } .rgoal-meta em{ font-style:normal; color:#b7aba0; font-size:11px; }
+  .rgoal-next{ margin-top:6px; font-size:11.5px; color:#5f7a5c; background:#f0f5ee; border-radius:7px; padding:5px 9px; }
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
   th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); }
   th{ font-size:11px; color:var(--sub); background:#faf7f3; }
@@ -2778,6 +2836,14 @@ function goalMastery(pct) {
   if (pct >= 50) return { label: "습득 중", color: "#D9A441" };
   return { label: "도입", color: "#C4817E" };
 }
+
+// 목표(기술 이름 또는 영역 라벨)로 화용 영역 객체 찾기 — 다음 목표 추천용
+function domainByGoal(goalName, domainLabel) {
+  return domainForSkill(goalName) || (domainLabel ? PRAGMATIC_DOMAINS.find(d => d.label === domainLabel) : null) || null;
+}
+
+// 회기 메모 빠른 태그 (자주 쓰는 관찰을 원클릭 삽입)
+const MEMO_TAGS = ["촉구 독립", "촉구 최소", "촉구 최대", "목표 달성 ○", "부분 달성 △", "미달 ✗", "자발 발화", "집중 좋음", "산만함"];
 
 const ACT_COLOR = {
   "이야기 퀴즈": "#C4817E",
