@@ -444,6 +444,20 @@
   .dp-steps .step-n{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--ac);flex:none;min-width:32px;line-height:1.25;}
   .dp-steps .step-t{font-size:15.5px;font-weight:800;letter-spacing:-.01em;color:var(--tx);}
   .dp-steps .step-d{font-size:13.5px;color:var(--tx2);line-height:1.7;margin-top:5px;}
+  /* ── 데코 모듈 — 레이아웃 개성(메인 스타일 카탈로그 축) ── */
+  .dp.deco-lines .dp-eyebrow::before{content:"";display:inline-block;width:22px;height:2px;background:var(--ac);vertical-align:middle;margin-right:9px;transform:translateY(-3px);}
+  .dp.deco-lines .dp-sec>.dp-h:first-child,.dp.deco-lines .dp-eyebrow{position:relative;}
+  .dp.deco-pop .dp-eyebrow{background:var(--ac);color:var(--on-ac);padding:4px 11px;border-radius:20px;display:inline-block;letter-spacing:.08em;}
+  .dp.deco-pop .dp-h{letter-spacing:-.03em;}
+  .dp.deco-pop .dp-usp span{background:var(--ac);color:var(--on-ac);border-radius:16px;padding:4px 12px;}
+  .dp.deco-pop .dp-mat .val,.dp.deco-pop .dp-specs .k{color:var(--ac2);}
+  .dp.deco-sticker .dp-eyebrow{border:1.5px solid var(--ac);color:var(--ac);border-radius:20px;padding:3px 11px;display:inline-block;}
+  .dp.deco-sticker .dp-feat .mk,.dp.deco-sticker .dp-steps .step-n{box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 16%,transparent);}
+  .dp.deco-card .dp-sec{border-left:3px solid var(--ac);}
+  .dp.deco-card .dp-eyebrow{color:var(--ac);}
+  .dp.deco-underline .dp-sec .dp-h{background-image:linear-gradient(var(--ac),var(--ac));background-size:100% 3px;background-position:0 96%;background-repeat:no-repeat;padding-bottom:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
+  .dp.deco-minimal .dp-eyebrow{opacity:.6;letter-spacing:.28em;}
+  .dp.deco-minimal .dp-sec{--pad:64px 34px;}
 
   /* 크기·스케일 */
   .dp-size{margin-top:18px;font-size:13px;color:var(--tx2);display:flex;gap:9px;align-items:center;line-height:1.6;}
@@ -611,6 +625,15 @@
   .sw-grid .sw b{display:block;flex:1;}
   .sw-grid .sw span{position:absolute;left:0;right:0;bottom:0;font-size:10px;text-align:center;color:var(--ink);background:rgba(255,255,255,.82);padding:2px 0;font-weight:600;}
   .sw-grid .sw.on{outline:2.5px solid var(--accent);outline-offset:1px;border-color:transparent;}
+  .style-search{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 13px;font-size:13.5px;margin:4px 0 12px;background:#fff;color:var(--ink);}
+  .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:340px;overflow-y:auto;padding:2px;margin-bottom:12px;}
+  @media(max-width:560px){ .cat-grid{grid-template-columns:repeat(2,1fr);} }
+  .cat-grid .cat{position:relative;text-align:left;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;padding:0;overflow:hidden;min-height:46px;display:flex;flex-direction:column;}
+  .cat-grid .cat i{display:block;height:8px;}
+  .cat-grid .cat b{display:none;}
+  .cat-grid .cat span{padding:7px 8px;font-size:10.5px;line-height:1.35;color:var(--ink);font-weight:600;}
+  .cat-grid .cat:hover{border-color:var(--accent);}
+  .cat-grid .cat.on{outline:2.5px solid var(--accent);outline-offset:1px;}
   .thumb-grid .cctrl{position:absolute;top:5px;left:5px;right:5px;display:flex;gap:4px;opacity:0;transition:opacity .13s;}
   .thumb-grid .cell:hover .cctrl{opacity:1;}
   .thumb-grid .cctrl button{width:24px;height:24px;border:none;border-radius:7px;background:rgba(23,21,15,.82);color:#fff;font-size:11px;cursor:pointer;display:grid;place-items:center;line-height:1;padding:0;}
@@ -1029,12 +1052,17 @@
 <div class="modal-bg" id="m-style">
   <div class="modal" style="max-width:600px;max-height:92vh;overflow-y:auto;">
     <button class="x" onclick="app.closeModal('m-style')">×</button>
-    <h3>🎨 스타일 — 무드 × 팔레트 × 타이포</h3>
-    <p class="lead">세 축을 조합해 <b id="style-count">0</b>가지 스타일. 골라서 즉시 갈아입히거나, <b>🎲 셔플</b>로 새 조합을 뽑아 보세요.</p>
+    <h3>🎨 메인 스타일 — <b id="style-count">0</b>가지</h3>
+    <p class="lead">데코 × 팔레트 × 타이포를 조합한 이름 붙은 메인 스타일. 골라서 즉시 갈아입히거나 <b>🎲 셔플</b>로 뽑아 보세요. 아래 축으로 미세 조정도 됩니다.</p>
+    <input type="text" id="style-search" class="style-search" placeholder="메인 스타일 검색 (예: 팝 뱃지, 레드팝, 명조)" oninput="app.filterStyle(this.value)">
+    <div class="cat-grid" id="style-catalog"></div>
+    <button class="btn btn-accent" style="width:100%;margin:4px 0 8px;" onclick="app.shuffleStyle()">🎲 메인 스타일 셔플</button>
+    <div class="sep"></div>
+    <div class="style-lab" style="margin-bottom:10px;">축으로 미세 조정</div>
     <div class="style-sec"><span class="style-lab">무드</span><div class="chips" id="style-mood"></div></div>
+    <div class="style-sec"><span class="style-lab">데코</span><div class="chips" id="style-deco"></div></div>
     <div class="style-sec"><span class="style-lab">팔레트</span><div class="sw-grid" id="style-pal"></div></div>
     <div class="style-sec"><span class="style-lab">타이포</span><div class="chips" id="style-font"></div></div>
-    <button class="btn btn-accent" style="width:100%;margin-top:6px;" onclick="app.shuffleStyle()">🎲 스타일 셔플</button>
   </div>
 </div>
 
@@ -1078,6 +1106,7 @@ const state = {
   theme: null,   // null = 톤에서 자동, 문자열 = 사용자가 고른 테마
   palette: null, // 팔레트 오버레이(색) — null이면 무드 기본
   font: null,    // 타이포 오버레이 — null이면 무드 기본
+  deco: null,    // 데코(레이아웃 개성) — null이면 기본
 };
 
 const $ = id => document.getElementById(id);
@@ -1584,6 +1613,12 @@ const TYPES = [
   ["클래식 세리프", {head:'"Gowun Batang",serif', wt:700, tr:"0", sans:'"Gowun Batang",serif'}],
   ["핸드 감성",     {head:'"Gaegu",cursive', wt:700, tr:"0"}],
 ];
+const DECO = [["minimal","미니멀"],["lines","에디토리얼 라인"],["pop","팝 뱃지"],["sticker","스티커"],["card","아웃라인 카드"],["underline","언더라인"]];
+/* 메인 스타일 카탈로그 — 데코 × 팔레트 × 타이포 = 504가지, 각각 이름 붙은 하나의 '메인 스타일' */
+const CATALOG = (()=>{ const out=[]; let i=0;
+  for(const [dk,dko] of DECO) for(const [pn,pv] of PALETTES) for(const [tn] of TYPES)
+    out.push({i:i++, deco:dk, pal:pn, font:tn, ac:pv.ac, bg:pv.bg1, name:`${dko} · ${pn} · ${tn}`});
+  return out; })();
 const PAL_KEYS = ["--bg0","--bg1","--card","--tx","--tx2","--tx3","--ln","--ac","--ac2","--on-ac","--dk","--dk-tx","--star"];
 const FONT_KEYS = ["--head","--head-wt","--head-tr","--sans"];
 function applyStyleOverrides(cv){
@@ -1599,7 +1634,7 @@ function applyStyleOverrides(cv){
 function reapplyStyle(){
   const cv = document.getElementById("dp-canvas"); if(!cv) return;
   const t = effectiveTheme();
-  cv.className = ("dp " + (t==="auto"?"":t)).trim();
+  cv.className = ("dp " + (t==="auto"?"":t) + " " + (state.deco?("deco-"+state.deco):"")).trim();
   // 팔레트를 고르면 그 색이 우선 — 이미지 조화(비동기)가 덮어쓰지 않도록 조화를 끈다
   if(t==="auto" && !state.palette) harmonizeFromImages(); else clearHarmonize(cv);
   applyStyleOverrides(cv);
@@ -1607,13 +1642,17 @@ function reapplyStyle(){
 function setTheme(k){ state.theme = k; reapplyStyle(); renderThemePicker(); renderStylePanel(); }
 function setPalette(k){ state.palette = (state.palette===k? null : k); reapplyStyle(); renderStylePanel(); }
 function setFont(k){ state.font = (state.font===k? null : k); reapplyStyle(); renderStylePanel(); }
-function shuffleStyle(){
-  const pick=a=>a[Math.floor(Math.random()*a.length)];
-  state.theme = pick(THEMES.filter(t=>t[0]!=="auto"))[0];
-  state.palette = pick(PALETTES)[0];
-  state.font = pick(TYPES)[0];
+function setDeco(k){ state.deco = (state.deco===k? null : k); reapplyStyle(); renderStylePanel(); }
+/* 메인 스타일(카탈로그의 한 항목)을 통째로 적용 */
+function applyMainStyle(idx){
+  const s = CATALOG[idx]; if(!s) return;
+  state.theme=""; state.deco=s.deco; state.palette=s.pal; state.font=s.font;
   reapplyStyle(); renderThemePicker(); renderStylePanel();
-  toast(`스타일 셔플 — ${THEMES.find(t=>t[0]===state.theme)?.[1]} · ${state.palette} · ${state.font}`);
+  const grid=$("style-catalog"); if(grid){ [...grid.children].forEach(c=>c.classList.toggle("on", +c.dataset.i===idx)); }
+}
+function shuffleStyle(){
+  applyMainStyle(Math.floor(Math.random()*CATALOG.length));
+  toast(`메인 스타일 — ${CATALOG.find((s)=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font)?.name||""}`);
 }
 function renderThemePicker(){
   const el = document.getElementById("theme-picker"); if(!el) return;
@@ -1622,12 +1661,16 @@ function renderThemePicker(){
     `<button class="tp-chip${k===cur?" on":""}" onclick="app.setTheme('${k}')">${label}</button>`).join("");
 }
 function openStyle(){ $("m-style").classList.add("show"); renderStylePanel(); }
+function filterStyle(q){ q=(q||"").trim(); const g=$("style-catalog"); if(!g) return; [...g.children].forEach(c=>{ c.style.display = (!q || c.dataset.name.includes(q)) ? "" : "none"; }); }
 function renderStylePanel(){
-  const combos = (THEMES.length) * (PALETTES.length+1) * (TYPES.length);
+  const cnt=$("style-count"); if(cnt) cnt.textContent = CATALOG.length.toLocaleString();
   const moodEl=$("style-mood"); if(moodEl) moodEl.innerHTML = THEMES.map(([k,l])=>`<button class="chip${effectiveTheme()===k?" on":""}" aria-pressed="${effectiveTheme()===k}" onclick="app.setTheme('${k}')">${l}</button>`).join("");
+  const decoEl=$("style-deco"); if(decoEl) decoEl.innerHTML = DECO.map(([k,l])=>`<button class="chip${state.deco===k?" on":""}" aria-pressed="${state.deco===k}" onclick="app.setDeco('${k}')">${l}</button>`).join("");
   const palEl=$("style-pal"); if(palEl) palEl.innerHTML = PALETTES.map(([n,v])=>`<button class="sw${state.palette===n?" on":""}" title="${n}" onclick="app.setPalette('${n}')"><i style="background:${v.ac}"></i><b style="background:${v.bg1}"></b><span>${n}</span></button>`).join("");
   const fontEl=$("style-font"); if(fontEl) fontEl.innerHTML = TYPES.map(([n,v])=>`<button class="chip${state.font===n?" on":""}" aria-pressed="${state.font===n}" style="font-family:${v.head};" onclick="app.setFont('${n}')">${n}</button>`).join("");
-  const cnt=$("style-count"); if(cnt) cnt.textContent = combos.toLocaleString();
+  const cat=$("style-catalog");
+  if(cat && !cat.dataset.built){ cat.innerHTML = CATALOG.map(s=>`<button class="cat" data-i="${s.i}" data-name="${s.name}" onclick="app.applyMainStyle(${s.i})"><i style="background:${s.ac}"></i><b style="background:${s.bg}"></b><span>${s.name}</span></button>`).join(""); cat.dataset.built="1"; }
+  if(cat){ const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font); [...cat.children].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur)); }
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
@@ -2996,7 +3039,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, shuffleStyle, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, setDeco, applyMainStyle, filterStyle, shuffleStyle, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
 init();
 </script>
 </body>
