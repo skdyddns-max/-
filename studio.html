@@ -223,6 +223,18 @@
   .dash-goal-meta b { color: var(--ink); font-size: 14px; }
   .dash-goal-meta em { font-style: normal; font-size: 11px; color: #b7aba0; }
   @media (max-width: 520px) { .dash-spark { width: 100%; } }
+  .dash-toolbar-left { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .dash-mode { display: inline-flex; background: #EFEAE4; border-radius: 10px; padding: 3px; gap: 2px; }
+  .dash-mode button { border: none; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--sub); padding: 7px 13px; border-radius: 8px; cursor: pointer; }
+  .dash-mode button.on { background: #fff; color: var(--rose-deep); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .dash-mode button:disabled { opacity: .45; cursor: not-allowed; }
+  .cmp-scroll { overflow-x: auto; }
+  .cmp-table td, .cmp-matrix td, .cmp-matrix th { white-space: nowrap; }
+  .cmp-matrix th .dash-dot { margin-right: 5px; }
+  .cmp-matrix td { text-align: center; }
+  .cmp-matrix td:first-child { text-align: left; }
+  .cmp-na { color: #c9beb4; text-align: center; }
+  .dash-table em.muted { font-style: normal; }
   @media (max-width: 520px) {
     .dash-bar-row { grid-template-columns: 96px 1fr; }
     .dash-bar-val { grid-column: 2; text-align: right; margin-top: -4px; }
@@ -2159,9 +2171,34 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
       return;
     }
 
+    const children = Array.from(new Set(all.map(r => r.child))).sort((a, b) => a.localeCompare(b, "ko"));
+    if (children.length < 2 && dashMode === "compare") dashMode = "single";
+
+    const modeToggle = `
+      <div class="dash-mode">
+        <button class="${dashMode === "single" ? "on" : ""}" onclick="app.setDashMode('single')">🧒 개별</button>
+        <button class="${dashMode === "compare" ? "on" : ""}" onclick="app.setDashMode('compare')"${children.length < 2 ? ' disabled title="아동이 2명 이상일 때 쓸 수 있어요"' : ""}>👥 여러 아동 비교</button>
+      </div>`;
+
+    // ===== 여러 아동 비교 모드 =====
+    if (dashMode === "compare" && children.length >= 2) {
+      area.innerHTML = `
+        <div class="dash-toolbar">
+          ${modeToggle}
+          <div class="dash-actions">
+            <button class="btn btn-primary btn-sm" onclick="app.printGroupReport()">📄 그룹 비교 리포트</button>
+            <button class="btn btn-ghost btn-sm" onclick="app.exportDashCSV()">⬇️ 통합 CSV 내보내기</button>
+            <button class="btn btn-ghost btn-sm" onclick="app.clearDash()">🗑 기록 지우기</button>
+          </div>
+        </div>
+        ${this.dashCompareHTML(this.dashCompare())}`;
+      return;
+    }
+
+    // ===== 개별(단일 아동) 모드 =====
     const st = this.dashStats(dashChild);
     dashChild = st.child;
-    const { children, sessions, totalQ, overall, last, trend, acts, goals } = st;
+    const { sessions, totalQ, overall, last, trend, acts, goals } = st;
 
     const sel = children.map(c => `<option value="${esc(c)}"${c === dashChild ? " selected" : ""}>${esc(c)}</option>`).join("");
 
@@ -2172,9 +2209,12 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
 
     let html = `
       <div class="dash-toolbar">
-        <label>아동 선택
-          <select id="dash-child" onchange="app.selectDashChild(this.value)">${sel}</select>
-        </label>
+        <div class="dash-toolbar-left">
+          ${modeToggle}
+          <label>아동 선택
+            <select id="dash-child" onchange="app.selectDashChild(this.value)">${sel}</select>
+          </label>
+        </div>
         <div class="dash-actions">
           <button class="btn btn-primary btn-sm" onclick="app.printDashReport()">📄 PDF 경과 리포트</button>
           <button class="btn btn-ghost btn-sm" onclick="app.exportDashCSV()">⬇️ 통합 CSV 내보내기</button>
@@ -2240,6 +2280,96 @@ ${cards.map(e => `  <div class="cardp"><img src="data:${emoCards[e.ko].mime};bas
   selectDashChild(name) {
     dashChild = name;
     this.renderDashboard();
+  },
+
+  setDashMode(mode) {
+    dashMode = mode;
+    this.renderDashboard();
+  },
+
+  // 모든 아동의 요약 지표 (비교용)
+  dashCompare() {
+    const children = Array.from(new Set(state.dashRows.map(r => r.child))).sort((a, b) => a.localeCompare(b, "ko"));
+    return children.map(c => {
+      const st = this.dashStats(c);
+      const named = (st.goals || []).filter(g => g.name !== "미지정");
+      const actByName = {};
+      st.acts.forEach(a => { actByName[a.name] = a.pct; });
+      return {
+        child: c,
+        sessions: st.sessions.length,
+        totalQ: st.totalQ,
+        overall: st.overall,
+        recent: st.last ? st.last.pct : 0,
+        trend: st.trend,
+        goalsDone: named.filter(g => g.mastery.label === "달성").length,
+        goalsTotal: named.length,
+        actByName,
+      };
+    }).sort((a, b) => b.overall - a.overall);
+  },
+
+  dashCompareHTML(rows) {
+    // 활동 열(있는 것만, 표준 순서)
+    const actOrder = Object.keys(ACT_COLOR).filter(name => rows.some(r => r.actByName[name] != null));
+
+    const trendText = t => t === null ? "<em>—</em>"
+      : t > 0 ? `<span style="color:#8CA888">▲+${t}</span>`
+      : t < 0 ? `<span style="color:#C4817E">▼${t}</span>` : "<em>→0</em>";
+
+    // 1) 전체 정답률 비교 (막대)
+    const barMax = Math.max(100, ...rows.map(r => r.overall));
+    const bars = rows.map(r => `
+      <div class="dash-bar-row">
+        <span class="dash-bar-label">${esc(r.child)}</span>
+        <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${(r.overall / barMax * 100).toFixed(1)}%;background:${pctColor(r.overall)}"></div></div>
+        <span class="dash-bar-val" style="color:${pctColor(r.overall)};font-weight:700">${r.overall}%</span>
+      </div>`).join("");
+
+    // 2) 요약 비교 표
+    const summary = `
+      <table class="dash-table cmp-table">
+        <tr><th>아동</th><th>회기</th><th>문항</th><th>전체</th><th>최근</th><th>추세</th><th>달성 목표</th></tr>
+        ${rows.map(r => `
+          <tr>
+            <td><b>${esc(r.child)}</b></td>
+            <td>${r.sessions}</td>
+            <td>${r.totalQ}</td>
+            <td style="color:${pctColor(r.overall)};font-weight:700">${r.overall}%</td>
+            <td style="color:${pctColor(r.recent)};font-weight:700">${r.recent}%</td>
+            <td>${trendText(r.trend)}</td>
+            <td>${r.goalsTotal ? `${r.goalsDone} / ${r.goalsTotal}` : "<em class='muted'>—</em>"}</td>
+          </tr>`).join("")}
+      </table>`;
+
+    // 3) 활동 영역별 비교 매트릭스 (히트맵)
+    const matrix = actOrder.length ? `
+      <table class="dash-table cmp-matrix">
+        <tr><th>아동</th>${actOrder.map(n => `<th><span class="dash-dot" style="background:${ACT_COLOR[n]}"></span>${esc(n)}</th>`).join("")}</tr>
+        ${rows.map(r => `
+          <tr><td><b>${esc(r.child)}</b></td>
+          ${actOrder.map(n => {
+            const p = r.actByName[n];
+            return p == null
+              ? '<td class="cmp-na">–</td>'
+              : `<td style="background:${pctColor(p)}22;color:${pctColor(p)};font-weight:700">${p}%</td>`;
+          }).join("")}</tr>`).join("")}
+      </table>` : "";
+
+    return `
+      <div class="card">
+        <h3>전체 첫 시도 정답률 비교 <span class="muted" style="font-weight:400;">— 정답률 높은 순</span></h3>
+        ${bars}
+      </div>
+      <div class="card">
+        <h3>아동별 요약</h3>
+        <div class="cmp-scroll">${summary}</div>
+      </div>
+      ${matrix ? `
+      <div class="card">
+        <h3>활동 영역별 비교 <span class="muted" style="font-weight:400;">— 색이 진할수록 정답률 높음, – 은 기록 없음</span></h3>
+        <div class="cmp-scroll">${matrix}</div>
+      </div>` : ""}`;
   },
 
   // 목표 1개의 진전 블록 (헤더 + 스파크라인 + 통계)
@@ -2454,6 +2584,104 @@ ${memoSection}
 </body></html>`;
   },
 
+  // 그룹(여러 아동) 비교 리포트 — 인쇄 → PDF 저장
+  printGroupReport() {
+    const children = Array.from(new Set(state.dashRows.map(r => r.child)));
+    if (children.length < 2) { setStatus("dash-status", "warn", "비교하려면 아동 기록이 2명 이상 필요합니다."); return; }
+    const html = this.buildGroupReportHTML(this.dashCompare());
+    const blob = new Blob([html], { type: "text/html" });
+    const w = window.open(URL.createObjectURL(blob), "_blank");
+    if (w) setStatus("dash-status", "info", "📄 그룹 비교 리포트를 새 탭에서 열었습니다. <b>🖨 인쇄 / PDF 저장</b>으로 저장하세요.");
+    else { downloadBlob(blob, "그룹비교리포트.html"); setStatus("dash-status", "info", "📄 그룹 비교 리포트 HTML을 저장했습니다."); }
+  },
+
+  buildGroupReportHTML(rows) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const actOrder = Object.keys(ACT_COLOR).filter(name => rows.some(r => r.actByName[name] != null));
+    const barMax = Math.max(100, ...rows.map(r => r.overall));
+
+    const trendText = t => t === null ? "—"
+      : t > 0 ? `▲+${t}` : t < 0 ? `▼${t}` : "→0";
+
+    const bars = rows.map(r => `
+      <div class="rbar">
+        <span class="rbar-l">${esc(r.child)}</span>
+        <span class="rbar-t"><b style="width:${(r.overall / barMax * 100).toFixed(1)}%;background:${pctColor(r.overall)}"></b></span>
+        <span class="rbar-v" style="color:${pctColor(r.overall)};font-weight:700">${r.overall}%</span>
+      </div>`).join("");
+
+    const summaryRows = rows.map(r => `
+      <tr><td><b>${esc(r.child)}</b></td><td>${r.sessions}</td><td>${r.totalQ}</td>
+      <td style="color:${pctColor(r.overall)};font-weight:700">${r.overall}%</td>
+      <td style="color:${pctColor(r.recent)};font-weight:700">${r.recent}%</td>
+      <td>${trendText(r.trend)}</td>
+      <td>${r.goalsTotal ? `${r.goalsDone} / ${r.goalsTotal}` : "—"}</td></tr>`).join("");
+
+    const matrix = actOrder.length ? `
+      <h2>활동 영역별 비교</h2>
+      <table>
+        <tr><th>아동</th>${actOrder.map(n => `<th>${esc(n)}</th>`).join("")}</tr>
+        ${rows.map(r => `<tr><td><b>${esc(r.child)}</b></td>${actOrder.map(n => {
+          const p = r.actByName[n];
+          return p == null ? '<td style="color:#c9beb4">–</td>'
+            : `<td style="background:${pctColor(p)}22;color:${pctColor(p)};font-weight:700">${p}%</td>`;
+        }).join("")}</tr>`).join("")}
+      </table>` : "";
+
+    return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>그룹 비교 리포트</title>
+<style>
+  :root{ --rose:#C4817E; --sage:#8CA888; --ink:#3d3835; --sub:#8a7f75; --line:#e7ded5; --paper:#F8F4F0; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif; color:var(--ink);
+    background:var(--paper); margin:0; line-height:1.6; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .noprint{ position:sticky; top:0; z-index:9; background:#3d3835; color:#fff; text-align:center; padding:11px; font-size:13px; }
+  .noprint button{ border:none; border-radius:8px; background:var(--rose); color:#fff; font:inherit; font-weight:700; padding:8px 18px; margin-left:10px; cursor:pointer; }
+  .page{ max-width:820px; margin:20px auto; background:#fff; padding:30px 34px 40px; border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,.06); }
+  .rhead{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; border-bottom:3px solid var(--rose); padding-bottom:14px; margin-bottom:20px; flex-wrap:wrap; }
+  .rhead h1{ font-size:20px; margin:0 0 4px; } .rhead .sub{ color:var(--sub); font-size:12.5px; }
+  .rmeta{ font-size:12.5px; color:var(--sub); text-align:right; line-height:1.9; } .rmeta b{ color:var(--ink); }
+  h2{ font-size:14px; margin:24px 0 10px; padding-left:9px; border-left:4px solid var(--sage); }
+  .rbar{ display:grid; grid-template-columns:120px 1fr auto; align-items:center; gap:10px; margin:8px 0; font-size:12.5px; }
+  .rbar-l{ font-weight:700; }
+  .rbar-t{ background:#efeae4; border-radius:999px; height:14px; overflow:hidden; }
+  .rbar-t b{ display:block; height:100%; border-radius:999px; }
+  .rbar-v{ white-space:nowrap; }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); }
+  th{ font-size:11px; color:var(--sub); background:#faf7f3; }
+  .foot{ margin-top:26px; text-align:center; color:#b7aba0; font-size:11px; }
+  @page{ margin:14mm; }
+  @media print{ .noprint{ display:none; } body{ background:#fff; } .page{ margin:0; max-width:none; box-shadow:none; border-radius:0; padding:0; } h2{ page-break-after:avoid; } tr{ page-break-inside:avoid; } }
+</style></head>
+<body>
+<div class="noprint">인쇄 화면에서 대상을 ‘PDF로 저장’으로 선택하세요 <button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>
+<div class="page">
+  <div class="rhead">
+    <div><h1>👥 화용 스튜디오 · 그룹 비교 리포트</h1>
+      <div class="sub">비디오 모델링 화용언어치료 · 첫 시도 정답률 기준</div></div>
+    <div class="rmeta">대상 <b>${rows.length}명</b><br>발행일 <b>${today}</b></div>
+  </div>
+
+  <h2>전체 첫 시도 정답률 비교</h2>
+  ${bars}
+
+  <h2>아동별 요약</h2>
+  <table>
+    <tr><th>아동</th><th>회기</th><th>문항</th><th>전체</th><th>최근</th><th>추세</th><th>달성 목표</th></tr>
+    ${summaryRows}
+  </table>
+
+  ${matrix}
+
+  <div class="foot">화용 스튜디오 · 마음터칭 — 그룹 세션 기록(첫 시도 정답률)을 바탕으로 자동 생성되었으며, 치료사의 임상적 해석과 함께 활용해야 합니다.</div>
+</div>
+</body></html>`;
+  },
+
   // 인라인 SVG 막대그래프 (외부 라이브러리 없이 CSP 친화적)
   dashLineChart(sessions) {
     if (!sessions.length) return '<p class="muted">표시할 회기가 없습니다.</p>';
@@ -2493,6 +2721,7 @@ ${memoSection}
 };
 
 let dashChild = null;   // 대시보드에서 선택된 아동 (렌더 간 유지)
+let dashMode = "single";   // "single" | "compare" (여러 아동 비교)
 
 function sanitizeName(s) { return String(s).replace(/[\\/:*?"<>|]/g, "_").slice(0, 40) || "화용스튜디오"; }
 
