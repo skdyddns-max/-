@@ -510,6 +510,13 @@
   .dp.deco-brutalist .dp-sec{border-top:3px solid var(--tx);}
   .dp.deco-brutalist .img-slot img,.dp.deco-brutalist .dp-material .frame,.dp.deco-brutalist .dp-ingredients .frame,.dp.deco-brutalist .dp-compare .cmp-col{border:2px solid var(--tx);border-radius:0;}
   .dp.deco-brutalist .dp-h{letter-spacing:-.03em;}
+  /* 버스트 팝 — 별·스파클 액센트 */
+  .dp.deco-burst .dp-eyebrow{color:var(--ac2);font-weight:800;}
+  .dp.deco-burst .dp-eyebrow::before{content:"✦ ";color:var(--ac);}
+  .dp.deco-burst .dp-h::after{content:" ✦";color:var(--ac);font-size:.68em;vertical-align:super;}
+  .dp.deco-burst .dp-feat .mk{background:var(--ac);width:17px;height:17px;border-radius:0;box-shadow:none;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);}
+  .dp.deco-burst .dp-usp span{background:var(--ac);color:var(--on-ac);}
+  .dp.deco-burst .dp-steps .step-n::after{content:" ✦";font-size:.6em;color:var(--ac);}
 
   /* 크기·스케일 */
   .dp-size{margin-top:18px;font-size:13px;color:var(--tx2);display:flex;gap:9px;align-items:center;line-height:1.6;}
@@ -1671,6 +1678,11 @@ const PALETTES = [
   ["블랙옐로우",{ac:"#F2C200",ac2:"#8A6D00",onAc:"#1a1400", bg0:"#FCFBF4",bg1:"#F4F0DE",dk:"#141207"}],
   ["네온핑크", {ac:"#F0329B",ac2:"#B01B6E",onAc:"#fff",   bg0:"#FDF4F9",bg1:"#FAE4F1",dk:"#1f0f18"}],
   ["일렉트릭블루",{ac:"#2D5BFF",ac2:"#1E3FB5",onAc:"#fff", bg0:"#F3F5FE",bg1:"#E6EBFC",dk:"#0d1230"}],
+  ["올리브",   {ac:"#7A8B3A",ac2:"#586627",onAc:"#fff",   bg0:"#F8F9F1",bg1:"#EEF1E0",dk:"#191c0f"}],
+  ["스카이",   {ac:"#3AA0D8",ac2:"#1F73A3",onAc:"#fff",   bg0:"#F1F8FC",bg1:"#E1F0F8",dk:"#0e1e28"}],
+  ["피치",     {ac:"#F0876A",ac2:"#C25A3E",onAc:"#fff",   bg0:"#FEF6F2",bg1:"#FCE8DF",dk:"#241611"}],
+  ["인디고",   {ac:"#4B4FC4",ac2:"#33369A",onAc:"#fff",   bg0:"#F4F4FB",bg1:"#E6E7F6",dk:"#12132b"}],
+  ["라임",     {ac:"#8DB600",ac2:"#5F7C00",onAc:"#1a2000", bg0:"#F9FBEF",bg1:"#EFF4D8",dk:"#161c07"}],
 ];
 const TYPES = [
   ["기본 산세리프", {head:'"Pretendard Variable",Pretendard,sans-serif', wt:850, tr:"-.03em"}],
@@ -1681,7 +1693,7 @@ const TYPES = [
   ["클래식 세리프", {head:'"Gowun Batang",serif', wt:700, tr:"0", sans:'"Gowun Batang",serif'}],
   ["핸드 감성",     {head:'"Gaegu",cursive', wt:700, tr:"0"}],
 ];
-const DECO = [["minimal","미니멀"],["lines","에디토리얼 라인"],["pop","팝 뱃지"],["sticker","스티커"],["card","아웃라인 카드"],["underline","언더라인"],["comic","만화·팝"],["gradient","그라디언트"],["vintage","빈티지"],["y2k","Y2K"],["magazine","매거진"],["neon","네온"],["soft","파스텔 소프트"],["brutalist","브루탈리스트"]];
+const DECO = [["minimal","미니멀"],["lines","에디토리얼 라인"],["pop","팝 뱃지"],["sticker","스티커"],["card","아웃라인 카드"],["underline","언더라인"],["comic","만화·팝"],["gradient","그라디언트"],["vintage","빈티지"],["y2k","Y2K"],["magazine","매거진"],["neon","네온"],["soft","파스텔 소프트"],["brutalist","브루탈리스트"],["burst","버스트 팝"]];
 /* 메인 스타일 카탈로그 — 데코 × 팔레트 × 타이포 = 504가지, 각각 이름 붙은 하나의 '메인 스타일' */
 const CATALOG = (()=>{ const out=[]; let i=0;
   for(const [dk,dko] of DECO) for(const [pn,pv] of PALETTES) for(const [tn] of TYPES)
