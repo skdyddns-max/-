@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#17150F">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@700;800&family=Gaegu:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@700;800&family=Gaegu:wght@700&family=Song+Myung&family=Stylish&family=Kirang+Haerang&family=Gugi&family=Hi+Melody&family=Dokdo&family=Gamja+Flower&family=Yeon+Sung&display=swap">
 <style>
   :root{
     --ink:#17150F;
@@ -517,6 +517,20 @@
   .dp.deco-burst .dp-feat .mk{background:var(--ac);width:17px;height:17px;border-radius:0;box-shadow:none;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);}
   .dp.deco-burst .dp-usp span{background:var(--ac);color:var(--on-ac);}
   .dp.deco-burst .dp-steps .step-n::after{content:" ✦";font-size:.6em;color:var(--ac);}
+  /* 리본 — 화살표 리본 라벨 */
+  .dp.deco-ribbon .dp-eyebrow{background:var(--ac);color:var(--on-ac);padding:4px 15px 4px 12px;display:inline-block;clip-path:polygon(0 0,100% 0,91% 50%,100% 100%,0 100%);font-weight:800;}
+  /* 폴라로이드 — 흰 프레임 사진 */
+  .dp.deco-polaroid .img-slot img,.dp.deco-polaroid .dp-material .frame,.dp.deco-polaroid .dp-ingredients .frame{border:9px solid #fff;box-shadow:0 6px 22px rgba(0,0,0,.16);border-radius:2px;}
+  /* 스탬프 — 점선 테두리 뱃지 */
+  .dp.deco-stamp .dp-eyebrow{border:2px dashed var(--ac);color:var(--ac2);padding:4px 12px;display:inline-block;border-radius:8px;}
+  .dp.deco-stamp .dp-h::after{content:"";display:block;width:60px;border-top:2px dashed var(--ac);margin-top:12px;}
+  /* 타임라인 — 왼쪽 라인·스텝 연결 */
+  .dp.deco-timeline .dp-eyebrow{border-left:3px solid var(--ac);padding-left:10px;}
+  .dp.deco-timeline .dp-steps .step{border-left:2px solid var(--ac);margin-left:8px;padding-left:20px;}
+  /* 그리드 — 해시 라벨·점선 격자 */
+  .dp.deco-grid .dp-sec{border-top:1px dashed var(--ln);}
+  .dp.deco-grid .dp-eyebrow::before{content:"# ";color:var(--ac);font-weight:800;}
+  .dp.deco-grid .dp-h::after{content:"";display:block;width:100%;border-top:1px dashed var(--ln);margin-top:14px;}
 
   /* 크기·스케일 */
   .dp-size{margin-top:18px;font-size:13px;color:var(--tx2);display:flex;gap:9px;align-items:center;line-height:1.6;}
@@ -693,6 +707,7 @@
   .cat-grid .cat span{padding:7px 8px;font-size:10.5px;line-height:1.35;color:var(--ink);font-weight:600;}
   .cat-grid .cat:hover{border-color:var(--accent);}
   .cat-grid .cat.on{outline:2.5px solid var(--accent);outline-offset:1px;}
+  .cat-grid .cat-more{grid-column:1/-1;text-align:center;font-size:12px;color:var(--muted);padding:8px 0 2px;}
   .fav-wrap{margin:2px 0 12px;}
   .fav-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .fav-save{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:20px;padding:5px 13px;font-size:12.5px;cursor:pointer;font-weight:600;}
@@ -1683,6 +1698,21 @@ const PALETTES = [
   ["피치",     {ac:"#F0876A",ac2:"#C25A3E",onAc:"#fff",   bg0:"#FEF6F2",bg1:"#FCE8DF",dk:"#241611"}],
   ["인디고",   {ac:"#4B4FC4",ac2:"#33369A",onAc:"#fff",   bg0:"#F4F4FB",bg1:"#E6E7F6",dk:"#12132b"}],
   ["라임",     {ac:"#8DB600",ac2:"#5F7C00",onAc:"#1a2000", bg0:"#F9FBEF",bg1:"#EFF4D8",dk:"#161c07"}],
+  ["세이지",   {ac:"#8A9A82",ac2:"#5E6E56",onAc:"#fff",   bg0:"#F6F8F4",bg1:"#E9EEE4",dk:"#171c14"}],
+  ["플럼",     {ac:"#7D3C6A",ac2:"#5A2A4C",onAc:"#fff",   bg0:"#FAF4F8",bg1:"#F0E3EC",dk:"#1d1019"}],
+  ["티얼",     {ac:"#0E8C8C",ac2:"#086565",onAc:"#fff",   bg0:"#F0F9F9",bg1:"#DFF0F0",dk:"#0c1e1e"}],
+  ["브릭",     {ac:"#B24A34",ac2:"#883426",onAc:"#fff",   bg0:"#FBF4F1",bg1:"#F2E1DB",dk:"#20120e"}],
+  ["네이비",   {ac:"#2B3E67",ac2:"#1C2B4C",onAc:"#fff",   bg0:"#F3F5F9",bg1:"#E3E8F0",dk:"#0f1522"}],
+  ["카멜",     {ac:"#B5793B",ac2:"#8A5A27",onAc:"#fff",   bg0:"#FBF6EF",bg1:"#F2E7D5",dk:"#20160c"}],
+  ["아쿠아",   {ac:"#1CA7A0",ac2:"#127974",onAc:"#fff",   bg0:"#F0F9F8",bg1:"#DDF0EE",dk:"#0c201e"}],
+  ["선샤인",   {ac:"#F5B301",ac2:"#A87C00",onAc:"#241a00", bg0:"#FEFBF0",bg1:"#FBF1D2",dk:"#1e1806"}],
+  ["체리",     {ac:"#D62149",ac2:"#A51434",onAc:"#fff",   bg0:"#FDF3F5",bg1:"#FADFE5",dk:"#22090f"}],
+  ["슬레이트", {ac:"#556270",ac2:"#3A4552",onAc:"#fff",   bg0:"#F5F6F7",bg1:"#E7EAED",dk:"#14181c"}],
+  ["모카",     {ac:"#7A5842",ac2:"#5A3F2E",onAc:"#fff",   bg0:"#F8F4F0",bg1:"#EDE3DA",dk:"#1c140e"}],
+  ["퍼플",     {ac:"#8E44C4",ac2:"#6A2E9A",onAc:"#fff",   bg0:"#F8F4FB",bg1:"#EEE2F6",dk:"#1a1024"}],
+  ["오렌지",   {ac:"#E8721C",ac2:"#B45410",onAc:"#fff",   bg0:"#FEF6EF",bg1:"#FBE6D3",dk:"#231207"}],
+  ["에메랄드", {ac:"#1F9D55",ac2:"#147540",onAc:"#fff",   bg0:"#F0F9F3",bg1:"#DFF0E5",dk:"#0d1f14"}],
+  ["코발트",   {ac:"#1E5FCC",ac2:"#14459A",onAc:"#fff",   bg0:"#F1F5FC",bg1:"#E0EAF9",dk:"#0b1630"}],
 ];
 const TYPES = [
   ["기본 산세리프", {head:'"Pretendard Variable",Pretendard,sans-serif', wt:850, tr:"-.03em"}],
@@ -1692,8 +1722,16 @@ const TYPES = [
   ["모던 명조",     {head:'"Nanum Myeongjo",serif', wt:800, tr:"-.01em", sans:'"Gowun Batang",serif'}],
   ["클래식 세리프", {head:'"Gowun Batang",serif', wt:700, tr:"0", sans:'"Gowun Batang",serif'}],
   ["핸드 감성",     {head:'"Gaegu",cursive', wt:700, tr:"0"}],
+  ["엘레강스 명조", {head:'"Song Myung",serif', wt:400, tr:"0", sans:'"Song Myung",serif'}],
+  ["씬 스타일리시", {head:'"Stylish",sans-serif', wt:400, tr:".02em"}],
+  ["레트로 키랑",   {head:'"Kirang Haerang",cursive', wt:400, tr:"0"}],
+  ["디스플레이 구기",{head:'"Gugi",cursive', wt:400, tr:"0"}],
+  ["큐트 하이멜로디",{head:'"Hi Melody",cursive', wt:400, tr:"0", sans:'"Hi Melody","Pretendard Variable",sans-serif'}],
+  ["브러시 독도",   {head:'"Dokdo",cursive', wt:400, tr:".01em"}],
+  ["감자꽃 핸드",   {head:'"Gamja Flower",cursive', wt:400, tr:"0"}],
+  ["연성 디스플레이",{head:'"Yeon Sung",cursive', wt:400, tr:"0"}],
 ];
-const DECO = [["minimal","미니멀"],["lines","에디토리얼 라인"],["pop","팝 뱃지"],["sticker","스티커"],["card","아웃라인 카드"],["underline","언더라인"],["comic","만화·팝"],["gradient","그라디언트"],["vintage","빈티지"],["y2k","Y2K"],["magazine","매거진"],["neon","네온"],["soft","파스텔 소프트"],["brutalist","브루탈리스트"],["burst","버스트 팝"]];
+const DECO = [["minimal","미니멀"],["lines","에디토리얼 라인"],["pop","팝 뱃지"],["sticker","스티커"],["card","아웃라인 카드"],["underline","언더라인"],["comic","만화·팝"],["gradient","그라디언트"],["vintage","빈티지"],["y2k","Y2K"],["magazine","매거진"],["neon","네온"],["soft","파스텔 소프트"],["brutalist","브루탈리스트"],["burst","버스트 팝"],["ribbon","리본"],["polaroid","폴라로이드"],["stamp","스탬프"],["timeline","타임라인"],["grid","그리드"]];
 /* 메인 스타일 카탈로그 — 데코 × 팔레트 × 타이포 = 504가지, 각각 이름 붙은 하나의 '메인 스타일' */
 const CATALOG = (()=>{ const out=[]; let i=0;
   for(const [dk,dko] of DECO) for(const [pn,pv] of PALETTES) for(const [tn] of TYPES)
@@ -1763,7 +1801,12 @@ function renderThemePicker(){
     `<button class="tp-chip${k===cur?" on":""}" onclick="app.setTheme('${k}')">${label}</button>`).join("");
 }
 function openStyle(){ $("m-style").classList.add("show"); renderStylePanel(); }
-function filterStyle(q){ q=(q||"").trim(); const g=$("style-catalog"); if(!g) return; [...g.children].forEach(c=>{ c.style.display = (!q || c.dataset.name.includes(q)) ? "" : "none"; }); }
+function renderCatalog(list){ const cat=$("style-catalog"); if(!cat) return; const CAP=400;
+  cat.innerHTML = list.slice(0,CAP).map(s=>`<button class="cat" data-i="${s.i}" data-name="${s.name}" onclick="app.applyMainStyle(${s.i})"><i style="background:${s.ac}"></i><b style="background:${s.bg}"></b><span>${s.name}</span></button>`).join("") + (list.length>CAP?`<div class="cat-more">+${(list.length-CAP).toLocaleString()}개 더 — 검색으로 찾거나 🎲 셔플</div>`:"");
+  const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font);
+  [...cat.querySelectorAll(".cat")].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur));
+}
+function filterStyle(q){ q=(q||"").trim(); renderCatalog(q ? CATALOG.filter(s=>s.name.includes(q)) : CATALOG); }
 function renderStylePanel(){
   const cnt=$("style-count"); if(cnt) cnt.textContent = CATALOG.length.toLocaleString();
   const favEl=$("style-favs"); const curSig=favSig(currentStyle());
@@ -1776,8 +1819,8 @@ function renderStylePanel(){
   const palEl=$("style-pal"); if(palEl) palEl.innerHTML = PALETTES.map(([n,v])=>`<button class="sw${state.palette===n?" on":""}" title="${n}" onclick="app.setPalette('${n}')"><i style="background:${v.ac}"></i><b style="background:${v.bg1}"></b><span>${n}</span></button>`).join("");
   const fontEl=$("style-font"); if(fontEl) fontEl.innerHTML = TYPES.map(([n,v])=>`<button class="chip${state.font===n?" on":""}" aria-pressed="${state.font===n}" style="font-family:${v.head};" onclick="app.setFont('${n}')">${n}</button>`).join("");
   const cat=$("style-catalog");
-  if(cat && !cat.dataset.built){ cat.innerHTML = CATALOG.map(s=>`<button class="cat" data-i="${s.i}" data-name="${s.name}" onclick="app.applyMainStyle(${s.i})"><i style="background:${s.ac}"></i><b style="background:${s.bg}"></b><span>${s.name}</span></button>`).join(""); cat.dataset.built="1"; }
-  if(cat){ const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font); [...cat.children].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur)); }
+  if(cat && !cat.dataset.built){ renderCatalog(CATALOG); cat.dataset.built="1"; }
+  else if(cat){ const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font); [...cat.querySelectorAll(".cat")].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur)); }
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
@@ -3070,7 +3113,7 @@ function exportHTML(){
 <title>${esc(seoTitle||"상세페이지")}</title>
 ${seoMeta}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@700;800&family=Gaegu:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@700;800&family=Gaegu:wght@700&family=Song+Myung&family=Stylish&family=Kirang+Haerang&family=Gugi&family=Hi+Melody&family=Dokdo&family=Gamja+Flower&family=Yeon+Sung&display=swap">
 <style>
 :root{--mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"Roboto Mono",monospace;--char:#17150F;--sans:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;}
