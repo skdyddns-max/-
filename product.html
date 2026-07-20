@@ -713,6 +713,11 @@
   .sw-grid .sw b{display:block;flex:1;}
   .sw-grid .sw span{position:absolute;left:0;right:0;bottom:0;font-size:10px;text-align:center;color:var(--ink);background:rgba(255,255,255,.82);padding:2px 0;font-weight:600;}
   .sw-grid .sw.on{outline:2.5px solid var(--accent);outline-offset:1px;border-color:transparent;}
+  .cur-row{display:flex;align-items:center;gap:10px;margin:4px 0 10px;flex-wrap:wrap;}
+  .cur-toggle{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:700;cursor:pointer;flex:none;}
+  .cur-toggle.on{background:var(--accent);color:#fff;border-color:transparent;}
+  .cur-note{font-size:11.5px;color:var(--muted);flex:1;min-width:120px;}
+  .sw-grid .sw.pro span::after,.chips .chip.pro::after{content:"✨";font-size:8.5px;margin-left:3px;opacity:.75;vertical-align:super;}
   .style-search{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 13px;font-size:13.5px;margin:4px 0 12px;background:#fff;color:var(--ink);}
   .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:340px;overflow-y:auto;padding:2px;margin-bottom:12px;}
   @media(max-width:560px){ .cat-grid{grid-template-columns:repeat(2,1fr);} }
@@ -1154,6 +1159,7 @@
     <button class="x" onclick="app.closeModal('m-style')">×</button>
     <h3>🎨 메인 스타일 — <b id="style-count">0</b>가지</h3>
     <p class="lead">데코 × 팔레트 × 타이포를 조합한 이름 붙은 메인 스타일. 골라서 즉시 갈아입히거나 <b>🎲 셔플</b>로 뽑아 보세요. 아래 축으로 미세 조정도 됩니다.</p>
+    <div class="cur-row"><button id="cur-toggle" class="cur-toggle on" onclick="app.toggleCurated()">✨ 엄선만 보는 중</button><span class="cur-note">촌스럽거나 겹치는 조합을 뺀 엄선 세트. 전체를 보려면 눌러 전환.</span></div>
     <div class="fav-wrap"><div class="fav-head"><span class="style-lab" style="margin:0;">즐겨찾기</span><button class="fav-save" id="fav-save" onclick="app.toggleFav()">☆ 현재 저장</button></div><div class="fav-row" id="style-favs"></div></div>
     <input type="text" id="style-search" class="style-search" placeholder="메인 스타일 검색 (예: 팝 뱃지, 레드팝, 명조)" oninput="app.filterStyle(this.value)">
     <div class="cat-grid" id="style-catalog"></div>
@@ -1208,6 +1214,7 @@ const state = {
   palette: null, // 팔레트 오버레이(색) — null이면 무드 기본
   font: null,    // 타이포 오버레이 — null이면 무드 기본
   deco: null,    // 데코(레이아웃 개성) — null이면 기본
+  curated: true, // ✨ 엄선 세트만 볼지
 };
 
 const $ = id => document.getElementById(id);
@@ -1785,6 +1792,11 @@ const CATALOG = (()=>{ const out=[]; let i=0;
   for(const [dk,dko] of DECO) for(const [pn,pv] of PALETTES) for(const [tn] of TYPES)
     out.push({i:i++, deco:dk, pal:pn, font:tn, ac:pv.ac, bg:pv.bg1, name:`${dko} · ${pn} · ${tn}`});
   return out; })();
+/* ✨ 엄선(큐레이션) — 촌스럽거나 겹치는 조합을 뺀 기본 세트. 전체는 '전체 보기'로 */
+const PRO_DECO = new Set(["minimal","lines","pop","card","underline","gradient","magazine","soft","glass","timeline","tag"]);
+const PRO_TYPE = new Set(["기본 산세리프","임팩트 볼드","콘덴스 헤비","모던 명조","클래식 세리프","고운돋움","함렛 세리프","엘레강스 명조","디필레이아"]);
+const PRO_PAL  = new Set(["탠저린","딥그린","코럴","오션블루","와인","머스타드","라벤더","차콜모노","테라코타","로즈골드","네이비","카멜","세이지","인디고","에메랄드","티얼","피치","체리"]);
+function activeCatalog(){ return state.curated ? CATALOG.filter(s=>PRO_DECO.has(s.deco)&&PRO_PAL.has(s.pal)&&PRO_TYPE.has(s.font)) : CATALOG; }
 const PAL_KEYS = ["--bg0","--bg1","--card","--tx","--tx2","--tx3","--ln","--ac","--ac2","--on-ac","--dk","--dk-tx","--star"];
 const FONT_KEYS = ["--head","--head-wt","--head-tr","--sans"];
 function applyStyleOverrides(cv){
@@ -1817,8 +1829,8 @@ function applyMainStyle(idx){
   const grid=$("style-catalog"); if(grid){ [...grid.children].forEach(c=>c.classList.toggle("on", +c.dataset.i===idx)); }
 }
 function shuffleStyle(){
-  applyMainStyle(Math.floor(Math.random()*CATALOG.length));
-  toast(`메인 스타일 — ${CATALOG.find((s)=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font)?.name||""}`);
+  const pool=activeCatalog(); const s=pool[Math.floor(Math.random()*pool.length)]; if(s) applyMainStyle(s.i);
+  toast(`메인 스타일 — ${CATALOG.find((x)=>x.deco===state.deco&&x.pal===state.palette&&x.font===state.font)?.name||""}`);
 }
 /* ── 스타일 즐겨찾기(핀) — localStorage에 저장, 세션 넘어 유지 ── */
 const FAV_KEY="detail-style-favs";
@@ -1848,27 +1860,28 @@ function renderThemePicker(){
   el.innerHTML = THEMES.map(([k,label]) =>
     `<button class="tp-chip${k===cur?" on":""}" onclick="app.setTheme('${k}')">${label}</button>`).join("");
 }
-function openStyle(){ $("m-style").classList.add("show"); renderStylePanel(); }
+function openStyle(){ $("m-style").classList.add("show"); renderStylePanel(); refreshCatalog(); }
 function renderCatalog(list){ const cat=$("style-catalog"); if(!cat) return; const CAP=400;
   cat.innerHTML = list.slice(0,CAP).map(s=>`<button class="cat" data-i="${s.i}" data-name="${s.name}" onclick="app.applyMainStyle(${s.i})"><i style="background:${s.ac}"></i><b style="background:${s.bg}"></b><span>${s.name}</span></button>`).join("") + (list.length>CAP?`<div class="cat-more">+${(list.length-CAP).toLocaleString()}개 더 — 검색으로 찾거나 🎲 셔플</div>`:"");
   const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font);
   [...cat.querySelectorAll(".cat")].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur));
 }
-function filterStyle(q){ q=(q||"").trim(); renderCatalog(q ? CATALOG.filter(s=>s.name.includes(q)) : CATALOG); }
+function refreshCatalog(){ const q=(($("style-search")||{}).value||"").trim(); let list=activeCatalog(); if(q) list=list.filter(s=>s.name.includes(q)); renderCatalog(list); }
+function filterStyle(){ refreshCatalog(); }
+function toggleCurated(){ state.curated=!state.curated; refreshCatalog(); renderStylePanel(); }
 function renderStylePanel(){
-  const cnt=$("style-count"); if(cnt) cnt.textContent = CATALOG.length.toLocaleString();
+  const cnt=$("style-count"); if(cnt) cnt.textContent = activeCatalog().length.toLocaleString();
+  const tg=$("cur-toggle"); if(tg){ tg.textContent = state.curated?"✨ 엄선만 보는 중":"전체 보는 중"; tg.classList.toggle("on",state.curated); }
   const favEl=$("style-favs"); const curSig=favSig(currentStyle());
   if(favEl){ const favs=loadFavs();
     favEl.innerHTML = favs.length ? favs.map(f=>`<span class="fav${favSig(f)===curSig?" on":""}"><button class="fav-a" onclick="app.applyFav('${favSig(f)}')">${f.name}</button><button class="fav-x" title="삭제" onclick="app.removeFav('${favSig(f)}')">×</button></span>`).join("") : `<span class="fav-empty">마음에 드는 스타일에서 <b>☆ 현재 저장</b>을 누르면 여기 고정돼요</span>`;
   }
   const fs=$("fav-save"); if(fs){ const on=loadFavs().some(f=>favSig(f)===curSig); fs.textContent = on?"★ 저장됨":"☆ 현재 저장"; fs.classList.toggle("on",on); }
   const moodEl=$("style-mood"); if(moodEl) moodEl.innerHTML = THEMES.map(([k,l])=>`<button class="chip${effectiveTheme()===k?" on":""}" aria-pressed="${effectiveTheme()===k}" onclick="app.setTheme('${k}')">${l}</button>`).join("");
-  const decoEl=$("style-deco"); if(decoEl) decoEl.innerHTML = DECO.map(([k,l])=>`<button class="chip${state.deco===k?" on":""}" aria-pressed="${state.deco===k}" onclick="app.setDeco('${k}')">${l}</button>`).join("");
-  const palEl=$("style-pal"); if(palEl) palEl.innerHTML = PALETTES.map(([n,v])=>`<button class="sw${state.palette===n?" on":""}" title="${n}" onclick="app.setPalette('${n}')"><i style="background:${v.ac}"></i><b style="background:${v.bg1}"></b><span>${n}</span></button>`).join("");
-  const fontEl=$("style-font"); if(fontEl) fontEl.innerHTML = TYPES.map(([n,v])=>`<button class="chip${state.font===n?" on":""}" aria-pressed="${state.font===n}" style="font-family:${v.head};" onclick="app.setFont('${n}')">${n}</button>`).join("");
-  const cat=$("style-catalog");
-  if(cat && !cat.dataset.built){ renderCatalog(CATALOG); cat.dataset.built="1"; }
-  else if(cat){ const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font); [...cat.querySelectorAll(".cat")].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur)); }
+  const decoEl=$("style-deco"); if(decoEl) decoEl.innerHTML = DECO.map(([k,l])=>`<button class="chip${state.deco===k?" on":""}${PRO_DECO.has(k)?" pro":""}" aria-pressed="${state.deco===k}" onclick="app.setDeco('${k}')">${l}</button>`).join("");
+  const palEl=$("style-pal"); if(palEl) palEl.innerHTML = PALETTES.map(([n,v])=>`<button class="sw${state.palette===n?" on":""}${PRO_PAL.has(n)?" pro":""}" title="${n}" onclick="app.setPalette('${n}')"><i style="background:${v.ac}"></i><b style="background:${v.bg1}"></b><span>${n}</span></button>`).join("");
+  const fontEl=$("style-font"); if(fontEl) fontEl.innerHTML = TYPES.map(([n,v])=>`<button class="chip${state.font===n?" on":""}${PRO_TYPE.has(n)?" pro":""}" aria-pressed="${state.font===n}" style="font-family:${v.head};" onclick="app.setFont('${n}')">${n}</button>`).join("");
+  const cat=$("style-catalog"); if(cat){ const cur=CATALOG.findIndex(s=>s.deco===state.deco&&s.pal===state.palette&&s.font===state.font); [...cat.querySelectorAll(".cat")].forEach(c=>c.classList.toggle("on", +c.dataset.i===cur)); }
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
@@ -3258,7 +3271,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, setDeco, applyMainStyle, filterStyle, shuffleStyle, toggleFav, applyFav, removeFav, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, setDeco, applyMainStyle, filterStyle, toggleCurated, shuffleStyle, toggleFav, applyFav, removeFav, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
 init();
 </script>
 </body>
