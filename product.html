@@ -602,12 +602,14 @@
   .dp-faq .qq::before{content:"Q";font-family:var(--mono);color:var(--ac2);font-weight:700;}
   .dp-faq .aa{font-size:13.5px;color:var(--tx2);margin-top:9px;line-height:1.72;padding-left:20px;}
 
-  .dp-cta{background:var(--dk);color:var(--dk-tx);text-align:center;padding:66px 34px;position:relative;overflow:hidden;}
-  .dp-cta::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 90% at 50% 0%,color-mix(in srgb,var(--ac) 22%,transparent),transparent 62%);}
+  .dp-cta{background:var(--dk);color:var(--dk-tx);text-align:center;padding:92px 36px 88px;position:relative;overflow:hidden;}
+  .dp-cta::before{content:"";position:absolute;inset:0;background:radial-gradient(62% 92% at 50% 0%,color-mix(in srgb,var(--ac) 26%,transparent),transparent 62%);}
   .dp-cta>*{position:relative;z-index:2;}
-  .dp-cta h3{font-family:var(--head);font-size:26px;font-weight:var(--head-wt);line-height:1.34;letter-spacing:var(--head-tr);white-space:pre-line;}
-  .dp-cta .btn-buy{display:inline-block;margin-top:26px;background:var(--ac);color:var(--on-ac);padding:15px 42px;border-radius:calc(var(--rad) - 2px);font-weight:800;font-size:15.5px;box-shadow:0 12px 30px -8px color-mix(in srgb,var(--ac) 55%,transparent);letter-spacing:-.01em;}
-  .dp-cta .fine{font-family:var(--mono);font-size:11px;opacity:.72;margin-top:16px;letter-spacing:.04em;}
+  .dp-cta .cta-tick{width:34px;height:2px;background:var(--ac);margin:0 auto 20px;}
+  .dp-cta .cta-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ac);margin-bottom:16px;}
+  .dp-cta h3{font-family:var(--head);font-size:32px;font-weight:var(--head-wt);line-height:1.28;letter-spacing:-.03em;white-space:pre-line;}
+  .dp-cta .btn-buy{display:inline-block;margin-top:32px;background:var(--ac);color:var(--on-ac);padding:17px 48px;border-radius:calc(var(--rad) - 2px);font-weight:800;font-size:16px;box-shadow:0 14px 34px -8px color-mix(in srgb,var(--ac) 58%,transparent);letter-spacing:-.01em;}
+  .dp-cta .fine{font-family:var(--mono);font-size:11px;opacity:.72;margin-top:18px;letter-spacing:.04em;}
 
   /* USP 뱃지 스트립 */
   .dp-usp{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px;padding:15px 20px;
@@ -2365,6 +2367,8 @@ function render(){
     ${noticeBlock}
 
     <div class="dp-cta">
+      <div class="cta-tick"></div>
+      <div class="cta-eyebrow">${esc(c.value?.eyebrow||state.input.name||"Order now").toString().slice(0,24)}</div>
       ${ed(esc(c.cta?.headline),"cta.headline","","h3")}
       <div class="btn-buy" data-edit="cta.button" contenteditable="true" spellcheck="false">${esc(c.cta?.button||"구매하기")}</div>
       ${ed(esc(c.cta?.fine),"cta.fine","fine")}
