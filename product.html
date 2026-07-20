@@ -388,10 +388,12 @@
   .dp-feat h4{font-size:17.5px;font-weight:800;letter-spacing:-.02em;}
   .dp-feat p{font-size:14px;color:var(--tx2);margin-top:7px;line-height:1.7;}
 
-  /* 브랜드 스토리(인트로) */
-  .dp-brand{background:var(--bg1);text-align:center;}
-  .dp-brand .dp-h{font-size:28px;line-height:1.36;}
-  .dp-brand .dp-b{margin-left:auto;margin-right:auto;max-width:32ch;font-size:15.5px;color:var(--tx2);}
+  /* 브랜드 스토리 — 다크 스테이트먼트 밴드(페이지 중 유일한 극적 반전) */
+  .dp-brand{background:var(--dk);color:var(--dk-tx);text-align:center;padding:96px 40px;}
+  .dp-brand .dp-eyebrow{color:var(--ac);opacity:.9;}
+  .dp-brand .dp-h{font-size:30px;line-height:1.42;color:var(--dk-tx);margin-top:20px;}
+  .dp-brand .dp-b{margin:22px auto 0;max-width:32ch;font-size:15.5px;color:color-mix(in srgb,var(--dk-tx) 78%,transparent);line-height:1.85;}
+  .dp-brand::before{content:"";display:block;width:34px;height:2px;background:var(--ac);margin:0 auto 4px;}
 
   /* 고시정보(법적 필수) */
   .dp-notice{background:var(--bg1);}
