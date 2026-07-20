@@ -352,45 +352,45 @@
     --head:var(--sans);       /* 헤드라인 서체 */
     --head-wt:850;
     --head-tr:-.03em;
-    --eyebrow-tr:.24em;
-    --pad:60px 34px;
+    --eyebrow-tr:.26em;
+    --pad:76px 36px;
     background:var(--bg0);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.65;
     word-break:keep-all;overflow-wrap:break-word;
   }
   .dp *{box-sizing:border-box;}
   .dp [contenteditable]:focus{outline:2px solid var(--ac);outline-offset:3px;border-radius:2px;}
   .dp .mono{font-family:var(--mono);}
-  .dp-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:var(--eyebrow-tr);text-transform:uppercase;color:var(--ac2);font-weight:600;}
-  .dp .dp-h{font-family:var(--head);font-size:22px;font-weight:var(--head-wt);line-height:1.3;letter-spacing:var(--head-tr);margin-top:12px;}
-  .dp .dp-b{font-size:15px;color:var(--tx2);margin-top:14px;line-height:1.8;max-width:42ch;}
+  .dp-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:var(--eyebrow-tr);text-transform:uppercase;color:var(--ac2);font-weight:600;}
+  .dp .dp-h{font-family:var(--head);font-size:28px;font-weight:var(--head-wt);line-height:1.24;letter-spacing:var(--head-tr);margin-top:16px;}
+  .dp .dp-b{font-size:15.5px;color:var(--tx2);margin-top:16px;line-height:1.78;max-width:40ch;}
 
   /* 히어로 — 크림 여백 위 큰 타이포 + 아래 풀블리드 이미지 (에디토리얼) */
   .dp-hero{background:var(--bg0);}
-  .dp-hero .cap{padding:56px 34px 34px;}
-  .dp-hero .tagline{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ac2);}
-  .dp-hero h2{font-family:var(--head);font-size:33px;font-weight:var(--head-wt);line-height:1.18;letter-spacing:var(--head-tr);margin-top:16px;color:var(--tx);white-space:pre-line;}
-  .dp-hero .sub{font-size:15.5px;margin-top:16px;color:var(--tx2);line-height:1.65;max-width:34ch;}
-  .dp-hero .hero-img{position:relative;margin-top:30px;}
+  .dp-hero .cap{padding:80px 36px 44px;}
+  .dp-hero .tagline{font-family:var(--mono);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--ac2);}
+  .dp-hero h2{font-family:var(--head);font-size:43px;font-weight:var(--head-wt);line-height:1.1;letter-spacing:-.035em;margin-top:20px;color:var(--tx);white-space:pre-line;}
+  .dp-hero .sub{font-size:16px;margin-top:20px;color:var(--tx2);line-height:1.62;max-width:30ch;}
+  .dp-hero .hero-img{position:relative;margin-top:44px;}
   .dp-hero .img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--ph);}
 
   .dp-sec{padding:var(--pad);}
   .dp-intro{background:var(--bg0);}
-  .dp-intro .q{font-family:var(--head);font-size:25px;font-weight:calc(var(--head-wt) - 50);line-height:1.42;letter-spacing:var(--head-tr);}
+  .dp-intro .q{font-family:var(--head);font-size:30px;font-weight:calc(var(--head-wt) - 50);line-height:1.38;letter-spacing:var(--head-tr);}
   .dp-intro .q .hl{background:linear-gradient(to top,color-mix(in srgb,var(--ac) 30%,transparent) 42%,transparent 42%);padding:0 2px;}
   .dp-intro .e{font-size:15px;color:var(--tx2);margin-top:20px;line-height:1.85;max-width:40ch;}
 
   .dp-value{background:var(--bg1);}
-  .dp-value .lead{margin-bottom:34px;}
-  .dp-value .dp-h{font-size:23px;}
+  .dp-value .lead{margin-bottom:40px;}
+  .dp-value .dp-h{font-size:27px;}
   .dp-feats{border-top:1px solid var(--ln);}
-  .dp-feat{display:flex;gap:16px;padding:22px 2px;border-bottom:1px solid var(--ln);align-items:flex-start;}
-  .dp-feat .mk{width:9px;height:9px;border-radius:50%;background:var(--ac);margin-top:9px;flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 16%,transparent);}
-  .dp-feat h4{font-size:16.5px;font-weight:800;letter-spacing:-.02em;}
-  .dp-feat p{font-size:13.5px;color:var(--tx2);margin-top:6px;line-height:1.66;}
+  .dp-feat{display:flex;gap:18px;padding:26px 2px;border-bottom:1px solid var(--ln);align-items:flex-start;}
+  .dp-feat .mk{width:9px;height:9px;border-radius:50%;background:var(--ac);margin-top:10px;flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 16%,transparent);}
+  .dp-feat h4{font-size:17.5px;font-weight:800;letter-spacing:-.02em;}
+  .dp-feat p{font-size:14px;color:var(--tx2);margin-top:7px;line-height:1.7;}
 
   /* 브랜드 스토리(인트로) */
   .dp-brand{background:var(--bg1);text-align:center;}
-  .dp-brand .dp-h{font-size:24px;line-height:1.4;}
+  .dp-brand .dp-h{font-size:28px;line-height:1.36;}
   .dp-brand .dp-b{margin-left:auto;margin-right:auto;max-width:32ch;font-size:15.5px;color:var(--tx2);}
 
   /* 고시정보(법적 필수) */
