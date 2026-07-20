@@ -715,10 +715,14 @@
   .sw-grid .sw.on{outline:2.5px solid var(--accent);outline-offset:1px;border-color:transparent;}
   .trend-lab{font-size:12.5px;font-weight:800;color:var(--ink);margin:2px 0 8px;}
   .trend-lab span{font-weight:500;color:var(--muted);}
-  .trend-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
-  .trend-chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;}
-  .trend-chip:hover{border-color:var(--accent);}
-  .trend-chip.on{background:var(--accent);color:#fff;border-color:transparent;}
+  .trend-cards{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin-bottom:10px;scroll-snap-type:x proximity;}
+  .trend-card{flex:none;width:104px;scroll-snap-align:start;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;cursor:pointer;display:flex;flex-direction:column;gap:7px;text-align:left;}
+  .trend-card:hover{border-color:var(--accent);}
+  .trend-card.on{outline:2.5px solid var(--accent);outline-offset:1px;border-color:transparent;}
+  .trend-card .tc-name{font-size:12px;font-weight:800;color:var(--ink);line-height:1.2;letter-spacing:-.01em;}
+  .trend-card .tc-sw{display:flex;gap:3px;}
+  .trend-card .tc-sw i{width:14px;height:14px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+  .trend-card .tc-samp{font-size:20px;line-height:1;color:var(--char);}
   .sw-grid .sw.pro span::after,.chips .chip.pro::after{content:"✨";font-size:8.5px;margin-left:3px;opacity:.75;vertical-align:super;}
   .style-search{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 13px;font-size:13.5px;margin:4px 0 12px;background:#fff;color:var(--ink);}
   .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:340px;overflow-y:auto;padding:2px;margin-bottom:12px;}
@@ -1161,8 +1165,8 @@
     <button class="x" onclick="app.closeModal('m-style')">×</button>
     <h3>🎨 메인 스타일 — <b id="style-count">0</b>가지</h3>
     <p class="lead">데코 × 팔레트 × 타이포를 조합한 이름 붙은 메인 스타일. 골라서 즉시 갈아입히거나 <b>🎲 셔플</b>로 뽑아 보세요. 아래 축으로 미세 조정도 됩니다.</p>
-    <div class="trend-lab">🔥 트렌드 컬렉션 <span>— 지금 무드에 맞는 스타일만 골라 보기</span></div>
-    <div class="trend-row" id="style-trends"></div>
+    <div class="trend-lab">🔥 트렌드 컬렉션 <span id="trend-desc">— 지금 무드에 맞는 스타일만 골라 보기</span></div>
+    <div class="trend-cards" id="style-trends"></div>
     <div class="fav-wrap"><div class="fav-head"><span class="style-lab" style="margin:0;">즐겨찾기</span><button class="fav-save" id="fav-save" onclick="app.toggleFav()">☆ 현재 저장</button></div><div class="fav-row" id="style-favs"></div></div>
     <input type="text" id="style-search" class="style-search" placeholder="메인 스타일 검색 (예: 팝 뱃지, 레드팝, 명조)" oninput="app.filterStyle(this.value)">
     <div class="cat-grid" id="style-catalog"></div>
@@ -1813,6 +1817,7 @@ const TRENDS = [
   {key:"serif",   label:"모던 세리프",   deco:_S(["underline","lines","magazine","minimal"]), pal:_S(["와인","네이비","차콜모노","딥그린","미드나잇","프러시안"]), font:_S(["모던 명조","클래식 세리프","엘레강스 명조","함렛 세리프","디필레이아"])},
   {key:"glass",   label:"글래스·퓨처",   deco:_S(["glass","gradient","neon"]), pal:_S(["오션블루","코발트","일렉트릭블루","스카이","아쿠아","티얼","인디고"]), font:_S(["기본 산세리프","씬 스타일리시","해바라기","임팩트 볼드"])},
 ];
+const TREND_DESC = { all:"3만+ 전체 스타일", pick:"어디에나 무난한 에디터 추천", minimal:"여백·뉴트럴·클린 산세리프", neutro:"빈티지 웜톤·명조·레트로 감성", pastel:"둥글고 부드러운 파스텔 무드", bold:"큰 임팩트 타이포·강렬한 대비", y2k:"네온·글로시·젠지 팝", earth:"그린·어스톤·내추럴 오가닉", serif:"세리프 리바이벌·에디토리얼", glass:"쿨블루·글래스·미래적" };
 function trendDef(){ return TRENDS.find(t=>t.key===state.trend) || TRENDS[0]; }
 function activeCatalog(){ const t=trendDef(); return t.deco ? CATALOG.filter(s=>t.deco.has(s.deco)&&t.pal.has(s.pal)&&t.font.has(s.font)) : CATALOG; }
 const PAL_KEYS = ["--bg0","--bg1","--card","--tx","--tx2","--tx3","--ln","--ac","--ac2","--on-ac","--dk","--dk-tx","--star"];
@@ -1889,7 +1894,13 @@ function filterStyle(){ refreshCatalog(); }
 function setTrend(k){ state.trend=k; refreshCatalog(); renderStylePanel(); const t=trendDef(); if(t.key!=="all") toast(`${t.label} 트렌드 · ${activeCatalog().length.toLocaleString()}종`); }
 function renderStylePanel(){
   const cnt=$("style-count"); if(cnt) cnt.textContent = activeCatalog().length.toLocaleString();
-  const trEl=$("style-trends"); if(trEl) trEl.innerHTML = TRENDS.map(t=>`<button class="trend-chip${state.trend===t.key?" on":""}" onclick="app.setTrend('${t.key}')">${t.label}</button>`).join("");
+  const trEl=$("style-trends"); if(trEl) trEl.innerHTML = TRENDS.map(t=>{
+    const pals = t.pal ? [...t.pal].slice(0,5) : ["탠저린","딥그린","오션블루","와인","라벤더"];
+    const dots = pals.map(n=>{ const pv=PALETTES.find(x=>x[0]===n); return pv?`<i style="background:${pv[1].ac}"></i>`:""; }).join("");
+    const fn = t.font ? [...t.font][0] : "기본 산세리프"; const fv=TYPES.find(x=>x[0]===fn); const ff=fv?fv[1].head:'sans-serif';
+    return `<button class="trend-card${state.trend===t.key?" on":""}" onclick="app.setTrend('${t.key}')"><span class="tc-name">${t.label}</span><span class="tc-sw">${dots}</span><span class="tc-samp" style="font-family:${ff};">스타일</span></button>`;
+  }).join("");
+  const tdEl=$("trend-desc"); if(tdEl) tdEl.textContent = TREND_DESC[state.trend]||"";
   const TD=trendDef(); const inD=TD.deco||PRO_DECO, inP=TD.pal||PRO_PAL, inF=TD.font||PRO_TYPE;
   const favEl=$("style-favs"); const curSig=favSig(currentStyle());
   if(favEl){ const favs=loadFavs();
