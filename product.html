@@ -371,6 +371,15 @@
   .dp-hero h2{font-family:var(--head);font-size:43px;font-weight:var(--head-wt);line-height:1.1;letter-spacing:-.035em;margin-top:20px;color:var(--tx);white-space:pre-line;}
   .dp-hero .sub{font-size:16px;margin-top:20px;color:var(--tx2);line-height:1.62;max-width:30ch;}
   .dp-hero .hero-img{position:relative;margin-top:44px;}
+  /* 풀블리드 커버 히어로 — 사진 위 헤드라인 오버레이 (매거진 커버) */
+  .dp-hero-cover{position:relative;background:var(--dk);padding:0;}
+  .dp-hero-cover>.img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;margin:0;}
+  .dp-hero-cover .hero-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,7,5,.9) 2%,rgba(8,7,5,.5) 34%,rgba(8,7,5,.12) 60%,rgba(8,7,5,.28) 100%);pointer-events:none;}
+  .dp-hero-cover .hero-cover-cap{position:absolute;left:0;right:0;bottom:0;padding:0 36px 52px;z-index:2;}
+  .dp-hero-cover .tagline{color:var(--ac);}
+  .dp-hero-cover h2{color:#fff;margin-top:16px;text-shadow:0 2px 24px rgba(0,0,0,.35);}
+  .dp-hero-cover .sub{color:rgba(255,255,255,.86);max-width:28ch;}
+  .dp-hero-cover .img-tools{z-index:4;}
   /* 이미지 캡션 — 에디토리얼 시그니처 */
   .dp-cap{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--tx3);display:flex;align-items:center;gap:9px;padding:14px 36px 0;line-height:1.5;}
   .dp-cap::before{content:"";width:16px;height:1px;background:var(--ac);flex:none;}
@@ -2021,6 +2030,7 @@ async function generate(){
       catch(e){ console.warn("이미지 실패",key,e); imgErr=e; markImgLoading(key,false); }   // 업로드본/빈칸 유지
       renderImages(); if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides(); done++;
     }
+    if(state.result.images.hero){ render(); }   // 히어로 사진이 생겼으면 커버 히어로로 최종 렌더
     if(aiOk===N){
       setStatus("ok","✅ 완성! 문구는 클릭해 수정, 이미지는 마우스를 올려 재생성·저장할 수 있어요.");
       setTimeout(clearStatus,5000);
@@ -2064,7 +2074,7 @@ async function regenImage(key){
   if(!requireKey()) return;
   const prompt = state.result.copy.imagePrompts?.[key] || ("the product, "+state.input.name);
   markImgLoading(key,true);
-  try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, refs), refs); renderImages(); if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides(); toast("이미지를 새로 생성했어요"); }
+  try{ state.result.images[key] = await callImage(fullImagePrompt(prompt, refs), refs); if(key==="hero"){ render(); } else { renderImages(); } if(effectiveTheme()==="auto" && !state.palette) harmonizeFromImages(); applyStyleOverrides(); toast("이미지를 새로 생성했어요"); }
   catch(e){ markImgLoading(key,false); toast("이미지 생성 실패: "+friendly(e)); }
 }
 /* 실사진 워크플로 — 올린 제품 사진의 배경을 제거(누끼)해 팔레트 위 깔끔한 스튜디오컷으로 합성.
@@ -2263,22 +2273,28 @@ function render(){
       </div>
     </div>` : "";
 
+  // 히어로 — 사진이 있으면 풀블리드 커버(헤드라인 오버레이), 없으면 크림 텍스트 히어로
+  const hImg = state.result.images.hero;
+  const heroTools = `<div class="img-tools"><button onclick="app.regenImage('hero')">재생성</button><button onclick="app.uploadSlot('hero')">올리기</button>${hImg?`<button onclick="app.saveImage('hero')">저장</button>`:""}</div>`;
+  const heroInner = `${ed(esc(c.tagline),"tagline","tagline")}${ed(esc(c.heroHeadline),"heroHeadline","","h2")}${ed(esc(c.heroSub),"heroSub","sub")}`;
+  const heroBlock = hImg
+    ? `<div class="dp-hero dp-hero-cover img-slot" data-slot="hero">
+        <img class="img" alt="${esc(imgAlt("hero"))}" src="data:${hImg.mime};base64,${hImg.data}">
+        <div class="hero-scrim"></div>
+        <div class="hero-cover-cap">${heroInner}</div>
+        ${heroTools}
+      </div>${cap("hero")}`
+    : `<div class="dp-hero img-slot" data-slot="hero">
+        <div class="cap">${heroInner}</div>
+        <div class="hero-img"><div class="img-ph" onclick="app.uploadSlot('hero')" style="cursor:pointer;">히어로 이미지 생성 대기 · 클릭해 직접 올리기</div>${heroTools}</div>
+        ${cap("hero")}
+      </div>`;
+
   stage.innerHTML = `
   <div class="device"><div class="screen">
   <div class="${("dp "+themeClass()).trim()}" id="dp-canvas">
 
-    <div class="dp-hero img-slot" data-slot="hero">
-      <div class="cap">
-        ${ed(esc(c.tagline),"tagline","tagline")}
-        ${ed(esc(c.heroHeadline),"heroHeadline","","h2")}
-        ${ed(esc(c.heroSub),"heroSub","sub")}
-      </div>
-      <div class="hero-img">
-        ${state.result.images.hero?`<img class="img" alt="${esc(imgAlt("hero"))}" src="data:${state.result.images.hero.mime};base64,${state.result.images.hero.data}">`:`<div class="img-ph" onclick="app.uploadSlot('hero')" style="cursor:pointer;">히어로 이미지 생성 대기 · 클릭해 직접 올리기</div>`}
-        <div class="img-tools"><button onclick="app.regenImage('hero')">재생성</button><button onclick="app.uploadSlot('hero')">올리기</button>${state.result.images.hero?`<button onclick="app.saveImage('hero')">저장</button>`:""}</div>
-      </div>
-      ${cap("hero")}
-    </div>
+    ${heroBlock}
 
     ${usp}
 
