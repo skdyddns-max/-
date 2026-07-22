@@ -690,6 +690,8 @@
 
   /* 이미지 슬롯 */
   .img-slot{position:relative;}
+  .img-slot.txt-warn{outline:3px solid #e0492f;outline-offset:-3px;}
+  .img-slot .txt-badge{position:absolute;left:8px;top:8px;z-index:5;background:#e0492f;color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;box-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none;}
   .img-tools{position:absolute;top:9px;right:9px;display:flex;gap:6px;opacity:0;transition:opacity .16s;z-index:3;}
   .img-slot:hover .img-tools{opacity:1;}
   .img-tools button{background:rgba(23,21,15,.72);color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:600;backdrop-filter:blur(4px);}
@@ -972,6 +974,7 @@
       <button class="btn btn-line btn-sm hide-sm" id="btn-recopy" onclick="app.regenCopy()" disabled>문구 다시</button>
       <button class="btn btn-line btn-sm" id="btn-html" onclick="app.exportHTML()" disabled>HTML 저장</button>
       <button class="btn btn-line btn-sm" id="btn-thumb" onclick="app.openThumb()" disabled title="스마트스토어 대표이미지용 정사각 썸네일 — 배경 자동 제거(누끼) 포함 3종">🖼️ 썸네일</button>
+      <button class="btn btn-line btn-sm" id="btn-ocr" onclick="app.checkImagesText()" disabled title="생성 이미지에 깨진 글자가 있는지 OCR로 검사">🔤 글자검사</button>
       <button class="btn btn-line btn-sm" id="btn-split" onclick="app.saveSplit()" disabled title="상세페이지를 스마트스토어·블로그용 분할 이미지로 저장">📑 분할저장</button>
       <button class="btn btn-ink btn-sm" id="btn-imgs" onclick="app.saveAllImages()" disabled>이미지 저장</button>
       <button class="btn btn-line btn-sm" onclick="app.openSettings()">⚙</button>
@@ -2525,7 +2528,7 @@ function setByPath(obj,path,val){
   for(let k=0;k<parts.length-1;k++){ const key=parts[k]; if(o[key]==null) o[key]=/^\d+$/.test(parts[k+1])?[]:{}; o=o[key]; }
   o[parts[parts.length-1]]=val;
 }
-function enableExport(on){ ["btn-recopy","btn-html","btn-split","btn-imgs","btn-sns","btn-thumb","btn-carousel"].forEach(id=>$(id).disabled=!on); }
+function enableExport(on){ ["btn-recopy","btn-html","btn-split","btn-imgs","btn-sns","btn-thumb","btn-carousel","btn-ocr"].forEach(id=>$(id).disabled=!on); }
 
 /* ---------- 업로드 ---------- */
 function handleFiles(files){
@@ -3126,6 +3129,54 @@ function safeName(){ return (state.input.name||"product").replace(/[\/\\:*?"<>|]
 function saveImage(key){ const img=state.result?.images?.[key]; if(!img){ toast("아직 이미지가 없어요"); return; } const ext=(img.mime.split("/")[1]||"png").replace("jpeg","jpg"); saveBlob(b64ToBlob(img.data,img.mime),`${safeName()}-${key}.${ext}`); }
 function saveAllImages(){ const imgs=state.result?.images||{}; let n=0; ["hero","lifestyle","detail"].forEach(k=>{ if(imgs[k]){ setTimeout(()=>saveImage(k),n*250); n++; } }); toast(n?`${n}장 저장`:"저장할 이미지가 없어요"); }
 
+/* ── 이미지 글자 오류 검사 — 브라우저 OCR(Tesseract.js)로 감지 ── */
+let _tessP=null;
+function loadTesseract(){
+  if(_tessP) return _tessP;
+  _tessP = new Promise((res,rej)=>{
+    if(window.Tesseract) return res(window.Tesseract);
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload=()=>res(window.Tesseract); s.onerror=()=>{ _tessP=null; rej(new Error("OCR 로드 실패")); };
+    document.head.appendChild(s);
+  });
+  return _tessP;
+}
+async function imageHasText(imgObj, lang){
+  const T=await loadTesseract();
+  const url=`data:${imgObj.mime};base64,${imgObj.data}`;
+  const { data } = await T.recognize(url, lang||"eng+kor");
+  // 신뢰도 높고 2글자 이상인 '진짜 글자' 블록만 카운트 — 텍스처/노이즈 오탐 배제
+  const words=(data.words||[]).filter(w=> w.confidence>=62 && /[A-Za-z0-9가-힣]{2,}/.test((w.text||"").trim()));
+  const text=words.map(w=>w.text.trim()).filter(Boolean).join(" ").trim();
+  return { hasText: words.length>=1 && text.replace(/\s/g,"").length>=3, text: text.slice(0,40), count:words.length };
+}
+async function checkImagesText(){
+  if(!state.result){ toast("먼저 생성해 주세요"); return; }
+  const btn=$("btn-ocr"); const old=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="검사 중…"; }
+  setStatus("work",`<span class="spin"></span>이미지 글자 검사 중… <span style="opacity:.75">(검사 도구 첫 로딩은 20~30초 걸릴 수 있어요)</span>`);
+  try{ await loadTesseract(); }
+  catch(e){ setStatus("err","글자 검사 도구를 불러오지 못했어요 — 네트워크를 확인하거나 잠시 후 다시 시도해 주세요."); if(btn){ btn.disabled=false; btn.textContent=old; } return; }
+  const keys=["hero","lifestyle","detail","texture"].filter(k=>state.result.images[k]);
+  let flagged=0, samples=[];
+  for(const k of keys){
+    try{
+      const r=await imageHasText(state.result.images[k]);
+      const slot=document.querySelector(`[data-slot="${k}"]`);
+      if(slot){
+        slot.classList.toggle("txt-warn", r.hasText);
+        let b=slot.querySelector(".txt-badge");
+        if(r.hasText){ if(!b){ b=document.createElement("div"); b.className="txt-badge"; slot.appendChild(b); } b.textContent="⚠ 글자 감지 — 재생성 권장"; }
+        else if(b){ b.remove(); }
+      }
+      if(r.hasText){ flagged++; if(r.text) samples.push(`${k}: “${r.text}”`); }
+    }catch(e){ console.warn("ocr",k,e); }
+  }
+  if(btn){ btn.disabled=false; btn.textContent=old; }
+  if(flagged){ setStatus("err",`이미지 <b>${flagged}컷</b>에서 글자가 감지됐어요 — 해당 자리에서 <b>재생성</b>하거나 실사진을 올려 주세요. <span style="opacity:.75">${esc(samples.join(" · "))}</span>`); }
+  else { setStatus("ok","✅ 글자 오류 없음 — 이미지가 깨끗해요."); setTimeout(clearStatus,4500); }
+}
+
 /* ---------- 분할 이미지 저장 (스마트스토어·블로그용) ----------
    브라우저 네이티브 렌더링(SVG foreignObject) — CDN 의존 없이 미리보기
    그대로 래스터화한 뒤, 섹션 경계에서 잘라 여러 장의 PNG로 저장 */
@@ -3331,7 +3382,7 @@ function init(){
   if(location.hash==="#studio") showView("studio");
 }
 
-window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, setDeco, applyMainStyle, filterStyle, setTrend, shuffleStyle, toggleFav, applyFav, removeFav, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
+window.app = { start, goHome, generate, regenCopy, regenImage, saveImage, saveAllImages, exportHTML, openSettings, closeModal, saveSettings, removeImage, setTheme, setPalette, setFont, setDeco, applyMainStyle, filterStyle, setTrend, shuffleStyle, toggleFav, applyFav, removeFav, openStyle, uploadSlot, copyManualPrompt, applyManualJSON, toggleAB, openSns, saveSnsAll, copySnsCaption, copySnsTags, saveSplit, checkImagesText, cutoutSlot, openThumb, saveThumbAll, saveThumbSel, openCarousel, saveCarouselAll, copyCarouselCaption, copyCarouselTags, carouselToggle, carouselMove };
 init();
 </script>
 </body>
