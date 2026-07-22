@@ -347,6 +347,7 @@
     --dk-ln:rgba(255,255,255,.12);
     --star:#E0A32A;
     --ph:#e5e1d8;             /* 이미지 자리 */
+    --pg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
     /* 형태·타이포 토큰 */
     --rad:14px;
     --head:var(--sans);       /* 헤드라인 서체 */
@@ -403,7 +404,7 @@
   .dp-feat p{font-size:14px;color:var(--tx2);margin-top:7px;line-height:1.7;}
 
   /* 브랜드 스토리 — 다크 스테이트먼트 밴드(페이지 중 유일한 극적 반전) */
-  .dp-brand{background:var(--dk);color:var(--dk-tx);text-align:center;padding:96px 40px;}
+  .dp-brand{background-color:var(--dk);background-image:radial-gradient(80% 60% at 82% 6%,color-mix(in srgb,var(--ac) 22%,transparent),transparent 55%),var(--pg);background-blend-mode:normal,overlay;color:var(--dk-tx);text-align:center;padding:96px 40px;}
   .dp-brand .dp-eyebrow{color:var(--ac);opacity:.9;}
   .dp-brand .dp-h{font-size:30px;line-height:1.42;color:var(--dk-tx);margin-top:20px;}
   .dp-brand .dp-b{margin:22px auto 0;max-width:32ch;font-size:15.5px;color:color-mix(in srgb,var(--dk-tx) 78%,transparent);line-height:1.85;}
@@ -616,7 +617,7 @@
   .dp-faq .qq::before{content:"Q";font-family:var(--mono);color:var(--ac2);font-weight:700;}
   .dp-faq .aa{font-size:13.5px;color:var(--tx2);margin-top:9px;line-height:1.72;padding-left:20px;}
 
-  .dp-cta{background:var(--dk);color:var(--dk-tx);text-align:center;padding:92px 36px 88px;position:relative;overflow:hidden;}
+  .dp-cta{background-color:var(--dk);background-image:var(--pg);background-blend-mode:overlay;color:var(--dk-tx);text-align:center;padding:92px 36px 88px;position:relative;overflow:hidden;}
   .dp-cta::before{content:"";position:absolute;inset:0;background:radial-gradient(62% 92% at 50% 0%,color-mix(in srgb,var(--ac) 26%,transparent),transparent 62%);}
   .dp-cta>*{position:relative;z-index:2;}
   .dp-cta .cta-tick{width:34px;height:2px;background:var(--ac);margin:0 auto 20px;}
@@ -699,8 +700,21 @@
   .img-tools button{background:rgba(23,21,15,.72);color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:600;backdrop-filter:blur(4px);}
   .img-tools button:hover{background:rgba(23,21,15,.9);}
   .img-loading{position:absolute;inset:0;background:rgba(251,249,244,.82);display:grid;place-items:center;color:var(--ac2);font-size:12.5px;font-weight:700;z-index:2;font-family:var(--mono);letter-spacing:.05em;}
-  .img-ph{width:100%;aspect-ratio:4/5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--tx3);font-size:12px;font-family:var(--mono);letter-spacing:.08em;background:var(--bg1);}
+  /* 이미지 빈자리 — 밋밋한 회색 박스 대신 '분위기 있는 사진 판'(누끼 전 실사진처럼) */
+  .img-ph{position:relative;overflow:hidden;width:100%;aspect-ratio:4/5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+    color:color-mix(in srgb,var(--dk-tx) 60%,transparent);font-size:11px;font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;cursor:pointer;
+    background:linear-gradient(158deg,color-mix(in srgb,var(--dk) 82%,#2b3340) 0%,var(--dk) 74%);}
+  .img-ph::before{content:"";position:absolute;inset:0;background:radial-gradient(95% 80% at 24% 18%,var(--ac),transparent 52%);opacity:.30;pointer-events:none;}
+  .img-ph::after{content:"";position:absolute;inset:0;background:var(--pg);mix-blend-mode:overlay;opacity:.5;pointer-events:none;}
+  .img-ph .ph-mk{position:relative;z-index:1;width:34px;height:34px;border-radius:50%;border:1px solid color-mix(in srgb,var(--dk-tx) 32%,transparent);display:grid;place-items:center;font-size:15px;letter-spacing:0;}
+  .img-ph .ph-tx{position:relative;z-index:1;opacity:.85;}
   .dp-scene .img-ph{aspect-ratio:4/5;}
+  /* 히어로 빈자리도 같은 판으로 (커버 레이아웃 유지) */
+  .dp-hero-cover.no-img{aspect-ratio:4/5;}
+  .dp-hero-cover .hero-plate{position:absolute;inset:0;overflow:hidden;
+    background:linear-gradient(158deg,color-mix(in srgb,var(--dk) 80%,#2b3340) 0%,var(--dk) 76%);}
+  .dp-hero-cover .hero-plate::before{content:"";position:absolute;inset:0;background:radial-gradient(90% 75% at 22% 16%,var(--ac),transparent 50%);opacity:.34;}
+  .dp-hero-cover .hero-plate::after{content:"";position:absolute;inset:0;background:var(--pg);mix-blend-mode:overlay;opacity:.5;}
 
   /* 모달 */
   .modal-bg{position:fixed;inset:0;background:rgba(23,21,15,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:18px;z-index:120;}
@@ -1947,7 +1961,7 @@ function renderStylePanel(){
 }
 function imgStyleSuffix(){
   const style = THEME_IMG_STYLE[effectiveTheme()] || THEME_IMG_STYLE[""];
-  return `. Mood: ${style}. THIS MUST LOOK LIKE A REAL PHOTOGRAPH — indistinguishable from an actual product photoshoot, as if captured with a professional camera, not generated. Shot on a full-frame DSLR, 50mm or 85mm prime lens, aperture f/2–f/4 with true shallow depth of field and natural optical bokeh, soft natural window light, physically accurate soft shadows and real reflections, true-to-life color, authentic material textures and micro-details, real human skin with visible pores and subtle natural imperfections. Tasteful negative space (a calm, evenly-toned empty area, usually the upper third) so headline text can sit over it. Vertical 4:5 composition. HARD CONSTRAINTS — the result must NOT resemble any of these: illustration, drawing, painting, sketch, watercolor, 3D render, CGI, digital art, cartoon, anime, vector, clip-art, plastic/waxy CGI surfaces, airbrushed or over-smoothed skin, or any artificial "AI-art" look. CRITICAL: render absolutely NO readable text, letters, numbers, captions, logos, watermarks or borders anywhere. If the product carries text (e.g. a book cover or a label), keep it softly out of focus, angled away, or partly cropped so no letters are legible — never attempt to spell words. Ultra high resolution, photorealistic, with natural photographic grain and lifelike dynamic range.`;
+  return `. Mood: ${style}. Art-directed to the standard of a premium brand campaign / high-end editorial magazine spread — intentional composition, refined styling, considered color story, gallery-grade lighting. THIS MUST LOOK LIKE A REAL PHOTOGRAPH — indistinguishable from an actual product photoshoot, as if captured with a professional camera, not generated. Shot on a full-frame DSLR, 50mm or 85mm prime lens, aperture f/2–f/4 with true shallow depth of field and natural optical bokeh, soft natural window light, physically accurate soft shadows and real reflections, true-to-life color, authentic material textures and micro-details, real human skin with visible pores and subtle natural imperfections. Tasteful negative space (a calm, evenly-toned empty area, usually the upper third) so headline text can sit over it. Vertical 4:5 composition. HARD CONSTRAINTS — the result must NOT resemble any of these: illustration, drawing, painting, sketch, watercolor, 3D render, CGI, digital art, cartoon, anime, vector, clip-art, plastic/waxy CGI surfaces, airbrushed or over-smoothed skin, or any artificial "AI-art" look. CRITICAL: render absolutely NO readable text, letters, numbers, captions, logos, watermarks or borders anywhere. If the product carries text (e.g. a book cover or a label), keep it softly out of focus, angled away, or partly cropped so no letters are legible — never attempt to spell words. Ultra high resolution, photorealistic, with natural photographic grain and lifelike dynamic range.`;
 }
 function fullImagePrompt(base, refImages){
   const dir = state.result?.copy?.imagePrompts?.direction || "";
@@ -2161,7 +2175,7 @@ function imgSlot(key){
   const img = state.result?.images?.[key];
   const lazy = key==="hero" ? "" : ` loading="lazy" decoding="async"`;
   const inner = img ? `<img class="img" src="data:${img.mime};base64,${img.data}" alt="${esc(imgAlt(key))}"${lazy}>`
-                    : `<div class="img-ph" onclick="app.uploadSlot('${key}')" style="cursor:pointer;">이미지 생성 대기 · 클릭해 직접 올리기</div>`;
+                    : `<div class="img-ph" onclick="app.uploadSlot('${key}')"><div class="ph-mk">＋</div><div class="ph-tx">이미지 자리 · 클릭해 올리기</div></div>`;
   const tools = `<div class="img-tools"><button onclick="app.regenImage('${key}')">재생성</button><button onclick="app.uploadSlot('${key}')">올리기</button>${img&&key!=="texture"?`<button onclick="app.cutoutSlot('${key}')" title="배경을 제거해 깔끔한 제품컷으로">배경제거</button>`:""}${img?`<button onclick="app.saveImage('${key}')">저장</button>`:""}</div>`;
   return `<div class="img-slot" data-slot="${key}">${inner}${tools}</div>`;
 }
@@ -2303,11 +2317,12 @@ function render(){
         <div class="hero-cover-cap">${heroInner}</div>
         ${heroTools}
       </div>${cap("hero")}`
-    : `<div class="dp-hero img-slot" data-slot="hero">
-        <div class="cap">${heroInner}</div>
-        <div class="hero-img"><div class="img-ph" onclick="app.uploadSlot('hero')" style="cursor:pointer;">히어로 이미지 생성 대기 · 클릭해 직접 올리기</div>${heroTools}</div>
-        ${cap("hero")}
-      </div>`;
+    : `<div class="dp-hero dp-hero-cover img-slot no-img" data-slot="hero">
+        <div class="hero-plate"></div>
+        <div class="hero-scrim"></div>
+        <div class="hero-cover-cap">${heroInner}</div>
+        ${heroTools}
+      </div>${cap("hero")}`;
 
   stage.innerHTML = `
   <div class="device"><div class="screen">
